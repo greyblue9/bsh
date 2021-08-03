@@ -1,0 +1,78 @@
+import java.util.Map.Entry;
+
+
+
+
+
+
+
+
+public static SortedMap loadNativeLibrariesFromApk(byte[] zipBytes) {
+  File tmpDir = PosixFileInputStream.createTemporaryDirectory(
+    String.format("tmp_libs_%d", org.d6r.PosixFileInputStream.getPid())
+  );
+  Map retMap = new TreeMap();
+  Map zm = ZipUtil.mapBytes(zipBytes);
+  for (Entry ent: zm.entrySet().filter("lib/.*arm((?!8|64)[^/])*/.*\\.so")) {
+    System.err.println(ent);
+    File libPath = new File(tmpDir, ent.getKey());
+    File parent = new File(libPath.getParent());
+    if (!parent.exists()) parent.mkdirs();
+    FileUtils.writeByteArrayToFile(libPath, ent.getValue()); 
+    
+    BaseDexClassLoader ldr = Thread.currentThread().getContextClassLoader();
+    
+    ldr.pathList.nativeLibraryDirectories = (File[]) ArrayUtils.addAll(
+      (File[]) ldr.pathList.nativeLibraryDirectories,
+      new File[]{ parent }
+    );
+    String libName = Pattern.compile("^(?:.*/)?lib([^/]+)\\.so[^/]*$").matcher(libPath.getName()).replaceAll("$1");
+    System.err.println(libName);
+    String libPathStr = ldr.originalLibraryPath = StringUtils.join(
+      ldr.pathList.nativeLibraryDirectories, ":"
+    );
+    
+    System.getProperties().put("java.library.path", libPathStr); 
+    System.getProperties().put("jna.boot.library.path", libPathStr);
+    
+    ((HashMap) Reflect.getfldval(
+      Reflect.getfldval(System.getenv(), "map"), "m"
+    )).put(
+      "LD_LIBRARY_PATH",
+      System.getenv("LD_LIBRARY_PATH") + ":" + parent.getPath()
+    );
+    
+    Reflect.setfldval(
+      Runtime.getRuntime(), "mLibPaths",
+      (String[]) ArrayUtils.addAll(
+        (String[]) Reflect.getfldval(Runtime.getRuntime(), "mLibPaths"),
+        new String[]{ parent.getPath().concat("/") }
+      )
+    );
+    
+    retMap.put(ent.getKey(), ent.getValue());
+  }
+  
+  return retMap;
+}
+
+
+
+
+
+
+
+
+
+
+public static SortedMap loadNativeLibrariesFromApk(String jarPath) { File file = new File(jarPath); Object dexElement = ClassPathUtil2.findDexElement(Thread.currentThread().getContextClassLoader(), file); byte[] zipBytes = null; if (dexElement != null) { Reflector.invokeOrDefault(dexElement, "maybeInit"); ZipFile zipFile = Reflect.getfldval(dexElement, "zipFile"); InputStream is = null; try { is = ZipUtil.toInputStream(zipFile); zipBytes = IOUtils.toByteArray(new org.apache.commons.io.input.AutoCloseInputStream(is)); } catch (IOException ioe) { ioe.printStackTrace(); } finally { if (is != null) IOUtils.closeQuietly(is); }; }; if (zipBytes == null) zipBytes = FileUtils.readFileToByteArray(file); SortedMap result = null; try { result = loadNativeLibrariesFromApk(zipBytes); return result; } finally { zipBytes = null; result = null; }; };
+
+
+
+
+
+
+public static Map loadNativeLibrariesFromApk(dalvik.system.DexPathList.Element dexElement) { dexElement.maybeInit(); byte[] zb=IOUtils.toByteArray(new org.apache.commons.io.input.AutoCloseInputStream(ZipUtil.toInputStream(dexElement.zipFile))); Map nls = loadNativeLibrariesFromApk(zb); zb = null; return nls; };
+
+
+

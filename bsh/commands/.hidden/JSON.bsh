@@ -1,0 +1,151 @@
+
+import org.json.JSONArray;
+import org.json.JSONObject;
+CollectionUtil.getInterpreter().getNameSpace().importStatic(Reflector.Util.class);
+  
+if (CollectionUtil.getInterpreter().getu("JSON")==null) {
+  JSON();
+}
+
+
+JSON() {
+  
+  Pattern ptrn = Pattern.compile(
+    "(([\\w]+)\\s*(?:\\[([0-9]*)\\]))\\s+(\\w+)([^\\w]|$)",
+          Pattern.DOTALL
+        | Pattern.MULTILINE
+        | Pattern.UNIX_LINES
+  );
+  public Pattern setPattern(String newPtrn) {
+    this.ptrn = Pattern.compile( newPtrn,
+           Pattern.DOTALL
+         | Pattern.MULTILINE
+         | Pattern.UNIX_LINES
+    );
+  }
+  
+  /* <T> T[] */ 
+  public Object[] arrayAt(JSONArray parent, int idx) {
+    return CollectionUtil.toArray(
+      Reflect.getfldval(
+        CollectionUtil.toArray(
+          Reflect.getfldval(parent, "values")
+        )[idx],
+        "values"
+      )
+    );
+  }    
+  
+  public Object[][] loadAsArray(String json) {
+    JSONArray jssubs = new JSONArray(json);
+    ArrayList al = new ArrayList(); 
+    for (int i=0; i<jssubs.length(); i++) {
+      al.add(arrayAt(jssubs, 0));
+    }  
+    if (al.isEmpty()) return new Object[][]  { };
+
+    Object[][] arr = CollectionUtil.toArray(al);
+    return arr;
+  }
+
+
+  public JSONArray from(String json) { 
+    Object[][] first = new Object[0][];
+    try {
+      first = loadAsArray(json);  
+      return parseStruct(first);
+    } catch (Throwable ex) {
+      ex = Reflector.getRootCause(ex);
+      ex.printStackTrace();
+      this.interpreter.set("$_e", ex);
+      /*try {
+        this.interpreter.set(
+           "$ns", CollectionUtil.clone(this.namespace, 13)
+        );        
+      } catch (Throwable e) { 
+        System.err.println(
+          "Clone of broken fn's namespace failed."
+        );
+        throw sneakyThrow(e);
+      }*/
+    }
+    
+    if (first.length > 0) Dumper.dump(first);
+    return null;
+  }
+  
+  public JSONArray parseStruct(Object[][] strsArr) {
+    JSONArray jssubs = new JSONArray(); 
+    int lidx = 0;
+    for (String[] lines: strsArr) { 
+      lidx += 1;
+      /// Single struct definition
+      String structSrc = StringUtils.join(lines, "\n");
+      this.interpreter.set("src"+lidx, structSrc);
+      
+      Matcher mchr = this.ptrn.matcher(structSrc);
+      //mchr.reset(substr); 
+      int offs = 0; 
+      int len = 0; 
+      JSONArray jsmarr = new JSONArray(); 
+      while (mchr.find()) {
+        JSONObject jsm = new JSONObject(); 
+        MatchResult mr = mchr.toMatchResult(); 
+        String tname = mr.group(1); 
+        jsm.put("typename", tname); 
+        String name = mr.group(mr.groupCount());
+        jsm.put("name", name); 
+        int arraysize = Integer.valueOf(mr.group(3)); 
+        if (arraysize == null) {
+          arraysize = 0;
+        } else {
+          arraysize = Integer.valueOf(arraysize).intValue();
+        }
+        // TODO: FIXME
+        jsm.put("length", arraysize); 
+        
+        Object[] types = new Object[]{ 
+         Boolean.class, 
+         Byte.class,  
+         Character.class, 
+         Short.class, 
+         Integer.class, 
+         Long.class, 
+         Float.class, 
+         Double.class          
+        }; 
+        typesizes = new int[]{ 1, 1, 1, 2, 4, 8, 8, 8 };
+       
+        System.out.printf(
+          "    \"%s\", %d, %d,\n", 
+          name, offs, len
+        ); 
+        JSONArray jsgroups = new JSONArray();  
+        for (int i=1; i<=mr.groupCount(); i+=1) {
+          jsgroups.put(mr.group(i));
+        
+          System.out.printf(
+            "      %d: %s%s%s\n",
+            i, 
+            dumpMembers.colorize("<","1;30").replace("0;31","1;30"),
+            mr.group(i), 
+            dumpMembers.colorize(">", "1;30").replace("0;31", "1;30")
+          );      
+        }
+        jsm.put("groups", jsgroups);
+        System.out.printf("\n  \n");
+        jsmarr.put(jsm);
+      }
+      jssubs.put(jsmarr);     
+    }
+    return jssubs;
+  }
+  Reflect.findMethod(
+    CollectionUtil.getInterpreter(), "setu"
+  ).invoke( CollectionUtil.getInterpreter() , new Object[]{ 
+    "JSON", this
+  });
+  return this;
+}
+
+

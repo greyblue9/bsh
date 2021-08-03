@@ -1,0 +1,31 @@
+public static String arrayToString(Object obj) { Object jsonObj = null; if (obj.getClass().isArray()) { Object[] arr = (obj.getClass().getComponentType().isPrimitive())? ArrayUtils.toObject(obj): (Object[]) obj; jsonObj = new org.json.JSONArray(arr); } else if (obj instanceof Iterable || obj instanceof Iterator || obj instanceof Enumeration) { Object[] arr = CollectionUtil.toArray(obj); jsonObj = new org.json.JSONArray(arr); } else if (obj instanceof Map) { jsonObj = new org.json.JSONObject(obj); } else { Object map = get(obj, true); jsonObj = new org.json.JSONObject(obj); }; String str = jsonObj.toString().replaceAll("\\\\/","/").replaceAll("\\\",","\", ").replaceAll("^\\[", (obj.getClass().isArray()) ? String.format("new %s[]{ ", ClassInfo.simplifyName(obj.getClass().getComponentType().getName())): "Arrays.asList(").replaceAll("\\]$", (obj.getClass().isArray())? " }": ")"); String str2 = ((!(obj instanceof Map))? str: str.replaceAll("\"((?:[^\"]|\\\\\")*)\":", " \"$1\", ").replaceAll("^\\{", "RealArrayMap.toMap(").replaceAll("\\}$", " )")).replaceAll("\\[(?!\\])", "Arrays.asList(").replaceAll("(?!(?<=\\[))\\]", ")"); return str2; }; 
+
+public static String arrayToString(Object obj) {
+  Object jsonObj = null;
+  if (obj instanceof Iterable || obj instanceof Iterator || obj instanceof Enumeration) {
+    jsonObj = new org.json.JSONArray((Collection) Arrays.asList(CollectionUtil.toArray(obj)));
+  } else if (obj.getClass().isArray()) {
+    Object[] arr = (obj.getClass().getComponentType().isPrimitive()) ? ArrayUtils.toObject(obj) : (Object[]) obj;
+    jsonObj = new org.json.JSONArray((Collection) Arrays.asList(arr));
+  } else if (obj instanceof Map) {
+    jsonObj = new org.json.JSONObject(obj);
+  } else {
+    Object map = get(obj, true);
+    jsonObj = new org.json.JSONObject(obj);
+  }
+  String str = jsonObj.toString().replaceAll("\\\\/", "/").replaceAll("\\\",", "\", ").replaceAll("^\\[", (obj.getClass().isArray()) ? String.format("new %s[]{ ", ClassInfo.simplifyName(obj.getClass().getComponentType().getName())) : "Arrays.asList(").replaceAll("\\]$", (obj.getClass().isArray()) ? " }" : ")");
+  String str2 = ((!(obj instanceof Map)) ? str : str.replaceAll("\"((?:[^\"]|\\\\\")*)\":", " \"$1\", ").replaceAll("^\\{", "RealArrayMap.toMap(").replaceAll("\\}$", " )")).replaceAll("\\[(?!\\])", "Arrays.asList(").replaceAll("(?!(?<=\\[))\\]", ")");
+  return str2;
+}
+
+ 
+
+
+public static String arrayToString(Object[] arr) {
+  List<String> contents = Arrays.asList(CollectionUtil.toArray(arr)).select(FunctionUtil.bind("return m -> { var s = Dumper.tryToString(m); var s2 = StringUtils.substringBeforeLast(((s.length() > 255) ? s.subSequence(0, 255).concat(\"...\").concat(s.subSequence(s.length()-255, s.length())) : s), \"  (\"); var s3 = (s2.indexOf(String.format(\"%c\", 0x0a)) != -1) ? String.format(\"  \").concat(s2.replace(String.format(\"%c\", 0x0a), String.format(\"%c  \", 0x0a))).replaceFirst(String.format(\"(%c*) *\\]%1$c* *\\(\",0x0a), String.format(\"$1] \\(\",0x0a)).trim() : s2; }"));
+  String sep = (String.valueOf(contents.firstOrDefault()).trim().indexOf("\n") == -1) ? ", " : ",\n";
+  String all = String.format((sep.indexOf("\n") != -1 ? "%1$s {\n   %2$s\n}" : "%1$s{ %2$s }"), ClassInfo.typeToName(arr), StringUtils.join(contents, sep)).replace(",\n", ",\n  ").replaceFirst("\n   +", "\n  ");
+  return all;
+}
+
+

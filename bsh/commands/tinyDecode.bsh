@@ -1,0 +1,4 @@
+
+
+public static byte[] tinyDecode(String inEncodedString) { return IOUtils.toByteArray(new org.apache.commons.io.input.AutoCloseInputStream(new java.util.zip.GZIPInputStream(new ByteArrayInputStream(new java.math.BigInteger(inEncodedString, 32).toByteArray())))); };
+

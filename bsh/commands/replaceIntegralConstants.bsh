@@ -1,0 +1,18 @@
+import java.util.Map.Entry;
+
+
+
+
+
+
+public static String replaceIntegralConstants(CharSequence src) { Set<Integer> ignored = new TreeSet<Integer>(); String str = CharSequenceUtil.toString(src); StringBuffer sb = new StringBuffer((int)(str.length() * 1.25)); List<Long> dnums = StringCollectionUtil.matchAll(src, Pattern.compile("\\b([0-9][0-9]*)\\b", Pattern.DOTALL | Pattern.UNIX_LINES)).select(FunctionUtil.bind("return m -> { Long.parseLong(m, 10); }")); List<Pair> hpairs = dnums.select(FunctionUtil.bind("return m -> { Pair.of(Pattern.compile(ptrnfmt.replace(\"{NUM}\", Long.toString(m.longValue(), 10))).matcher(\"\"), new(StringBuilder, \"0x\").append(Long.toString(m.longValue(), 16)).toString()); }", "ptrnfmt", "\\b({NUM})\\b")); for (Entry e: hpairs) { Matcher mchr = e.getKey(); String repl = e.getValue(); mchr.reset(str); while (mchr.find()) { if (ignored.contains(mchr.start(1))) continue; char[] origca = mchr.group(1).toCharArray(); char[] newca = repl.substring(2).toCharArray(); int scoreOrig = 0, scoreNew = 0; for (int i=0, prevscore_orig = 0, prevscore_new = 0, origlen=origca.length, newlen=newca.length, max=Math.max(origlen, newlen); i<max; ++i) { if (i < origlen) { char c = origca[i]; if (c == '0' || c == '1' || c == '2' || (c == '5' && i > 0 && origca[i-1] == '2')) { int delta = (c == 0? 3: c == 1? 2: 1) * (prevscore_orig <= 0? 1: prevscore_orig * 2); prevscore_orig = delta; scoreOrig += delta; } }; if (i < newlen) {  char c = newca[i]; if ((c == '0' && newlen != 1) || c == '1' || c == '2' || c == '4' || c == '8') { int delta = (c == 0? 3: c == 1? 2: 1) * (prevscore_new <= 0? 1: prevscore_new * 2); prevscore_new = delta; scoreNew += delta; }; }; System.err.printf("score for orig (%s) @ %d: \'%c\': %d\nscore for hex (%s) @ %d: \'%c\': %d\n", mchr.group(1), i, i<origlen?origca[i]:'-', scoreOrig, repl, i, i<newlen? newca[i]: '-', scoreNew); }; if (scoreNew > scoreOrig) { sb.setLength(0); sb.append(str.subSequence(0, mchr.start(1))); mchr.appendEvaluated(sb, repl); str = sb.append(str.subSequence(mchr.end(1), str.length())).toString(); mchr.reset(str); System.err.printf("Replaced %s with %s ...\n", StringUtils.substringBetween(mchr.pattern().pattern(), "(", ")"), repl); } else { ignored.add(Integer.valueOf(mchr.start(1))); }; }; }; return str; }
+
+
+
+
+
+
+public static Map replaceIntegralConstants(Iterable<File> javaSourceFiles) { Map jm = new TreeMap(); for (File f: javaSourceFiles.filter(Pattern.compile("\\.java$").matcher(""))) { String src = FileUtils.readFileToString(f, java.nio.charset.StandardCharsets.UTF_8); String src2 = replaceIntegralConstants(src); if (src.length() != src2.length()) { System.err.println(src2); jm.put(f.getPath().indexOf("src/") != -1? StringUtils.substringAfterLast(f.getPath(), "src/"): f.getPath().replaceAll("^/*(?:.*/|)(?:main(?:/java)?/+)", ""), src2.getBytes(java.nio.charset.StandardCharsets.UTF_8)); } }; return jm; };
+
+
+

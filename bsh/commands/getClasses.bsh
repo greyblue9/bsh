@@ -1,0 +1,6 @@
+  
+
+public static Class[] getClasses(Object[] classNames) { ArrayList __al = new ArrayList(); FunctionUtil.getContext().set("__al", __al); StringCollectionUtil.toStringFilter(Arrays.asList(classNames).select(evalJexl("""m -> { var _name = m.toString(); if (Capabilities.classExists(_name)) { var _cls = Class.forName(_name, false, Thread.currentThread().getContextClassLoader()); __al.add(_cls); return _cls; } return ""; }""")), ".+").print(); CollectionUtil.print(__al); return __al.toArray(new Class[0]); }
+
+public static ArrayList<Class> getClasses(Iterable classNames) { ArrayList __al = new ArrayList(); FunctionUtil.getContext().set("__al", __al); StringCollectionUtil.toStringFilter(classNames.select(evalJexl("""m -> { if (Capabilities.classExists(m)) { var _cls = Class.forName(m, false, Thread.currentThread().getContextClassLoader()); __al.add(_cls); return _cls; } return ""; }""")), ".+").print(); CollectionUtil.print(__al); return __al; }
+  

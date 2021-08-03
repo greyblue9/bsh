@@ -1,0 +1,41 @@
+
+public static void writeXmlAsync(Object path, Object obj, 
+String varName)
+{
+  Thread t;
+  t = new Thread(new Runnable() {
+    // @Override
+    public void run() {
+      System.err.printf(
+        "writeXmlAsync(%s, %s, \"%s\"): Thread %s started "
+        + "(result will be saved into variable `%s`)\n",
+        String.valueOf(path), String.valueOf(obj), varName,
+        String.valueOf(t), varName
+      );
+      Interpreter in = CollectionUtil.getInterpreter();
+      System.out.printf(
+        "\n%c[1;44;32m%s%c[0m ", 
+        0x1b, in.getBshPrompt().trim(), 0x1b
+      );      
+      Object outResult = writeXml(path, obj, true);
+      in.setu(varName, outResult);
+      System.err.printf(
+        "writeXmlAsync(%s, %s, \"%s\"): Thread %s finished "
+        + "(result saved into variable `%s`: %s)\n",
+        String.valueOf(path), String.valueOf(obj), varName,
+        String.valueOf(t), varName, Debug.ToString(outResult)
+      );
+      System.out.printf(
+        "\n%c[1;44;32m%s%c[0m ", 
+        0x1b, in.getBshPrompt().trim(), 0x1b
+      );
+    }
+  });
+  t.start();
+}
+
+public static void writeXmlAsync(Object path, Object obj) {
+  writeXmlAsync(path, obj, "t$xs");
+}
+
+

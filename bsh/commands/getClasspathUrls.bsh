@@ -1,0 +1,16 @@
+
+
+
+public static List<URL> getClasspathUrls() {
+  List<URL> classpathUrls = new ArrayList();
+  ClassLoader ldr = Thread.currentThread().getContextClassLoader();
+  do {
+    Map lmap = ldr.ucp.lmap;
+    Collection<URL> urls = lmap.values().select(FunctionUtil.bind("return m -> { Reflect.getfldval(m, \"csu\"); }"));
+    classpathUrls.addAll(0, urls);
+    ldr = (ldr.getParent() != null) ? ldr.getParent() : (CollectionUtil.isJRE() ? null : BootClassLoader.getInstance());
+  } while (ldr != null);
+  return classpathUrls;
+}
+
+

@@ -1,0 +1,4 @@
+public static com.strobel.decompiler.languages.java.ast.TypeDeclaration getProcyonTree(Class cls) { return CollectionUtil.flatten(CollectionUtil.flatten(com.strobel.decompiler.DecompilerContext.allContexts.select(FunctionUtil.eval("""return m -> { new(HashSet, m.allBodyBuilders.values()); }"""))).uniq().select(FunctionUtil.eval("""return m -> { m._astBuilder._typeDeclarations.get(ProcyonUtil.getClassNameAsPath('""" + cls.getName() + """')); }"""))).uniq().iterator().next().get(); }
+
+public static com.strobel.decompiler.languages.java.ast.TypeDeclaration getProcyonTree(bsh.ClassIdentifier ci) { return getProcyonTree((Class) ((bsh.ClassIdentifier) ci).getTargetClass()); }
+

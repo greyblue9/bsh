@@ -1,0 +1,11 @@
+
+public static String wrapChars(char[] ca) {
+
+  String str = Reflect.allocateInstance(String.class);
+  Reflect.setfldval(str, "value", ca);
+  Reflect.setfldval(str, "count", ca.length);
+  Reflect.setfldval(str, "offset", 0);
+  return str;
+
+}
+

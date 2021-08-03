@@ -1,0 +1,21 @@
+public static String printGenericImpls(Class ifaceCls) {
+  Map a = getImplsMap(ifaceCls, ClassPathUtil.getImpls(ifaceCls.getName())).entrySet().select(FunctionUtil.bind("return m -> { Pair.of(m.getValue(), dumpDexClass2.typeHeader(m.getKey())); }"));
+  return a.select(FunctionUtil.bind("return m -> { String.format(\"%3$c%1$s%3$c  %2$s\", m.getKey(), CollectionUtil.print(m.getValue().toString()), 0x0a); }")).join("\n\n").toString().print();
+}
+
+ 
+
+public static Map printGenericImpls(Class ifaceCls) {
+  Map implMap = getImplsMap(ifaceCls, ClassPathUtil.getImpls(ifaceCls.getName()));
+  java.util.Map$Entry[] a = CollectionUtil.toArray(implMap.entrySet().select(FunctionUtil.bind("return m -> { Pair.of(m.getValue(), dumpDexClass2.typeHeader(m.getKey())); }")));
+  System.out.println(a.select(FunctionUtil.bind("return m -> { String.format(\"%3$c%1$s%3$c  %2$s\", m.getKey(), CollectionUtil.print(m.getValue().replace(String.format(\"%c\",0x0a), String.format(\"%c  \",0x0a))), 0x0a); }")).join("\n\n").toString());
+  return implMap;
+}
+
+ 
+
+public static void printGenericImpls(Class[] clzs) { printMap(RealArrayMap.toMap(CollectionUtil.flatten(clzs.select(FunctionUtil.bind("""return m -> { if (Object.equals(m) || m.getGenericSuperclass() == null || Object.equals(m.getGenericSuperclass())) return null; FunctionUtil.select(Iterables.concat(Arrays.asList(Arrays.asList(m.getGenericInterfaces()), Arrays.asList(m.getGenericSuperclass())).toArray(Array.newInstance(Iterable,0))).toList(), FunctionUtil.bind("return gi -> { Pair.of(new(ClassIdentifier, m).toString().replace(\"36\",\"37\"), dumpMembers.colorize(gi.toString(), \"1;36\")); }", "m", m)); }"""))).filter("<"))); }; 
+
+
+public static void printGenericImpls(List<Class> clazzList) { Object[] clzs = clazzList.toArray(); return printGenericImpls((clzs instanceof Class[])? (Class[]) clzs: clazzList.toArray(new Class[0])); };
+

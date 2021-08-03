@@ -1,0 +1,206 @@
+
+import org.netbeans.modules.classfile.ClassFile;
+import org.netbeans.modules.classfile.Parameter;
+import com.android.dex.Dex;
+import javassist.bytecode.SignatureAttribute;
+
+
+public static String getCachedDexDump(String clsName) {
+  Interpreter interp = org.d6r.CollectionUtil.getInterpreter();
+  Map cachedDexes = interp.getu("cachedDexes");
+  if (cachedDexes == null) return null;
+  String dumpOfCls = cachedDexes.get(clsName); 
+  if (dumpOfCls != null) return dumpOfCls;
+  return null;
+}
+
+public static String cacheDexDump(String clsName, 
+String dumpOfCls) {
+  if (clsName == null || dumpOfCls == null) return;
+  Interpreter interp = org.d6r.CollectionUtil.getInterpreter();
+  Map cachedDexes = interp.getu("cachedDexes");
+  if (cachedDexes == null) {
+    interp.setu("cachedDexes", (cachedDexes = new HashMap()));
+  }
+  cachedDexes.put(clsName, dumpOfCls); 
+}
+
+
+public static String dumpDexClass(Object obj) {
+  // TODO: Add BshAmbigName to supported input types
+  Class cls;
+  try {
+    cls = dumpMembers.getClass(obj);
+  } catch (Throwable cnfe) {
+    Interpreter.debug.printf("%s: dumpDexClass((%s) %s):%s\n",
+      cnfe.getClass().getSimpleName(), 
+      obj != null? obj.getClass(): "<NULL>",
+      obj != null? obj: "<NULL>",
+      cnfe.getMessage()
+    );
+    cls = obj.getClass();
+  }
+  if (cls == null) {
+    cls = obj.getClass();
+  }
+  String clsName = cls.getName();
+  String dumpOfCls = getCachedDexDump(clsName);
+  if (dumpOfCls == null) {
+    System.gc();
+    DexVisitor dv = DexVisitor.from(cls, clsName);
+    System.gc();
+    // TODO: Separate the cached "chains of classes" here
+    if (dv != null && dv != Void.TYPE && dv != Void.class
+     && dv != void) 
+    {
+      dumpOfCls = dumpDexClass((DexVisitor)dv);
+      System.gc();
+      
+      if (dumpOfCls != null) {
+        cacheDexDump(clsName, dumpOfCls);
+      }
+    }
+  }
+  
+  return dumpOfCls;
+  //return dumpDexClass((DexVisitor)dv);
+}
+
+
+
+public static String dumpDexClass(DexVisitor dv)
+{ 
+  if (!dv.visited) dv.visit();
+  
+  String clsName = dv.getSingleClass().toString();
+  Class cls = Class.forName(clsName, false,
+    Thread.currentThread().getContextClassLoader());
+  //System.err.println(cls);
+  if (clsName.indexOf("$") != -1) {
+    return dumpMembers.dumpMembers(null, cls, true);
+  }
+  
+  StringBuilder sb = new StringBuilder(200 * 40);
+  try {
+    sb.append('\n');
+
+    if (cls.getTypeParameters().length > 0) {
+      sb.append(
+        dumpMembers.colorize(
+         String.format(
+          "%s<%s>",
+            cls.getName(), 
+            StringUtils.join(cls.getTypeParameters(), ", ")
+         ),
+         "1;36"
+        )
+      );
+      sb.append(dumpMembers.colorize(" {","0;36"));
+    } else {
+      sb.append(
+        dumpMembers.colorize(cls.getName() + " {", "0;36")
+      );
+    }
+    
+    sb.append("\n");
+    for (MethodVisitor mv: dv.getSingleClass().getMethods()) {
+      sb.append("\n  ");
+      sb.append(mv.toString());
+    }
+    sb.append(dumpMembers.colorize("\n}\n", "0;36"));
+    
+  } catch (Throwable e) { 
+    System.out.println(sb.toString());
+    System.err.println(e); 
+    return sb.toString();
+  };
+  //System.out.println(sb.toString());
+  System.err.print("...");
+  
+  Class superCls = cls.getSuperclass();
+  if (superCls != null 
+  && ! Object.class.equals(superCls)) {    
+    sb.append(dumpDexClass(superCls));  
+  }
+  dv = null;
+  System.gc();
+  
+  return sb.toString();
+}
+
+Map/*<Dex, byte[]>*/ resolvedDexBytes = new HashMap();
+
+
+public static String dumpDexClass(Class cls, boolean dmSuper)
+{ 
+  String clsName = cls.getName();
+  if (clsName.indexOf("$") != -1) {
+    return dumpMembersExp.dumpMembersExp(null, cls, true);
+  }
+  
+  String dumped = getCachedDexDump(clsName);
+  if (dumped != null) return dumped;
+  
+  Dex dex = org.d6r.ClassInfo.getDex(cls);
+  byte[] dexBytes = resolvedDexBytes.get(dex);
+  if (dexBytes == null) {
+    dexBytes = dex.getBytes();
+    resolvedDexBytes.put(dex, dexBytes);
+  }  
+  DexVisitor dv = DexVisitor.from(dexBytes, clsName);
+  StringBuilder sb = new StringBuilder(200 * 40);
+  try {
+    dv.visit();
+    sb.append('\n');
+    TypeVariable[] typeVars = cls.getTypeParameters();    
+    if (typeVars.length > 0) {
+      sb.append(dumpMembers.colorize(String.format(
+          "%s<%s> {\n", 
+          clsName, StringUtils.join(typeVars, ", ")), "0;36"
+      ));
+    } else {
+      sb.append(
+        dumpMembers.colorize(clsName.concat(" {\n"), "0;36")
+      );
+    }
+    MethodVisitor mv;
+    for (mv: dv.getSingleClass().getMethods()) 
+    {
+      sb.append("\n  ");
+      sb.append(mv.toString());
+    }
+    mv = null;
+    sb.append(dumpMembers.colorize("\n}\n", "0;36"));   
+  } catch (Throwable e) { 
+    if (sb != null && sb.length() > 0) {
+      sb.append(e.toString());
+    } else {
+      sb.append(e.toString());
+    }
+    //return dumpMembersExp.dumpMembersExp(null, cls, true);
+  } finally {
+    dv = null;
+    dexBytes = null;
+    dex = null;
+    mv = null;
+  }
+  System.err.print("...");
+  if (dmSuper) {
+    Class superCls = cls.getSuperclass();
+    if (superCls != null 
+    && ! Object.class.equals(superCls)) {
+      sb.append(dumpDexClass(superCls, false));
+    }
+  }
+  cacheDexDump(clsName, (dumped = sb.toString()));
+  NameSpace ns = this.namespace;
+  try {
+    return dumped;
+  } finally {
+    ns.clear();
+    //this.ns.clear();
+    System.gc();
+  }
+}
+
+

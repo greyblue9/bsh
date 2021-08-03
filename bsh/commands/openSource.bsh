@@ -1,0 +1,56 @@
+import bsh.*;
+import bsh.ClassIdentifier;
+
+
+
+public static String openSource(Object ci) {
+ try {
+  Class cls = null;
+  if (ci instanceof ClassIdentifier) {
+    cls = (Class) ((ClassIdentifier) ci).getTargetClass();
+  } else if (ci instanceof Class) {
+    cls = (Class) ci; 
+  } else if (ci instanceof String) {
+    cls = ClassResolveUtils.findInnerClass(ci);
+  } else {
+    System.err.printf(
+    "openSource: Parameter not handled: %s",
+    ci != null? "<null>": ((Object)ci).getClass().getName()
+    );
+    return null;
+  }
+  if (cls == null) {
+    System.err.println("cls == null");
+    return null;
+  }
+  
+  String code = IOUtils.toString(SourceUtil.findSource(cls));
+  if (code != null && code.length() > 0) {
+    code = code.replace("  ", "  ");
+    System.out.println(code);
+    String outFile = String.format(
+    "/data/media/0/%s.java",
+    cls.getName()
+    );
+    System.out.println(outFile);
+    boolean result = writeFile(outFile, code);
+    System.out.println(result? "OK": "Failed");
+    if (result) {
+      open(outFile);
+    }
+    return code;
+  }
+  
+ 
+ } catch (Throwable e) { 
+  this.interpreter.set("ex", e);
+    
+  e.printStackTrace();
+  System.err.printf("Exception set to local variable `ex`.\n");
+ }
+ return null;
+}
+
+
+
+

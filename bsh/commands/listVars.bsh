@@ -1,0 +1,31 @@
+import org.apache.commons.io.FilenameUtils;
+import org.apache.commons.io.input.AutoCloseInputStream;
+
+public static Object listVars() {
+  bsh.NameSpace.BindingMap readVars = new bsh.NameSpace.BindingMap();
+
+  File dir = new File("/external_sd/_projects/__variables__/");
+  if (!dir.exists() && !dir.mkdirs()) {
+    throw dir.mkdirErrno();
+  }
+
+  Map varNameToFileMap = new TreeMap();
+  for (String fileName: dir.list()) {
+    int firstDot = fileName.indexOf('.');
+    if (firstDot == 0) continue; // hidden file
+    if (firstDot == -1) continue; // no extension
+    int lastDot = fileName.lastIndexOf('.');
+    if (firstDot != lastDot) continue; // double ext (.xyz.bak), etc.
+    int len = fileName.length();
+    if (lastDot == len-1) continue; // dot at end (e.g. "abc."): avoid
+    String var = fileName.substring(0, lastDot);
+    CharSequence ext = fileName.subSequence(lastDot+1, len);
+    File f = new File(dir, fileName);
+    File existingF = varNameToFileMap.get(var);
+    if (existingF == null || (f.lastModified() > existingF.lastModified())) {
+      varNameToFileMap.put(var, f);
+    }
+  }
+  return varNameToFileMap.keySet();
+}
+

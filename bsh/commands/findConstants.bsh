@@ -1,0 +1,5 @@
+
+public static Map findConstants(String regex) { Map cmap = new RealArrayMap(); for (Field fld: StringCollectionUtil.toStringFilter(libcore.io.OsConstants.class.getDeclaredFields(), "public static final [^ ]+ [^ ]*\\.(?:".concat(regex).concat(")"))) { fld.setAccessible(true); Object oval = fld.get(null); String name = fld.getName(); cmap.put(name, oval); } return cmap; }
+
+public static Map findConstants(String clsRegex, String regex) { Map cmap = new RealArrayMap(); Class[] clsz = searchClassPath(null, clsRegex); for (Class cls: clsz) { String prefix = cls.getName().replaceAll("^.*\\.([^.]+)$", "$1").replace('$', '.'); for (Field fld: StringCollectionUtil.toStringFilter(CollectionUtil.flatten(Arrays.asList(cls.getDeclaredFields(), cls.getFields())), "static final [^ ]+ [^ ]*\\.(?:".concat(regex).concat(")"))) { fld.setAccessible(true); Object oval = fld.get(null); String name = prefix.concat(".").concat(fld.getName()); cmap.put(name, oval); } } return cmap; }
+

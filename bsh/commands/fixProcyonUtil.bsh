@@ -1,0 +1,7 @@
+
+
+
+public static void fixProcyonUtil() { ProcyonUtil.metadataResolver = ProcyonUtil.getMetadataResolver().instance(); ProcyonUtil.typeLoader = ProcyonUtil.metadataResolver._typeLoader; ProcyonUtil.getTypeLoader().jars = ArrayUtils.addAll(CollectionUtil.toArray(Arrays.asList(new ZipFile("/external_sd/_projects/sdk/framework/core_dex2jar.jar"), new ZipFile("/external_sd/_projects/sdk/framework/framework_dex2jar.jar"))), ProcyonUtil.getTypeLoader().getJars()); ProcyonUtil.getTypeLoader().getJars().select(FunctionUtil.bind("""return m -> { m.getName(); }""")).print(); };
+
+
+

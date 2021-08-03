@@ -1,0 +1,75 @@
+import com.strobel.assembler.metadata.ClassFileReader;
+import com.strobel.assembler.metadata.IMetadataResolver;
+import com.strobel.assembler.ir.ConstantPool;
+import com.strobel.assembler.ir.ConstantPool.TypeInfoEntry;
+
+
+public static ClassFileReader getClassReader(int options,
+IMetadataResolver resolver, com.strobel.assembler.metadata.Buffer b)
+{
+  long magic = b.readInt() & 0xFFFFFFFFL;
+  if (magic != 0xCAFEBABEL) throw new IllegalStateException(
+    "Wrong magic number: " + magic
+  );
+  
+  int minorVersion = b.readUnsignedShort();
+  int majorVersion = b.readUnsignedShort();
+  ConstantPool constantPool = ConstantPool.read(b);
+  int accessFlags = b.readUnsignedShort();
+  
+  int thisClassToken = b.readUnsignedShort();
+  TypeInfoEntry thisClass = (TypeInfoEntry) constantPool.get(
+    thisClassToken, ConstantPool.Tag.TypeInfo
+  );  
+  int baseClassToken = b.readUnsignedShort();
+  TypeInfoEntry baseClass = (baseClassToken != 0)
+    ? constantPool.getEntry(baseClassToken)
+    : null;
+  
+  TypeInfoEntry[] interfaces = new TypeInfoEntry[b.readUnsignedShort()];
+  for (int i = 0; i < interfaces.length; ++i) {
+    interfaces[i] = (TypeInfoEntry) constantPool.get(
+      b.readUnsignedShort(), ConstantPool.Tag.TypeInfo
+    );
+  }
+  
+  return new ClassFileReader(
+    options, resolver, majorVersion, minorVersion, b,
+    constantPool, accessFlags, thisClass, baseClass, interfaces
+  );
+}
+
+
+public static ClassFileReader getClassReader(IMetadataResolver resolver,
+com.strobel.assembler.metadata.Buffer b)
+{
+  int options
+    = ClassFileReader.OPTION_PROCESS_ANNOTATIONS
+    | ClassFileReader.OPTION_PROCESS_CODE;
+  
+  return getClassReader(options, resolver, b);
+  
+}
+
+
+public static ClassFileReader getClassReader(IMetadataResolver resolver,
+byte[] classBytes)
+{
+  return getClassReader(
+    resolver, 
+    new com.strobel.assembler.metadata.Buffer(classBytes)
+  );
+}
+
+
+public static ClassFileReader getClassReader(byte[] classBytes)
+{
+  IMetadataResolver resolver = ProcyonUtil.getMetadataResolver();
+  IMetadataResolver limitedResolver = resolver.createLimitedResolver();
+  
+  return getClassReader(limitedResolver, classBytes);
+}
+
+
+  
+  

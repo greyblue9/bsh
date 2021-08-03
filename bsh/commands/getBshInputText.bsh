@@ -1,0 +1,7 @@
+public static StringBuilder getBshInputText() {
+  bsh.JavaCharStream charStream = Reflect.getfldval(Reflect.getfldval(CollectionUtil.getInterpreter(), "parser"), "jj_input_stream");
+  char[][] bufs = { Arrays.copyOfRange(charStream.nextCharBuf, charStream.nextCharInd, charStream.nextCharBuf.length), Arrays.copyOfRange(charStream.nextCharBuf, 0, charStream.nextCharInd) };
+  return new String(bufs[0]).concat("\n").concat(new String(bufs[1])).split("\n;\n").join("\n\n").append("\n");
+}
+
+ 

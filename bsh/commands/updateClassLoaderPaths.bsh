@@ -1,0 +1,56 @@
+
+
+import java.io.*; 
+import dalvik.system.*;
+import java.lang.reflect.*;
+
+
+
+public static DexPathList updateClassLoaderPaths
+(BaseDexClassLoader ldr) 
+{ 
+  DexPathList dpl = getfldval(ldr, "pathList"); 
+  File[] libDirs = getfldval(dpl, "nativeLibraryDirectories");
+  StringBuilder sb = new StringBuilder(128); 
+  
+  boolean addColon = false;
+  for (File libDir: libDirs) { 
+    if (addColon) sb.append(':');
+    else addColon = true;
+    sb.append(libDir.getPath());
+  }
+  
+  String libDirsStr = sb.toString(); 
+  Field olp_fld = BaseDexClassLoader.class.getDeclaredField(
+    "originalLibraryPath"); 
+  olp_fld.setAccessible(true);
+  olp_fld.set(ldr, libDirsStr); 
+  
+  Object[] dexElems = getfldval(dpl, "dexElements");
+  sb = new StringBuilder(256); 
+  addColon = false; 
+  for (Object dexElem: dexElems) { 
+    File file = getfldval(dexElem, "file"); 
+    if (file == null) {
+      System.err.println(String.format(
+        "Warning: DexPathList$Element '%s' has null value for 'file' field; skipping.", 
+        dexElem == null? "<null>": dexElem.toString
+      ));
+      continue;
+    } 
+    if (addColon) sb.append(':');
+    else addColon = true;
+    sb.append(file.getPath());
+  } 
+  
+  Field op_fld = BaseDexClassLoader.class.getDeclaredField(
+    "originalPath"); 
+  op_fld.setAccessible(true); 
+  op_fld.set(ldr, sb.toString());
+  
+  return dpl;
+  
+} 
+
+
+

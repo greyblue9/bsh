@@ -1,0 +1,6 @@
+
+public static int getPid() {
+  return Integer.parseInt(new File("/proc/self").getCanonicalFile().getName(), 10);
+}
+
+

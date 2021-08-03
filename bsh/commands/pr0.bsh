@@ -1,0 +1,1 @@
+pr (o) { cn = (cz = o.getClass()).getName(); gtps = cz.getTypeParameters(); str = cn; if (gtps.length>0) { str += "<"; for (i=0; i<gtps.length; i++) { str += gtps[i].getName(); if (i<gtps.length-1) str += ", "; } str += ">"; } print(str); }

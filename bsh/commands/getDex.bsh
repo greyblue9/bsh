@@ -1,0 +1,9 @@
+
+public static com.android.dex.Dex getDex(dalvik.system.DexFile dexFile) { Class cls = null; return (cls = DexFile.defineClassNative(DexFile.getClassNameList(dexFile.mCookie)[0], Thread.currentThread().getContextClassLoader(), dexFile.mCookie)).getDex(); }
+
+
+public static com.android.dex.Dex getDex(Object dexElementOrPath) { Object dexElement = null; if (!(dexElementOrPath.getClass().getName().equals("dalvik.system.DexFile$DexElement"))) { File file = new File(String.valueOf(PosixFileInputStream.resolve(new File(String.valueOf(dexElementOrPath))))); dexElement = ClassPathUtil2.findDexElement(Thread.currentThread().getContextClassLoader(), file); } else { dexElement = dexElementOrFile; }; String[] classNames = DexFile.getClassNameList(Reflect.getfldval(Reflect.getfldval(dexElement, "dexFile"), "mCookie")); Class cls = null; int i = -1; while (cls == null && ++i < classNames.length)  { String className = classNames[i]; if (! bsh.Capabilities.classExists(className)) { System.err.printf("Skipping unresolved class [%s] ...\n", className); continue; }; cls = Thread.currentThread().getContextClassLoader().loadClass(className, false); break; }; com.android.dex.Dex dex = cls != null? org.d6r.ClassInfo.getDex(cls): null; return dex; }
+
+
+public static com.android.dex.Dex getDex(String className) { Object dexElement = ClassPathUtil2.findDexElement(Thread.currentThread().getContextClassLoader(), new File((String) ((Collection)ClassPathUtil.findClassSource(className)).iterator().next())); String[] dexClassNames = Reflect.invoke(dalvik.system.DexFile.class, null, "getClassNameList", true, new Object[]{ (Integer) Reflect.getfldval(Reflect.getfldval(dexElement, "dexFile"), "mCookie") }); com.android.dex.Dex dex = Class.forName(dexClassNames[0], false, Thread.currentThread().getContextClassLoader()).getDex(); return dex; }
+

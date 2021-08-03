@@ -1,0 +1,3 @@
+
+public static android.os.IServiceManager getServiceManager() { return android.os.ServiceManagerNative.asInterface(com.android.internal.os.BinderInternal.getContextObject()); }
+

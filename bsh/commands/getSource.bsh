@@ -1,0 +1,132 @@
+
+import org.apache.commons.io.IOUtils;
+import org.apache.commons.io.FileUtils;
+import org.apache.commons.io.LineIterator;
+
+import java.util.regex.Pattern;
+import java.util.regex.Matcher;
+import java.util.regex.MatchResult;
+
+import bsh.ClassIdentifier;
+import bsh.Capabilities;
+
+
+public static String getSource(ClassIdentifier ci) {
+  Class cls 
+    = (Class) ((ClassIdentifier) ci).getTargetClass();
+  return getSource(cls);
+}
+
+
+public static String getSource(Class cls) {
+  return getSource(cls.getName()); 
+}
+
+
+public static String getSource(String clsName) {
+  
+  String srcResPath = getSourceResPath(clsName);
+  ClassLoader clsLoader 
+    = Thread.currentThread().getContextClassLoader();
+  URL resUrl = clsLoader.getResource(srcResPath);
+  
+  if (resUrl != null) {
+    try {
+      InputStream is 
+        = resUrl.openConnection().getInputStream();
+      if (System.err != null) {
+        System.err.println(resUrl.toString());
+      }
+      return IOUtils.toString(is);
+    } catch (IOException ioex) {
+    } finally { 
+      IOUtils.closeQuietly(is);       
+    }
+  } 
+
+  if (Capabilities.classExists(clsName)) {
+    Class cls = Class.forName(
+      clsName,
+      false,
+      Thread.currentThread().getContextClassLoader()
+    );
+    // System.err.println(cls);
+    com.android.dex.Dex dex = org.d6r.ClassInfo.getDex(cls);
+    int cdIdx = cls.getDexClassDefIndex();
+    com.android.dex.ClassDef def = dex.classDefs()[cdIdx];
+    int srcIndex = def.getSourceFileIndex();
+    // "RealSourceFile.java"
+    String tgtfn = org.d6r.ClassInfo.getDex(cls).strings().get(srcIndex);
+    // System.err.println(tgtfn);
+    // "com.example"
+    String pkg = cls.getName().replaceAll("^(.*)\\.([^.$]+)(?:\\$.*)?$", "$1");
+    // System.err.println(pkg);
+    // "com/example/RealSourceFile.java"
+    String tgtResPath = pkg.concat(".").concat(StringUtils.substringBefore(tgtfn, ".java")).replace('.', '/').concat(".java");    
+    // System.err.println(tgtResPath);
+    URL resUrl = clsLoader.getResource(tgtResPath);
+    if (resUrl != null) {
+      try {
+        InputStream is 
+          = resUrl.openConnection().getInputStream();
+        if (System.err != null) {
+          System.err.println(resUrl.toString());
+        }
+        return IOUtils.toString(is);
+      } catch (IOException ioex) {
+      } finally { 
+        IOUtils.closeQuietly(is);       
+      }
+    }
+    src = getSourceEx(tgtResPath);
+    if (src != null) return src;
+  }
+  
+  // fallback
+  String src = getSourceEx(srcResPath);  
+  if (src != null) return src;
+  return null;
+}
+
+
+public static String getSourceResPath(String clsName) {
+  return clsName
+    .replace('.', '/').replaceAll("^([^$]*)\\$.*$", "$1").concat(".java");
+}
+
+public static String getSourceEx(String srcResPath) { 
+
+  Pattern dirPtrn 
+    = Pattern.compile("^.*?[\"']*([^\"' ]+[^ \"']*/[^ '\"]+[^ \"' ]*)[\"']*.*?$");
+  LineIterator lit 
+    = FileUtils.lineIterator(new File("findsrc"));
+  while (lit.hasNext()) { 
+    String crntLine = lit.next(); 
+    Matcher lineMatcher = dirPtrn.matcher(crntLine); 
+    if (! lineMatcher.find()) continue; 
+    MatchResult lineResult = lineMatcher.toMatchResult(); 
+    String base = lineResult.group(1);
+    List<String> dirs = base.indexOf('*') != -1
+      ? expandGlob(base)
+      : Arrays.asList(base);
+    // System.err.println(dirs);
+    for (String path: dirs) {
+      File srcBaseDir = new File(path);
+      if (! srcBaseDir.exists()) continue; 
+      File srcFile = new File(srcBaseDir, srcResPath); 
+      //System.err.println(srcFile);
+      if (! srcFile.exists()) continue; 
+      if (System.err != null) {
+        System.err.println(srcFile.getPath());
+      }
+      String srcText = FileUtils.readFileToString(srcFile); 
+      return srcText;
+    }
+  }
+  return null;
+}
+
+
+
+
+

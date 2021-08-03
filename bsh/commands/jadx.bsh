@@ -1,0 +1,6 @@
+import java.util.Map.Entry;
+
+
+
+public static Map jadx(File file) { appendClassPathFile(file.getAbsolutePath()); Entry entry = null; for (String className: ClassPathUtil2.getDexClasses(file.getAbsolutePath()).filter("^[^$]*$")) { try { entry = jadxDecompile(className); if (entry != null) break; } catch (Throwable e) { System.err.println(e); }; };  if (entry == null) return null; Object dc = entry.getKey(); Map zm = new bsh.NameSpace.BindingMap(); for (Object c: dc.getClasses()) { try { c.decompile(); Object code = c.getCode(); zm.put(ClassInfo.classNameToPath(ClassInfo.typeToName(c.getErasedSignature()), "java"), code);  } catch (Throwable e) { e.printStackTrace(); }; }; return zm; }; 
+

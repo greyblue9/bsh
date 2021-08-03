@@ -1,0 +1,1 @@
+public static Object getNameSpaces(String nsname) { BshBinding ns = null; Object vars = ((ns = IterableUtils.reversedIterable(NameSpace.all.select(FunctionUtil.bind("return m -> { m.name.startsWith(name) && !m.getVariables().isEmpty()? m: null; }", "name", "global/" + nsname))))); Set ts = new TreeSet(Comparators.comparingString("name")); ts.addAll(vars.toList()); return ts; };

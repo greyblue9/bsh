@@ -1,0 +1,1 @@
+public static String mapTypes(Map rm) { return StringUtils.join(rm.entrySet().select(FunctionUtil.bind("return m -> { String.format(\"%25s : %s %s\", m.getKey(), ClassInfo.typeToName(bsh.Factory.typeof(m.getValue()).getName()), size(m.getValue()) != null? String.format(\"(%s)\", size(m.getValue())): \"\"); }")), "\n"); };

@@ -1,0 +1,10 @@
+import java.util.Map.Entry;
+
+public static Map openZipClasses(Map zm, Map failMap, Map outMap) { for (Entry ent: zm.entrySet().filter("\\.class")) { byte[] cbs = null; try { cbs = ent.getValue(); CtClass ct = new CtClassType(new ByteArrayInputStream(cbs), CollectionUtil.getClassPool()); int mods = ct.getModifiers() & (~(Modifier.PROTECTED)) & (~(Modifier.PRIVATE) & (~(Modifier.FINAL))) | Modifier.PUBLIC; System.err.printf("%s: %s -> %s\n", ct.getName(), Modifier.toString(ct.getModifiers()), Modifier.toString(mods)); ct.defrost(); ct.setModifiers(mods); outMap.put(ent.getKey(), toBytecode(ct)); } catch (Throwable ex) { failMap.put(ent.getKey(), ent.getValue());  System.err.printf("  [ERROR] %s: %s\n", Reflector.getRootCause(ex).getClass().getSimpleName(), Reflector.getRootCause(ex).getMessage());  continue; } }; return outMap; };
+
+public static Map openZipClasses(Map zm, Map outMap) { Map failMap = new HashMap(); return openZipClasses(zm, failMap, outMap); }
+
+public static Map openZipClasses(Map zm) { Map outMap = new TreeMap(), failMap = new TreeMap(); outMap.putAll(zm); return openZipClasses(zm, failMap, outMap); }
+
+
+

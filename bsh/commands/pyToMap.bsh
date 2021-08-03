@@ -1,0 +1,3 @@
+
+public static Map pyToMap(org.python.core.PyObject obj) { Field __dict__fld = Reflect.getfld(obj != null? obj.getClass(): Object.class, "__dict__"); if (__dict__fld != null) { __dict__fld.setAccessible(true); obj = __dict__fld.get(obj); }; Object[] keys = Arrays.asList(obj.keys).toArray(), vals = Arrays.asList(obj.values).toArray(); Map map = new TreeMap(); for (int i=0, len=java.lang.Math.min(keys.length, vals.length); i<len; ++i) { Object key = keys[i]; if (key == null) continue; map.put(key.toString(), vals[i] != null? vals[i]: Py.None); }; return map; }
+

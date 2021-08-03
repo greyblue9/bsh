@@ -1,0 +1,7 @@
+
+
+
+public static com.googlecode.tesseract.android.TessBaseAPI newAPI() { com.googlecode.tesseract.android.a handler = new com.googlecode.tesseract.android.a() { public void a(int i) { System.err.printf("a(%d);\n", i); } }; import com.googlecode.tesseract.android.TessBaseAPI; import com.googlecode.tesseract.android.a; import com.thesimplest.ocrlibrary.language.g; String lang = "eng"; String dataFilePath = g.a(); String dataDirPath = dataFilePath.substring(0, dataFilePath.lastIndexOf('/')); List keys = new ArrayList(), values = new ArrayList(); TessBaseAPI tessBaseAPI = new TessBaseAPI(handler); if (keys.size() > 0) { tessBaseAPI.init( dataDirPath, lang, 3, keys.toArray(new String[keys.size()]), values.toArray(new String[values.size()]) ); } else { tessBaseAPI.init(dataDirPath, lang); } tessBaseAPI.setPageSegMode(6); return tessBaseAPI; }
+
+
+

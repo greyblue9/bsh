@@ -1,0 +1,58 @@
+
+
+/*public static NumberedLines getLinesAround(CharSequence s,
+CharSequence search, int context, int startIndex)
+{ 
+  int idx = CharSequenceUtil.indexOf(s, search, startIndex);  
+  if (idx == -1) return null;
+  
+  int lstart = s.lastIndexOf('\n', idx-1);
+  int lend = str.indexOf('\n', idx+1);
+  lstart = lstart != -1? lstart+1: 0;
+  lend = lend != -1? lend: str.length();
+  CharSequence line = str.subSequence(lstart, lend);
+  NumberedLines nl = new NumberedLines(str); 
+  int lineno = nl.getLineNumber(line); 
+  String[] context = nl.getContextLines(lineno, ctx_size);
+  return new NumberedLines(context);
+}*/
+
+
+public static NumberedLines getLinesAround(String str, String search)
+{ 
+  return getLinesAround(str, search, 5);
+}
+
+
+public static NumberedLines getLinesAround(String str, String search,
+int ctx_size)
+{ 
+  return getLinesAround(str, search, ctx_size, 0);
+}
+
+
+public static List<String> getLinesAround(String str, String search,
+int ctx_size, int lastidx)
+{
+  int idx = 0;
+  List<CharSequence> blocks = new ArrayList<CharSequence>();
+  while ((idx = CharSequenceUtil.indexOf(str, search, lastidx+1)) != -1) {
+    lastidx = idx;
+    
+    int lstart = str.lastIndexOf('\n', idx-1);
+    int lend = str.indexOf('\n', idx+1);
+    lstart = (lstart != -1)? lstart+1: 0;
+    lend = (lend != -1)? lend: str.length();
+    
+    CharSequence line = str.subSequence(lstart, lend);
+    NumberedLines nl = new NumberedLines(str);
+    int lineno = nl.getLineNumber(line);
+    String[] context = nl.getContextLines(lineno, ctx_size);
+    
+    blocks.add(new NumberedLines(context));
+  }
+  return blocks;
+}
+
+
+

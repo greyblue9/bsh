@@ -1,0 +1,87 @@
+
+
+public static boolean isArray(java.lang.Object o) { 
+  java.lang.String oClassName = 
+    (  (java.lang.Class)  (o instanceof java.lang.Class? o: o.getClass())  ).getName();
+  if (new java.lang.Character(oClassName.charAt(0)).equals('['))
+    return true;
+  return (oClassName.indexOf('[') != -1); 
+}
+
+public static java.lang.Object midx(java.lang.Object m, java.lang.Object key) {
+  int idx = -1; 
+  
+  if (isArray(m)) {
+    System.err.println("Is array: " + Boolean.valueOf(isArray(m)));
+    System.err.println("java.lang.Class of m: " + m.getClass().getName());
+    System.err.println("java.lang.Class of key: " + key.getClass().getName());
+    
+    int iKey = -1;
+    if (key instanceof java.lang.Integer) {
+      System.err.println("key is java.lang.Integer");
+      iKey = (Integer.valueOf(key)).intValue();
+    } else {
+      java.lang.String sKey = (key instanceof java.lang.String)? 
+          key
+        : String.valueOf(key);
+      
+      System.err.println(String.format(
+        "key was (%s) <%s>; converted to (java.lang.String) '%s'", 
+        key.getClass().getName(), String.valueOf(key), sKey
+      ));
+      
+      sKey = sKey.replaceAll("[^0-9]+", "");
+      System.err.println(String.format(
+        "Sanitized (java.lang.String) sKey: '%s'", sKey
+      ));
+      
+      try {
+        java.lang.Integer iKeyBoxed = Integer.parseInt(sKey);
+        System.err.println(String.format(
+            "sKey: (%s) '%s' %c  --> iKeyBoxed: (%s) <%s>",
+            sKey.getClass().getName(), sKey, 0x0a,
+            iKeyBoxed.getClass().getName(), iKeyBoxed.toString()
+        ));
+        iKey = iKeyBoxed.intValue();
+        System.err.println(String.format(
+            "  --> iKey: (int) <%d>", iKey
+        ));
+      } catch (java.lang.Exception e) { 
+        System.err.println(String.format(
+          "Cannot convert: (%s) <%s> with string value '%s' to java.lang.Integer:%c  *** %s ***%c  Caused by: %c  %s %c  Message: %s", 
+          key.getClass().getName(), key.toString(),
+          String.valueOf(skey), 0x0a,
+          e.getClass().getSimpleName(), 0x0a, 0x0a,
+          e.getCause() != null?
+              e.getCause().getMessage().replaceAll("\n":"\n  ")
+            : "(no wrapped cause)", 0x0a,
+          e.getMessage()
+        )); 
+        e.printStackTrace();
+        return null;
+      } // catch
+    } // else (converted to int)
+    
+    return iKey <= ((java.lang.Object[] m).length - 1? 
+      ((java.lang.Object[]) m)[iKey]: null;
+  } // end if java.lang.reflect.Array (int-type subscript)
+  
+  java.util.Iterator it = 
+    (m instanceof java.util.AbstractMap)? 
+        ((java.util.AbstractMap) m).entrySet().iterator()
+      : ((java.util.AbstractCollection) m).iterator();
+
+  while (it.hasNext()) { 
+    java.lang.Object crnt = it.next(); 
+    idx++; 
+    if (m instanceof java.util.AbstractMap 
+    && !((java.util.Map.Entry) crnt).getKey().equals(skey))
+      continue; 
+    else if (! (idx == skey)) continue; 
+    
+    return (m instanceof java.util.Map)?
+        ((java.util.Map.Entry) crnt).getValue()
+      : crnt; 
+  } 
+  return null; 
+}

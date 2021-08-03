@@ -1,0 +1,357 @@
+
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
+import java.util.zip.ZipInputStream;
+import java.util.zip.ZipOutputStream;
+import libcore.io.IoUtils;
+import org.apache.commons.io.FileUtils;
+import org.apache.commons.io.IOUtils;
+import org.apache.commons.lang3.StringUtils;
+import org.jf.dexlib2.Opcodes;
+
+import org.jf.dexlib2.dexbacked.DexBackedClassDef;
+import org.jf.dexlib2.dexbacked.DexBackedDexFile;
+import org.jf.dexlib2.writer.ClassSection;
+import org.jf.dexlib2.writer.io.DexDataStore;
+import org.jf.dexlib2.writer.io.FileDataStore;
+
+import org.jf.dexlib2.writer.pool.DexPool;
+
+public static byte[] peekFile(String filePath, int offset, int count) {
+  FileDescriptor fd 
+    = PosixUtil.open(filePath, PosixUtil.F_SETFD, PosixUtil.O_RDONLY);
+  byte[] buffer = new byte[count];
+  PosixUtil.preadBytes(fd, buffer, 0, count, offset);
+  PosixUtil.close(fd);
+  return buffer;
+}
+
+public static boolean isZip(String filePath) {
+  byte[] magic = peekFile(filePath, 0, 4);
+  return( magic[0] == (byte) 0x50
+      &&  magic[1] == (byte) 0x4B
+      &&  magic[2] == (byte) 0x03
+      &&  magic[3] == (byte) 0x04 );
+}
+
+public static boolean isDex(String filePath) {
+  byte[] magic = peekFile(filePath, 0, 8);
+  return( magic[0] == (byte) 'd' 
+      &&  magic[1] == (byte) 'e'
+      &&  magic[2] == (byte) 'x'
+      &&  magic[3] == (byte) 0x0A
+      &&  magic[4] == (byte) '0'
+      &&  magic[5] == (byte) '3'
+      && (magic[6] == (byte) '5'  || magic[5] == (byte) '6')
+      &&  magic[7] == (byte) 0x00 );
+}
+
+
+public static Triple remixDex(String baseDexPath, String sourceDexPath, String classDefRegex)
+{
+  boolean baseIsZip = isZip(baseDexPath);
+  DexBackedDexFile df = getDexBackedDexFile(baseDexPath);
+  DexBackedDexFile fromDf = getDexBackedDexFile(sourceDexPath);
+  
+  Collection<DexBackedClassDef> baseDexClassDefs = df.getClasses();
+  Collection<DexBackedClassDef> sourceDexClassDefs = fromDf.getClasses();
+  Matcher classDefMatcher = Pattern.compile(
+    classDefRegex, 
+    Pattern.CASE_INSENSITIVE
+     | Pattern.DOTALL 
+     | Pattern.MULTILINE 
+     | Pattern.UNIX_LINES
+  ).matcher("");
+  
+  Collection<DexBackedClassDef> classDefsToRemove
+    = CollectionUtil2.filter(baseDexClassDefs, classDefMatcher);
+  Collection<DexBackedClassDef> classDefsToAdd
+    = CollectionUtil2.filter(sourceDexClassDefs, classDefMatcher);
+  
+  List<DexBackedClassDef> finalClassDefs 
+    = new ArrayList<DexBackedClassDef>(baseDexClassDefs);  
+  finalClassDefs.removeAll(classDefsToRemove);
+  finalClassDefs.addAll(classDefsToAdd);
+  Collections.sort(finalClassDefs, new ToStringComparator());
+  
+  CollectionUtil.dbg.remove("im");
+  DexPool pool = tryGetInstance(DexPool.class, 0, 9);
+  
+  ClassSection classSection = Reflect.getfldval(pool, "classSection");
+  
+  int i = -1, total = finalClassDefs.size();
+  for (DexBackedClassDef classDef: finalClassDefs) {
+    System.err.printf(
+      "Adding %4d / %4d: %s ...\n", 
+      (++i) + 1, total, ClassInfo.typeToName(classDef.toString())
+    );
+    classSection.intern(classDef);
+  }
+  
+  File tmpdexFile = File.createTempFile("tmpdex_DexFileStore", ".dex");
+  DexDataStore ddat = new FileDataStore(tmpdexFile);
+  System.err.printf(
+    "Writing %s to %s (temporary file: [%s]) ...\n",
+    pool.getClass().getSimpleName(),
+    ddat.getClass().getSimpleName(),
+    tmpdexFile.getPath()
+  );
+  try {
+    pool.writeTo(ddat);
+  } finally {
+    ddat.close();
+  }
+  System.err.printf(
+    "Reading dex class bytes from [%s] ...\n", tmpdexFile.getPath()
+  );
+  byte[] data = null;
+  try {
+    data = FileUtils.readFileToByteArray(tmpdexFile);
+  } finally {
+    tmpdexFile.delete();
+  }
+  System.err.printf("Read complete; dex size = %d bytes.\n", data.length);
+  
+  if (data == null || data.length <= 8) throw new IllegalStateException(
+    String.format("dex data too small (or null): %s", data)
+  );
+  
+  
+  
+  
+
+  if (! baseIsZip) {
+    return Triple.of(
+      Pair.of("dex data", data), 
+      pool, CollectionUtil.toArray(finalClassDefs)
+    );
+  }
+  
+  System.err.println("Creating updated zip archive ...");
+  
+  byte[] oldzipdata = FileUtils.readFileToByteArray(new File(baseDexPath));
+  ByteArrayOutputStream zbaos = new ByteArrayOutputStream();
+  ZipOutputStream zos = new ZipOutputStream(zbaos);
+  ByteArrayInputStream  zbais = new ByteArrayInputStream(oldzipdata);
+  ZipInputStream  zis = new  ZipInputStream(zbais);
+  
+  byte[] zipdata = null; // NEW DATA (in progress)
+  try {
+    while ((entry = zis.getNextEntry()) != null) {
+      InputStream eis = null;
+      if (entry.getName().equals("classes.dex")) {
+        System.err.println("Updating classes.dex");
+        entry = CollectionUtil.clone(entry);
+        entry.setSize(data.length);
+        entry.setTime(System.currentTimeMillis());
+        eis = new ByteArrayInputStream(data);
+        oldBytes = IOUtils.toByteArray(zis);
+      } else {
+        eis = zis;
+      }
+      zos.putNextEntry(entry);
+      IOUtils.copy(eis, zos);
+    };
+    zos.finish();
+    zos.flush();
+    zos.close();
+    zipdata = zbaos.toByteArray();
+    System.err.printf(
+      "Old zip data: %d bytes\nNew zip data: %d bytes\n", 
+      oldzipdata.length, zipdata.length
+    );    
+  } catch (IOException e) {
+    System.err.println(Reflector.getRootCause(e));
+    e.printStackTrace();
+    return Triple.of(
+      Pair.of("DEX DATA ALONE!!", data), 
+      pool, CollectionUtil.toArray(finalClassDefs)
+    );
+  }
+  
+  System.err.println("Testing dex+zip integrity ...");
+  File tmpTestJar = File.createTempFile("tmpTestJar", ".jar");
+  FileUtils.writeByteArrayToFile(tmpTestJar, zipdata);
+  System.err.printf("Loading dex: %s ...\n", tmpTestJar.getPath());
+  DexFile dexFile = null;
+  try {
+    dexFile = new DexFile(tmpTestJar);
+    Object classNames 
+      = DexFile.getClassNameList(Reflect.getfldval(dexFile, "mCookie"));
+    int numClasses =(classNames instanceof String[])
+      ? ((String[]) classNames).length
+      : 0;
+    if (numClasses == 0) {
+      System.err.println("*** DexFile is invalid! ***");
+      System.err.println(captureEval("logcat()"));
+      System.err.println("___ DexFile is invalid! ___");
+    }
+    System.err.println(StringUtils.join(Arrays.asList(
+      String.format("DexFile:        %s\n", dexFile),
+      String.format("  - mCookie:    %s\n", String.valueOf(dexFile.mCookie)),
+      String.format("  - # classes:  %s\n", String.valueOf(numClasses))
+    ), "\n"));
+  } catch (Throwable e) {
+    System.err.printf("*** DexFile is invalid: %s ***\n", e);
+    e.printStackTrace();
+    System.err.println("*** DexFile is invalid! ***");
+    System.err.println(captureEval("logcat()"));
+    System.err.println("___ DexFile is invalid! ___");
+  }
+  
+  return Triple.of(
+    Pair.of("zip data", zipdata), 
+    pool, CollectionUtil.toArray(finalClassDefs)
+  );
+}
+
+
+
+public static Triple remixDex(String baseDexPath, String classDefRegex) {
+  boolean baseIsZip = isZip(baseDexPath);
+  DexBackedDexFile df = getDexBackedDexFile(baseDexPath);
+  Collection<DexBackedClassDef> baseDexClassDefs = df.getClasses();
+  Matcher classDefMatcher = Pattern.compile(
+    classDefRegex, 
+    Pattern.DOTALL 
+     | Pattern.MULTILINE 
+     | Pattern.UNIX_LINES
+  ).matcher("");
+  Collection<DexBackedClassDef> classDefsToRemove
+    = CollectionUtil2.filter(baseDexClassDefs, classDefMatcher);
+  List<DexBackedClassDef> finalClassDefs 
+    = new ArrayList<DexBackedClassDef>(baseDexClassDefs);  
+  finalClassDefs.removeAll(classDefsToRemove);
+  Collections.sort(finalClassDefs, new ToStringComparator());
+  
+  CollectionUtil.dbg.remove("im");
+  DexPool pool = tryGetInstance(DexPool.class, 0, 9);
+  ClassSection classSection = Reflect.getfldval(pool, "classSection");
+  
+  int i = 0, total = finalClassDefs.size();
+  for (DexBackedClassDef classDef: finalClassDefs) {
+    System.err.printf(
+      "Adding %4d / %4d: %s ...\n", 
+      ++i, total, classDef
+    );
+    classSection.intern(classDef);
+  }
+  
+  File tmpdexFile = File.createTempFile("tmpdex_DexFileStore", ".dex");
+  DexDataStore ddat = new FileDataStore(tmpdexFile);
+  System.err.printf(
+    "Writing %s to %s (temporary file: [%s]) ...\n",
+    pool.getClass().getSimpleName(),
+    ddat.getClass().getSimpleName(),
+    tmpdexFile.getPath()
+  );
+  try {
+    pool.writeTo(ddat);
+  } finally {
+    ddat.close();
+  }
+  System.err.printf(
+    "Reading dex class bytes from [%s] ...\n", tmpdexFile.getPath()
+  );
+  byte[] data = null;
+  try {
+    data = FileUtils.readFileToByteArray(tmpdexFile);
+  } finally { tmpdexFile.delete();
+}
+  System.err.printf("Read complete; dex size = %d bytes.\n", data.length);
+  if (data == null || data.length <= 8) throw new IllegalStateException(
+    String.format("dex data too small (or null): %s", data)
+  );
+  
+  if (! baseIsZip) {
+    return Triple.of(
+      Pair.of("dex data", data), 
+      pool, CollectionUtil.toArray(finalClassDefs)
+    );
+  }
+    
+  System.err.println("Creating updated zip archive ...");
+  byte[] oldzipdata = FileUtils.readFileToByteArray(new File(baseDexPath));
+  ByteArrayOutputStream zbaos = new ByteArrayOutputStream();
+  ZipOutputStream zos = new ZipOutputStream(zbaos);
+  ByteArrayInputStream  zbais = new ByteArrayInputStream(oldzipdata);
+  ZipInputStream  zis = new  ZipInputStream(zbais);
+  
+  byte[] zipdata = null; // NEW DATA (in progress)
+  try {
+    while ((entry = zis.getNextEntry()) != null) {
+      InputStream eis = null;
+      if (entry.getName().equals("classes.dex")) {
+        System.err.println("Updating classes.dex");
+        entry = CollectionUtil.clone(entry);
+        entry.setSize(data.length);
+        entry.setTime(System.currentTimeMillis());
+        eis = new ByteArrayInputStream(data);
+        oldBytes = IOUtils.toByteArray(zis);
+      } else {
+        eis = zis;
+      }
+      zos.putNextEntry(entry);
+      IOUtils.copy(eis, zos);
+    };
+    zos.finish();
+    zos.flush();
+    zos.close();
+    zipdata = zbaos.toByteArray();
+    System.err.printf(
+      "Old zip data: %d bytes\nNew zip data: %d bytes\n", 
+      oldzipdata.length, zipdata.length
+    );    
+  } catch (IOException e) {
+    System.err.println(Reflector.getRootCause(e));
+    e.printStackTrace();
+    return Triple.of(
+      Pair.of("DEX DATA ALONE!!", data), 
+      pool, CollectionUtil.toArray(finalClassDefs)
+    );
+  }
+  
+  System.err.println("Testing dex+zip integrity ...");
+  File tmpTestJar = File.createTempFile("tmpTestJar", ".jar");
+  FileUtils.writeByteArrayToFile(tmpTestJar, zipdata);
+  System.err.printf("Loading dex: %s ...\n", tmpTestJar.getPath());
+  DexFile dexFile = null;
+  try {
+    dexFile = new DexFile(tmpTestJar);
+    Object classNames 
+      = DexFile.getClassNameList(Reflect.getfldval(dexFile, "mCookie"));
+    int numClasses =(classNames instanceof String[])
+      ? ((String[]) classNames).length
+      : 0;
+    if (numClasses == 0) {
+      System.err.println("*** DexFile is invalid! ***");
+      System.err.println(captureEval("logcat()"));
+      System.err.println("___ DexFile is invalid! ___");
+    }
+    System.err.println(StringUtils.join(Arrays.asList(
+      String.format("DexFile:        %s\n", dexFile),
+      String.format("  - mCookie:    %s\n", String.valueOf(dexFile.mCookie)),
+      String.format("  - # classes:  %s\n", String.valueOf(numClasses))
+    ), "\n"));
+  } catch (Throwable e) {
+    System.err.printf("*** DexFile is invalid: %s ***\n", e);
+    e.printStackTrace();
+    System.err.println("*** DexFile is invalid! ***");
+    System.err.println(captureEval("logcat()"));
+    System.err.println("___ DexFile is invalid! ___");
+  }
+  
+  return Triple.of(
+    Pair.of("zip data", zipdata), 
+    pool, CollectionUtil.toArray(finalClassDefs)
+  );
+}
+
+
+public static byte[] remixDex(Object inFile, String[] classNames) {
+  Matcher ptrn = Pattern.compile(String.format("^.?(?:%s).?$", StringUtils.join(cns, "|").replaceAll("\\.", "!").replaceAll("([^a-zA-Z0-9|_!])", "\\\\$1").replace("!", "[./]"))).matcher("");  return DexRemix.remixDex(DexRemix.getDexBackedDexFile(inFile), ptrn);
+};
+
+
+
+

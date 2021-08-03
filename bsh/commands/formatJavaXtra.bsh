@@ -1,0 +1,49 @@
+
+
+
+public static String formatJavaXtra(Object _args_) {
+  
+  System.err.printf("Constructing JavaFile ...\n");
+  JavaFile _jf_ = new JavaFile(_args_);
+
+  
+  Matcher _mchr_ = Pattern.compile(
+    "(?:([^ \t\r\n])\\1\\1\\1\\1\\1\\1|([^ \t\r\n])"
+      + "([ \t\r\n])\\2\\3\\2\\3\\2)",
+      Pattern.CASE_INSENSITIVE 
+    | Pattern.DOTALL 
+    | Pattern.MULTILINE 
+    | Pattern.UNIX_LINES).matcher("");
+    
+    
+  System.err.printf("Discovering comments ...\n");
+  Collection _comments_ = org.d6r.Reflect.searchObject(
+    _jf_.cu.getTypes()[0].getMembers().toArray(), 
+    javafile.api.Comment.class, 
+    false, 0, 13
+  ); 
+  
+  for (javafile.api.Comment _cmnt_: _comments_) { 
+    if (_mchr_.reset(_cmnt_.content).find()) { 
+      System.err.printf(
+        "===> Removing this comment: <===\n%s\n",
+        _cmnt_.content
+      ); 
+      _cmnt_.content = "";
+    }
+  };
+  
+  
+  System.err.printf("Constructing javafile.api.visitor.DumpVisitor ...\n");
+  javafile.api.visitor.DumpVisitor _dv_ 
+    = new javafile.api.visitor.DumpVisitor(); 
+  
+  System.err.printf("DumpVisitor traversing ...\n");
+  _jf_.cu.accept(_dv_, null); 
+  
+  System.err.printf("Passing getSource() to formatJava() script ...\n");
+  
+  return formatJava(_dv_.getSource());
+}
+
+

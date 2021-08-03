@@ -1,0 +1,195 @@
+
+/*
+public static Object tryGetInstance(Class cls, int depth, int maxdepth) {
+  Object obj = getInstance(cls); 
+  if (obj != null) return obj; 
+  Class[] impls; 
+  if ((Modifier.ABSTRACT & cls.getModifiers()) != 0) { 
+    impls = CollectionUtil.toArray(ClassPathUtil_getImpls(cls.getName()));
+  } else { 
+    impls = new Class[]{ cls };
+  }; 
+  outer: 
+  for (Class c: impls) { 
+    for (Constructor ctor: c.getDeclaredConstructors()) { 
+      Object[] args = argsFor(ctor, depth+1, maxdepth); 
+      try { 
+        ctor.setAccessible(true); 
+        obj = ctor.newInstance(args); 
+        if (obj != null) break outer;
+      } catch (Throwable e) { ;; };
+    }
+  };
+  if (obj != null) {
+    Map im = CollectionUtil.dbg.get("im");
+    if (im == null) CollectionUtil.dbg.put("im", (im = new HashMap()));
+    im.put(obj.getClass(), obj);
+  };
+  return obj;
+}
+*/
+
+public static List<Pair> getConstructorInvocations() {
+  List invs = CollectionUtil.dbg.get("ctorInvs");
+  if (invs == null) {
+    invs = new ArrayList();
+    CollectionUtil.dbg.put("ctorInvs", invs);
+  }
+  return (List) invs;
+}
+
+
+public static Object getDataStore(String key, Class cls, Object[] args)
+{
+  Object ds = CollectionUtil.dbg.get(key);
+  if (ds == null) {
+    CollectionUtil.dbg.put(key, (ds = Reflect.newInstance(cls, args)));
+    if ("im".equals(key)) ds.put(Class.class, Object.class);
+  }
+  return ds;
+}
+
+public static Object getDataStore(String key, Class cls) {
+  return getDataStore(key, cls, new Object[0]);
+}
+
+public static Object getDataStore(String key) {
+  return getDataStore(key, HashMap.class);
+}
+
+
+public static Object tryGetInstance(Class cls, int depth, int maxdepth)
+{
+  Object obj = getInstance(cls);
+  if (obj != null) return obj;
+  
+  Class[] impls = ((Modifier.ABSTRACT & cls.getModifiers()) != 0)
+    ? ClassPathUtil_getImpls(cls.getName()).toArray(new Class[0])
+    : new Class[]{ cls };
+  
+  List invs = getConstructorInvocations();
+  
+  outer:
+  for (Class c: impls) {
+    for (Constructor ctor: c.getDeclaredConstructors()) {
+      Object[] args = argsFor(ctor, depth+1, maxdepth);
+      try {
+        ctor.setAccessible(true);
+        obj = ctor.newInstance(args);
+        if (obj != null) {
+          StringBuilder sb = new StringBuilder();
+          Class[] pts = ctor.getParameterTypes();
+          for (int p=0; p<pts.length; ++p) {
+            Class pt = pts[p];
+            if (sb.length() > 0) sb.append(", ");            
+            // parameter type name
+            sb.append(dumpMembers.colorize(ClassInfo.getSimpleName(
+              ClassInfo.typeToName(pt.getName())
+            ), "1;32"));            
+            // parameter "variable name"
+            sb.append(String.format(
+              " %s = (", getVariableName(args[p], pt)
+            ));            
+            // concrete (resolved/used) argument type name
+            sb.append(dumpMembers.colorize(ClassInfo.getSimpleName(
+              ClassInfo.typeToName(
+               bsh.Factory.typeof(args[p]).getName()
+              )
+            ), "1;36"));            
+            sb.append(") ");            
+            try {
+              sb.append(StringUtils.substringBefore(
+                Dumper.tryToString(args[p]), ")"
+              ));
+            } catch (Throwable toStringEx) {
+              sb.append(String.format(String.format(
+                "\u001b[1;31m%s\u001b[0m", // red color for string
+                String.format(
+                  "<instance@0x%08x.toString() threw %s @ %s>",
+                  System.identityHashCode(args[p]),
+                  toStringEx.getClass().getSimpleName(),
+                  StackTraceUtil.getStackTrace(toStringEx[0])
+                )
+              )));
+            } 
+          } // for pt in pts | p: 0 -> len
+          String invStr = String.format(
+            "%s %s = new %s(%s)\n\n", 
+            dumpMembers.colorize(
+              (ctor.getDeclaringClass().getSimpleName() != null)
+                ? ctor.getDeclaringClass().getSimpleName()
+                : "Object",
+              "1;33"
+            ),
+            getVariableName(
+              obj, 
+              (bsh.Factory.typeof(obj).getName().matches(".*\\$[0-9]+"))
+                ? (bsh.Factory.typeof(obj).getInterfaces().length > 0)
+                    ? bsh.Factory.typeof(obj).getInterfaces()[0]
+                    : bsh.Factory.typeof(obj).getSuperclass()
+                : bsh.Factory.typeof(obj)
+            ),
+            ctor.getDeclaringClass().getName(),
+            sb.toString()
+          );
+          invs.add(Pair.of(invStr, Pair.of(ctor, args)));
+          System.err.println(invStr);
+          break outer;
+        }
+      } catch (Throwable e) {
+        Interpreter.errors.add(e);
+      }
+    }
+  };
+  
+  if (obj != null) {
+    Map im = getInstanceMap();
+    try {
+      im.put(obj.getClass(), obj);
+    } catch (Throwable e) {
+      RuntimeException rex = new RuntimeException(
+       bsh.Factory.typeof(obj).getName() + ": " + e, e
+      );
+      Interpreter.errors.add(rex);
+      rex.printStackTrace();
+      return null;
+    }
+  }
+  return obj;
+}
+
+
+public static String getVariableName(Object obj, Class cls) {
+  Map clsCounts = getDataStore("clsCounts", HashMap.class);
+  Map ihMap = getDataStore("ihMap", IdentityHashMap.class);
+  
+  if (obj == null) return "_";
+  if (ihMap.containsKey(obj)) return ihMap.get(obj);
+  int count = (
+    clsCounts.containsKey(cls)
+      ? ((Integer) clsCounts.get(cls)).intValue()
+      : 0
+  ) + 1;
+  String name = ClassInfo.typeToName(cls.getName()).replaceAll("^.*\\.([^.]*[^.0-9])$", "$1").replaceAll("[^a-zA-Z0-9_$]+", "");
+  name = (name.length() > 1)
+    ? name.substring(0,1).toLowerCase() + name.substring(1)
+    : name.toLowerCase();
+  name += String.format("%d", count);
+  clsCounts.put(cls, Integer.valueOf(count));
+  return name;
+}
+
+
+/*
+
+pool = tryGetInstance(org.jf.dexlib2.writer.pool.DexPool.class, 0, 9);    
+  dbdf = getDexBackedDexFile(dfpath);  org.jf.dexlib2.dexbacked.DexBackedClassDef[] classDefs = CollectionUtil.toArray(dbdf.getClasses());      org.jf.dexlib2.dexbacked.DexBackedClassDef[] classDefsToRemove = CollectionUtil2.filter(classDefs, "org.objectweb.asm|org.jf|com.googlecode.dex2jar");    org.jf.dexlib2.dexbacked.DexBackedClassDef[] classDefsToKeep = ArrayUtils.removeElements(classDefs, classDefsToRemove);  int total = classDefsToKeep.length, i = 0; for (org.jf.dexlib2.dexbacked.DexBackedClassDef classDef: classDefsToKeep) { System.err.printf("Interning %4d/%4d: %s ...\n", ++i, total, ClassInfo.typeToName(classDef.toString())); pool.classSection.intern(classDef); };      dds = new org.jf.dexlib2.writer.io.FileDataStore(tmpfile = File.createTempFile("tmpdex", ".dex"));  System.err.printf("Writing to %s ...\n", dds.getClass().getSimpleName()); pool.writeTo(dds); dds.close(); data = FileUtils.readFileToByteArray(tmpfile); tmpfile.delete();
+
+
+oldzipdata = FileUtils.readFileToByteArray(new File(dfpath)); zos = new java.util.zip.ZipOutputStream(zbaos = new ByteArrayOutputStream()); zis = new java.util.zip.ZipInputStream(zbais = new ByteArrayInputStream(oldzipdata));  byte[] zipdata = null; try { while ((entry = zis.getNextEntry()) != null) { InputStream eis = null; if (entry.getName().equals("classes.dex")) { System.err.println("Updating classes.dex"); entry = CollectionUtil.clone(entry); entry.setSize(data.length); entry.setTime(System.currentTimeMillis()); eis = new ByteArrayInputStream(data); oldBytes = IOUtils.toByteArray(zis); } else { eis = zis; }; zos.putNextEntry(entry); IOUtils.copy(eis, zos); }; zos.finish(); zos.flush(); zos.close(); zipdata = zbaos.toByteArray(); System.err.printf("Old zip data: %d bytes\nNew zip data: %d bytes\n", oldzipdata.length, zipdata.length); } catch (Throwable e) { System.err.println(Reflector.getRootCause(e)); ex = e; };  System.err.println("Testing dex integrity ..."); File tmpDex = File.createTempFile("tmpdex", ".jar"); FileUtils.writeByteArrayToFile(tmpDex, zipdata); System.err.printf("Loading dex: %s ...\n", tmpDex); try { df = new DexFile(tmpDex); System.err.printf("DexFile = %s\n", df); System.err.printf("DexFile.mCookie = %s\n", String.valueOf(df.mCookie)); Object classNames = DexFile.getClassNameList(df.mCookie); if (classNames instanceof String[]) { System.err.printf("%d classes\n", ((String[]) classNames).length); } else { System.err.println("DexFile is invalid!\n"); } } catch (Throwable e) { System.err.printf("DexFile is invalid: %s\n", e); ex2 = e; };
+
+
+*/
+public static Object tryGetInstance(bsh.ClassIdentifier ci, int initialDepth, int maxDepth) { return tryGetInstance((Class) ((bsh.ClassIdentifier) ci).getTargetClass(), initialDepth, maxDepth); }
+
+public static Object tryGetInstance(bsh.ClassIdentifier ci) { return tryGetInstance((Class) ((bsh.ClassIdentifier) ci).getTargetClass(), 0, 5); }

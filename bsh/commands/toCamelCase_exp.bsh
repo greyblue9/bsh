@@ -1,0 +1,59 @@
+
+
+
+  public static String toCamelCase(String strWithUnderscores) {
+    String str = strWithUnderscores.toLowerCase();
+    Matcher mchr
+      = Pattern.compile("(^|(?:[_. -]|\\W)+)([a-z])").matcher(str);
+    StringBuffer sb = new StringBuffer(str.length());    
+    int last = -1, lastend = 0;
+    CharSequence rest = str;
+    
+    while (mchr.find() && mchr.start() != last) {
+      
+      System.err.println(String.format(
+        "\nfind()  sb: \"\u001b[1;33m%s\u001b[0m\"\n"
+        + "[%s]::|::[%s]"
+        + " (\u001b[1;32m%s\u001b[0m) (\u001b[1;35m%s\u001b[0m) "
+        + "[%s]\n",
+        sb,
+        str.subSequence(0, lastend),
+        str.subSequence(lastend, mchr.start(0)),
+        mchr.group(1), 
+        mchr.group(2),
+        str.subSequence(mchr.end(0), mchr.regionEnd())
+      ).replaceAll(
+        "(?<!\\()(\\(|\\))([^()])", 
+        "\u001b[1;31m$1\u001b[0m$2"
+      ));
+      System.err.printf(
+         " - mchr.start(): %d, mchr.start(0): %d, mchr.start(1): %d\n"
+        +" - mchr.end():   %d, mchr.end(0):   %d, mchr.end(1):   %d,"
+          + " mchr.end(2): %d\n"
+        +" - last: %d, lastend: %d\n",
+        mchr.start(), mchr.start(0), mchr.start(1),
+        mchr.end(), mchr.end(0), mchr.end(1), 
+          mchr.end(2),
+        last, lastend      
+      );
+      
+      last = mchr.start();
+      
+      CharSequence priorWords = str.subSequence(lastend, mchr.start());
+      
+      
+      mchr.appendReplacement(
+        sb, // .append(priorWords)
+        mchr.group(2).toUpperCase()
+      );
+      
+      rest = str.subSequence(mchr.end(), str.length());      
+      lastend = mchr.end(1);
+    }
+    
+    sb.append(rest);
+    int idx;
+    return sb.toString();
+  }
+
+

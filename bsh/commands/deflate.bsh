@@ -1,0 +1,2 @@
+public static Pair/*<Integer, byte[]>*/ deflate(byte[] buf) { org.apache.commons.compress.archivers.sevenz.CoderBase ddc = new org.apache.commons.compress.archivers.sevenz.Coders.DeflateDecoder(); InputStream is = ddc.decode("buf.zlib", new ByteArrayInputStream(buf), (long) buf.length, new org.apache.commons.compress.archivers.sevenz.Coder(), null); ByteArrayOutputStream baos = new ByteArrayOutputStream(); int read = IOUtils.copy(is, baos); return Pair.of(Integer.valueOf(read), baos.toByteArray()); }
+

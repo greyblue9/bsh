@@ -1,0 +1,91 @@
+
+import com.rits.cloning.Cloner;
+import com.rits.cloning.ObjenesisInstantiationStrategy;
+
+
+
+public static Throwable filterStack(Throwable ex) {
+  return filterStack(ex, false);
+}
+
+
+
+public static Throwable filterStack(Throwable ex, boolean removeElements) {
+  
+  //Cloner cloner = new Cloner(ObjenesisInstantiationStrategy.getInstance());
+  //cloner.registerKnownJdkImmutableClasses();
+  StackTraceElement[] originalStackTrace
+    = Reflect.getfldval(ex, "stackTrace");
+  if (originalStackTrace == null) {
+    ex.getStackTrace();
+    originalStackTrace = Reflect.getfldval(ex, "stackTrace");
+  }
+  /*Throwable ex2 = cloner.shallowClone(ex);
+  Reflect.setfldval(ex2, "stackTrace", cloner.deepClone(originalStackTrace));
+  */
+  java.util.Set<Pair> ignored = null;
+  if (removeElements &&
+     (ignored = CollectionUtil.dbg.get("filterStack_ignorePairs")) == null)
+  {
+    CollectionUtil.dbg.put(
+      "filterStack_ignorePairs",
+      (ignored = new HashSet(Arrays.asList(
+//      Pair.of("java.lang.reflect.Method", "invokeNative"),
+//      Pair.of("java.lang.reflect.Method", "invoke"), 
+        Pair.of("bsh.Reflect", "invoke"), 
+        Pair.of("bsh.Reflect", "invokeMethod"), 
+        Pair.of("bsh.Reflect", "invokeObjectMethod"), 
+        Pair.of("bsh.Name", "invokeMethod"), 
+        Pair.of("bsh.BSHMethodInvocation", "eval"), 
+        Pair.of("bsh.BSHPrimaryExpression", "eval"), 
+        Pair.of("bsh.Interpreter", "run"), 
+        Pair.of("bsh.Interpreter", "main"),
+        Pair.of("dalvik.system.XClassLoader", "main"), 
+        Pair.of("com.android.internal.util.WithFramework", "main"), 
+        Pair.of("dalvik.system.NativeStart", "main")
+      )))
+    );
+  }
+  
+  java.util.List<StackTraceElement> filteredStack = new ArrayList(
+    Arrays.asList(originalStackTrace)
+  );
+  
+  for (int i=0, len = originalStackTrace.length; i<len; ++i) {
+    java.lang.StackTraceElement ste = originalStackTrace[i];
+    String className = ste.getClassName();
+    int slashAt = className.indexOf('/');
+    if (slashAt != -1) {
+      String moduleName = (String) className.subSequence(0, slashAt);
+      String realClassName
+        = (String) className.subSequence(slashAt+1, className.length());
+      System.err.printf(
+        "Reference to module \"%s\" in StackTraceElement@%08x:\n\tat %s\n",
+        StringEscapeUtils.escapeJava(moduleName),
+        System.identityHashCode(ste),
+        ste
+      );
+      Reflect.setfldval(ste, "declaringClass", realClassName);
+    }
+    if (removeElements &&
+        ignored.contains(Pair.of(ste.getClassName(), ste.getMethodName())))
+    {
+      filteredStack.remove(ste);
+    }
+  };
+  
+  if (!removeElements || filteredStack.size() == originalStackTrace.length) {
+    return ex;
+  }
+  
+  StackTraceElement[] replacementStack
+    = filteredStack.toArray(new StackTraceElement[0]);
+  Reflect.setfldval(ex, "stackTrace", replacementStack);
+  Throwable lastT = null;
+  Throwable t = ex;
+  while ((t = (lastT = t).getCause()) != null && t != lastT && t != ex) {
+    filterStack(t, removeElements);
+  }
+  return ex;
+}
+

@@ -1,0 +1,24 @@
+
+public static String titleFileName(String rawTitle) {
+  List al = new ArrayList(); 
+  String title = new String(rawTitle.toCharArray()); 
+  
+  Matcher mchr = Pattern.compile("( |^|-|_)([a-z])").matcher(""); 
+  
+  
+  while (mchr.reset(title).find()) { 
+    title = new StringBuilder(
+      title.subSequence(0, mchr.start(1))
+    ).append(mchr.group(1).replaceAll("[^a-zA-Z0-9]+", "")).append("_").append(mchr.group(2).toUpperCase()).append(title.substring(mchr.end(2))).toString(); 
+    
+    al.add(mchr.toMatchResult());
+  }; 
+  
+  title = StringUtils.substringAfter(
+    title.replaceAll(" - ", "__").replaceAll("[^a-zA-Z0-9_]+", ""), 
+    "_"
+  );
+  return (title.length() > 122)
+    ? title.substring(0, 122)
+    : title;
+}

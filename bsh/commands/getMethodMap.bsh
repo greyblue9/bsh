@@ -1,0 +1,4 @@
+
+
+public static com.google.common.collect.Multimap getMethodMap(Class cls) { return getMemberMap(cls); }
+

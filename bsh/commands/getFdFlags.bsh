@@ -1,0 +1,5 @@
+public static Map getFdFlags(FileDescriptor fd) { libcore.io.Posix POSIX = new libcore.io.Posix(); int fdFlags = POSIX.fcntlVoid(fd, libcore.io.OsConstants.F_GETFL); Map flagMap = new RealArrayMap(); for (Field f: StringCollectionUtil.toStringFilter(libcore.io.OsConstants.class.getDeclaredFields(), "public static final [^ ]+ [^ ]+\\.O_")) { Integer v = f.get(null); int iv = v instanceof Integer? ((Integer)v).intValue(): (int)v; String fname = f.getName(); if ((fdFlags & iv) == iv) { flagMap.put(fname, Integer.valueOf(iv)); } } return flagMap; }
+
+
+public static Map getFdFlags(int fdFlags) { Map flagMap = new RealArrayMap(); for (Field f: StringCollectionUtil.toStringFilter(libcore.io.OsConstants.class.getDeclaredFields(), "public static final [^ ]+ [^ ]+\\.O_")) { Integer v = f.get(null); int iv = v instanceof Integer? ((Integer)v).intValue(): (int)v; String fname = f.getName(); if ((fdFlags & iv) == iv) { flagMap.put(fname, Integer.valueOf(iv)); } } return flagMap; }
+

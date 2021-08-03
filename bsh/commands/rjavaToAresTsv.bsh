@@ -1,0 +1,81 @@
+
+import com.sun.source.tree.ClassTree;
+import com.sun.source.tree.CompilationUnitTree;
+import com.sun.source.tree.LiteralTree;
+import com.sun.source.tree.NewArrayTree;
+import com.sun.source.tree.Tree;
+import com.sun.source.tree.VariableTree;
+
+import java.nio.charset.CharsetDecoder;
+import java.nio.charset.StandardCharsets;
+
+public static File rjavaToAresTsv(String rjavaSrc) {
+  if (rjavaSrc == null) {
+    rjavaSrc = FileUtils.readFileToString(
+      new File("/external_sd/_projects/sdk/framework/android/R.java")
+    );
+  }
+  File outFile = new File("public.tsv");
+  List exprs = new ArrayList();
+  CompilationUnitTree cu = getJcTree(rjavaSrc);
+  ClassTree rootType = cu.getTypeDecls().iterator().next();
+  List<ClassTree> subtypes = CollectionUtil2.typeFilter(
+    rootType.getMembers(), ClassTree.class
+  );
+  for (ClassTree subtype : subtypes) {
+    Iterable<Tree> flds = subtype.getMembers();
+    CharsetDecoder dec = StandardCharsets.UTF_8.newDecoder();
+    String fqn = StringUtils.join(
+      Arrays.asList(
+        getPackage(cu), getSimpleName(rootType), getSimpleName(subtype)
+      ), "."
+    );
+    for (Tree fld : flds) {
+      try {
+        if (!(fld instanceof VariableTree)) continue;
+        String name = dec.decode(ByteBuffer.wrap(fld.getName().toUtf())).toString();
+        if (fld instanceof VariableTree) {
+          VariableTree vt = (VariableTree) fld;
+          Object init = vt.getInitializer();
+          if (init == null) continue;
+          List<Tree> inits = (init instanceof NewArrayTree)
+            ? ((NewArrayTree) init).getInitializers()
+            : Arrays.asList(init.getValue());
+          if (inits == null) continue;
+          int index = -1;
+          for (Tree expr: inits) {
+            ++index;
+            int id = (
+              (expr instanceof LiteralTree)
+                ? ((LiteralTree) expr).getValue()
+                : expr
+            ).intValue();
+            String fldFqn = String.format(
+              "%s.%s%s",
+              fqn, name,
+              (vt.getInitializer() instanceof NewArrayTree)
+                ? String.format("[%d]", index)
+                : ""
+            );
+            String expr = String.format(
+              // "%2$s\t%1$d\n%2$s\t%1$X",
+              "%1$d\t%2$s\n" +
+              "%1$X\t%2$s",
+              id, fldFqn
+            );
+            exprs.add(expr);
+            System.err.println(fldFqn);
+          }
+        }
+      } catch (Throwable e) { 
+        System.err.println(Reflector.getRootCause(e));
+      };
+    }
+  }
+  
+  String out = StringUtils.join(exprs, "\n");
+  FileUtils.writeStringToFile(outFile, out);
+  System.err.printf("Wrote %s: %d bytes\n", outFile.getPath(), outFile.length());
+  return outFile;
+}
+

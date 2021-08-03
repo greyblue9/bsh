@@ -1,0 +1,82 @@
+import java.util.Map.Entry;
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+public static Map getSchema(String dbPath) { return getSchema(dbPath, "sqlite_master", true); };
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+public static Map getSchema(String dbPath, String objectName, boolean getData) { Map intToTypeMap = ConstUtil.constantMap(DatabaseUtil.class, "FIELD_TYPE_", -1); NameSpace ns = this.namespace; Object db = DatabaseUtil.open(copyDatabase(dbPath).getAbsolutePath()); Object q = DatabaseUtil.newQuery(db, String.format("select * from `%s`", objectName)); Object c = DatabaseUtil.openQuery(db, q); String[] _columnNames = c.getColumnNames(); int numCols = _columnNames.length; Map nameTypeMap = new RealArrayMap(numCols), nameIndexMap = new RealArrayMap(numCols), columnInfoByName = new RealArrayMap(numCols), columnInfo = new TreeMap(); int prefixLen = ("FIELD_TYPE_").length(); List<Map> objects = (getData)? DatabaseUtil.getResult(c): null; for (int i=0; i<numCols; ++i) { int columnTypeId = c.getWindow().getType(0, i); String columnTypeName = intToTypeMap.get(Integer.valueOf(columnTypeId)).substring(prefixLen).toLowerCase(); String columnName = _columnNames[i]; nameTypeMap.put(columnName, columnTypeName); nameIndexMap.put(columnName, Integer.valueOf(i)); columnInfo.put(Integer.valueOf(i), Pair.of(columnName, columnTypeName)); columnInfoByName.put(columnName, Pair.of(Integer.valueOf(i), columnTypeName)); }; List<String> columnNames = Arrays.asList(_columnNames); List<Map> objects = (getData)? DatabaseUtil.getResult(c): null; Map ret = RealArrayMap.toMap(ns.getVariables().values()); c.close(); q = null; db.close(); DatabaseUtil.close(db); return ret; };
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+public static Map getSchema(android.database.sqlite.SQLiteDatabase db) {  Map schema = new TreeMap(); Map infoByName = RealArrayMap.toMap(DatabaseUtil.getResult(DatabaseUtil.openQuery(db, DatabaseUtil.newQuery(db, "select * from sqlite_master"))).select(FunctionUtil.bind("return m -> { Pair.of(m.get(\"name\"), m); }"))); for (Entry entry: infoByName.entrySet()) { String name = entry.getKey(); Map itemInfo = entry.getValue(); String type = itemInfo.get("type"); Map itemsByName = schema.get(type); if (itemsByName == null) schema.put(type, (itemsByName = new TreeMap())); itemsByName.put(name, itemInfo); List<Map> columnInfos = DatabaseUtil.getResult(DatabaseUtil.openQuery(db, DatabaseUtil.newQuery(db, String.format("pragma %s_info([%s])", type, name)))); List columnNames = new ArrayList(); Map columns = new TreeMap(); for (Map columnInfo: columnInfos) { String columnName = columnInfo.get("name"); columnNames.add(name); columns.put(name, columnInfo); itemInfo.put("columns", columns); itemInfo.put("columnNames", columnNames); } }; return schema; };
+
+
+
+
+
+
+
+
+
+
+
+
+public static Map getSchema(android.database.sqlite.SQLiteDatabase db) {  Map schema = new TreeMap(); Map infoByName = RealArrayMap.toMap(DatabaseUtil.getResult(DatabaseUtil.openQuery(db, DatabaseUtil.newQuery(db, "select * from sqlite_master"))).select(FunctionUtil.bind("return m -> { Pair.of(m.get(\"name\"), m); }"))); for (Entry entry: infoByName.entrySet()) { String name = entry.getKey(); Map itemInfo = entry.getValue(); String type = itemInfo.get("type"); Map itemsByName = schema.get(type); if (itemsByName == null) schema.put(type, (itemsByName = new TreeMap())); itemsByName.put(name, itemInfo); List<Map> columnInfos = DatabaseUtil.getResult(DatabaseUtil.openQuery(db, DatabaseUtil.newQuery(db, String.format("pragma %s_info([%s])", type, name)))); List columnNames = new ArrayList(); Map columns = new TreeMap(); for (Map columnInfo: columnInfos) { String columnName = columnInfo.get("name"); columnNames.add(name); columns.put(columnName, columnInfo); itemInfo.put("columns", columns); itemInfo.put("columnNames", columnNames); } }; return schema; };
+
+
+
+
+
+
+
+
+
+public static Map getSchema(android.database.sqlite.SQLiteDatabase db) {  Map schema = new TreeMap(); Map infoByName = RealArrayMap.toMap(DatabaseUtil.getResult(DatabaseUtil.openQuery(db, DatabaseUtil.newQuery(db, "select * from sqlite_master"))).select(FunctionUtil.bind("return m -> { Pair.of(m.get(\"name\"), m); }"))); for (Entry entry: infoByName.entrySet()) { String name = entry.getKey(); Map itemInfo = entry.getValue(); String type = itemInfo.get("type"); Map itemsByName = schema.get(type); if (itemsByName == null) schema.put(type, (itemsByName = new TreeMap())); itemsByName.put(name, itemInfo); List<Map> columnInfos = DatabaseUtil.getResult(DatabaseUtil.openQuery(db, DatabaseUtil.newQuery(db, String.format("pragma %s_info([%s])", type, name)))); List columnNames = new ArrayList(); Map columns = new TreeMap(); for (Map columnInfo: columnInfos) { String columnName = columnInfo.get("name"); columnNames.add(columnName); columns.put(columnName, columnInfo); }; itemInfo.put("columns", columns); itemInfo.put("columnNames", columnNames); }; return schema; };
+
+
+
+
+
+
+public static Map getSchema(android.database.sqlite.SQLiteDatabase db) {  Map schema = new TreeMap(); Map infoByName = RealArrayMap.toMap(DatabaseUtil.getResult(DatabaseUtil.openQuery(db, DatabaseUtil.newQuery(db, "select * from sqlite_master"))).select(FunctionUtil.bind("return m -> { Pair.of(m.get(\"name\"), m); }"))); for (Entry entry: infoByName.entrySet()) { String name = entry.getKey(); Map itemInfo = entry.getValue(); String type = itemInfo.get("type"); Map itemsByName = schema.get(type); if (itemsByName == null) schema.put(type, (itemsByName = new TreeMap())); itemsByName.put(name, itemInfo); List<Map> columnInfos = DatabaseUtil.getResult(DatabaseUtil.openQuery(db, DatabaseUtil.newQuery(db, String.format("pragma %s_info([%s])", type, name)))); List columnNames = new ArrayList(); Map columns = new TreeMap(); for (Map columnInfo: columnInfos) { String columnName = columnInfo.get("name"); columnNames.add(columnName); columns.put(columnName, columnInfo); }; itemInfo.put("columns", columns); itemInfo.put("columnNames", columnNames); }; return schema; };
+
+
+

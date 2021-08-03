@@ -1,0 +1,107 @@
+import java.util.Map.Entry;
+import com.github.javaparser.ast.body.CallableDeclaration;
+import com.github.javaparser.ast.body.ConstructorDeclaration;
+import com.github.javaparser.ast.CompilationUnit;
+import com.github.javaparser.ast.NodeList;
+import java.nio.charset.StandardCharsets;
+
+
+
+public static Entry findMethodEntryWithSignature(Map rmap,
+  CallableDeclaration cdecl)
+{
+  CallableDeclaration.Signature sig = cdecl.getSignature();
+  String sigName = (cdecl instanceof ConstructorDeclaration)
+    ? "<init>"
+    : sig.getName();
+  List<Type> sigTypes = sig.getParameterTypes();
+  outer:
+  for (Entry e: rmap.entrySet()) {
+    Member mtd = e.getValue();
+    String mbName = (mtd instanceof Constructor)
+      ? "<init>"
+      : ((Method) mtd).getName();
+    if (! sigName.equals(mbName)) continue outer;
+    Class[] ptypes = mtd.getParameterTypes();
+    if (sigTypes.size() != ptypes.length) continue;
+    for (int i=0, len=ptypes.length; i<len; ++i) {
+      Class ptype = ptypes[i];
+      com.github.javaparser.ast.type.Type sigType = sigTypes.get(i);
+      String sigTypeStr = sigType.toString();
+      String ptypeStr = ClassInfo.typeToName(ptype.getName());
+      String ptypeStr2 = ClassInfo.getSimpleName(ptypeStr);
+      boolean same
+        = (ptypeStr.equals(sigTypeStr) || ptypeStr2.equals(sigTypeStr));
+      if (!same) continue outer;
+    };
+    return e;
+  };
+  return null;
+}; 
+
+
+public static Map getLineNumberDeclarationMap(Class cls, CompilationUnit cu) {
+  List<CallableDeclaration> cdecls = CollectionUtil2.typeFilter(
+    cu.getTypes().firstOrDefault().getMembers(), CallableDeclaration.class
+  );
+  List<CallableDeclaration> mdecls = cdecls;
+  Map rmap = new TreeMap();
+  Iterable<Member> members = Iterables.concat(
+    Arrays.asList(
+      Arrays.asList(cls.getDeclaredConstructors()),
+      Arrays.asList(cls.getDeclaredMethods())
+    ).toArray(new Iterable[0])
+  );
+  
+  for (Member mtd: members) {
+    if ((mtd.getModifiers() & Modifier.ABSTRACT) != 0) continue;
+    int[] lineNumbers = ArrayUtils.toPrimitive(
+      DexParser.parseDebugInfo(mtd).lineNumberTable.entries.values().toArray(new Integer[0])
+    );
+    int start = lineNumbers[0], end = lineNumbers[lineNumbers.length-1];
+    Range lineNumberRange = Range.closed((Object) start, (Object)end); 
+    rmap.put(lineNumberRange, mtd);
+  };
+  
+  Map pmap = new TreeMap();
+  for (CallableDeclaration cdecl: mdecls) {
+    Entry e = findMethodEntryWithSignature(rmap, cdecl);
+    if (e == null) {
+      return null;
+      // System.err.printf("Cannot find match for %s\n", cdecl);
+      continue;
+    };
+    Range declRange = getDeclLineNumberRange(cdecl);
+    pmap.put(e.getKey(), Pair.of(declRange, cdecl));
+  };
+  return pmap;
+};
+
+
+public static Range getDeclLineNumberRange(CallableDeclaration cdecl) {
+  NodeList stmts = (cdecl.getBody() instanceof java8.util.Optional)
+    ? cdecl.getBody().get().getStatements()
+    : cdecl.getBody().getStatements();
+  int size = stmts.size();
+  int beginLine = stmts.iterator().next().getRange().get().begin.line;
+  int endLine = stmts.get(size-1).getRange().get().end.line;
+  Range stmtRange = Range.closed((Object) beginLine, (Object) endLine);
+  return stmtRange;
+}
+
+public static List<Map> findBestMatch(Class cls) {
+  List<URL> srcUrls = SourceUtil.findSource(cls.getName(), true, 100, -1);
+  List<Map> maps = new ArrayList<Map>();
+  for (URL srcUrl: srcUrls) {
+    System.err.println(srcUrl);
+    String src = IOUtils.toString(srcUrl, StandardCharsets.UTF_8); 
+    CompilationUnit cu = parseJava(src, true);
+
+    Map<Range___Pair__Range_CallableDeclaration> map 
+      = getLineNumberDeclarationMap(cls, cu);
+    if (map == null) continue;
+    maps.add(map);
+  };
+  return maps;
+};
+

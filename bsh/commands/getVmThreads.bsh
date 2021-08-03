@@ -1,0 +1,21 @@
+public static Map getVmThreads() {
+  Map map = new TreeMap();
+  com.sun.jdi.ThreadGroupReference root = CollectionUtil.firstOrDefault(com.sun.tools.example.debug.tty.Env.vm().topLevelThreadGroups()), next = null;
+  List<ThreadReference> threads = new ArrayList();
+  List<ThreadGroupReference> groups = new ArrayList();
+  Deque<ThreadGroupReference> q = new ArrayDeque();
+  q.offerLast(root);
+  while (!q.isEmpty()) {
+    com.sun.jdi.ThreadGroupReference group = q.poll();
+    groups.add(group);
+    threads.addAll(group.threads());
+    q.addAll(group.threadGroups());
+  }
+  com.sun.jdi.Field nameFld = t.referenceType().fieldByName("name");
+  for (com.sun.jdi.ThreadReference t : threads) {
+    com.sun.jdi.StringReference nameRef = t.getValue(nameFld);
+    String name = nameRef.value();
+    map.put(name, t);
+  }
+  return map;
+}

@@ -1,0 +1,14 @@
+
+{
+  public static java.lang.Object getXStream(boolean experimental) {
+    return org.d6r.SimpleCodec.getXStream();
+  }
+  
+  
+  public static java.lang.Object getXStream() {
+    return org.d6r.SimpleCodec.getXStream();
+  }
+  
+  void;
+}
+

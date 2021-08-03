@@ -1,0 +1,12 @@
+import java.util.Map.Entry;
+public static Map getMethodRanges(Class cls) {
+  Map m = RealArrayMap.toMap(cls.getDeclaredMethods().select(FunctionUtil.bind("return m -> { (m.getModifiers() & Modifier.ABSTRACT) == 0? Pair.of(m, DexParser.parseDebugInfo(m).lineNumberTable.entries.values()): null; }")));
+  Map rangeMap = new TreeMap();
+  for (Entry entry : m.entrySet()) {
+    int[] ints = ArrayUtils.toPrimitive(entry.getValue().toArray(new Integer[0]));
+    int min = Ints.min(ints), max = Ints.max(ints);
+    Range range = Range.closed((Object) min, (Object) max);
+    rangeMap.put((Object) range, (Object) entry.getKey());
+  }
+  return rangeMap;
+}

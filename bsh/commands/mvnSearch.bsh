@@ -1,0 +1,4 @@
+
+
+public static List mvnSearch(String query) { Document resultsDoc = getDocWithBaseUrl(String.format("https://mvnrepository.com/search?q=%s", query)); resultDivs = resultsDoc.select("div.im"); List results = new ArrayList(); for (org.jsoup.nodes.Element div: resultDivs) { URI artifactHref = new URI(resultsDoc.baseUri()).resolve(div.select("a[href^=/artifact]").attr("href")); String name = div.select(".im-title > a").text(); String text = ""; Iterable<Element> descDivs = div.select(".im-description"); if (descDivs.iterator().hasNext()) { text = Pattern.compile("[\n\t ]*(^|\r*\n|$)[\n\t ]*").matcher(descDivs[0].childNodes()[0].getWholeText()).replaceAll("$1"); }; Triple tr = Triple.of(artifactHref, name, text); results.add(tr); }; return results; }
+

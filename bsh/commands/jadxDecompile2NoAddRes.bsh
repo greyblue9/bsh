@@ -1,0 +1,4 @@
+
+
+public static Map jadxDecompile2NoAddRes(String apkPath) { NameSpace ns = this.namespace; Object jx = getJadxNoAddResClasses(apkPath); System.err.println(jx); ns.getVariables().putAll(jx);  Object c2 = getCode2(dc, "^[^$]*$");  return c2; };;
+

@@ -1,0 +1,23 @@
+public static boolean isNonStaticInnerClass(Class cls) {
+  List<Constructor> ctors = Arrays.asList(cls.getDeclaredConstructors());
+  Constructor privateCtor = null, syntheticCtor = null;
+  outer: for (int pass = 0; pass < 2 && syntheticCtor == null; ++pass) {
+    for (Constructor ctor : ctors) {
+      if ((ctor.getModifiers() & Modifier.PRIVATE) != 0) {
+        privateCtor = ctor;
+        continue;
+      } else if (privateCtor != null) {
+        Class[] privTypes = privateCtor.getParameterTypes();
+        Class[] curTypes = ctor.getParameterTypes();
+        if (curTypes.length == privTypes.length + 1 && Arrays.equals(privTypes, Arrays.copyOfRange(curTypes, 0, privTypes.length))) {
+          syntheticCtor = ctor;
+          break;
+        }
+      }
+    }
+  }
+  System.err.printf("\nprivateCtor:   %s\nsyntheticCtor: %s\n\n", privateCtor != null ? dumpMembers.colorize(privateCtor) : "", syntheticCtor != null ? dumpMembers.colorize(syntheticCtor) : "");
+  return syntheticCtor != null;
+}
+
+ 

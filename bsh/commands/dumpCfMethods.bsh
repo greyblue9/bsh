@@ -1,0 +1,298 @@
+import org.benf.cfr.reader.util.bytestream.OffsetBackedByteData;
+import org.benf.cfr.reader.state.DCCommonState;
+import org.benf.cfr.reader.entities.ClassFile;
+import org.benf.cfr.reader.entities.attributes.AttributeLocalVariableTable;
+import org.benf.cfr.reader.entities.attributes.Attribute;
+import org.benf.cfr.reader.entities.attributes.LocalVariableEntry;
+import org.benf.cfr.reader.bytecode.analysis.types.JavaTypeInstance;
+import org.benf.cfr.reader.entities.constantpool.ConstantPool;
+import org.apache.commons.io.IOUtils;
+import java.util.zip.ZipFile;
+import java.util.zip.ZipEntry;
+import java.io.File;
+import java.io.InputStream;
+//import org.benf.cfr.reader.entities.Method;
+import org.benf.cfr.reader.bytecode.analysis.types.MethodPrototype;
+import org.benf.cfr.reader.bytecode.analysis.types.JavaTypeInstance;
+import org.benf.cfr.reader.entities.AccessFlagMethod;
+
+import java.io.*;
+import java.util.*;
+
+
+public static List dumpCfMethods(ClassFile cf) {
+  PrintStream out = System.out;
+  PrintStream err = System.err;
+  
+  print(cf);
+  
+  int nulls = 0;
+  ConstantPool cp = cf.getConstantPool(); 
+  List<Method> mtds = cf.getMethods(); 
+  int failures = 0;
+  StringBuilder sb;
+  MethodPrototype mp;
+  String name;
+  print(mtds);
+  
+  for (org.benf.cfr.reader.entities.Method m: mtds) {
+    try {
+      mp = m.getMethodPrototype();
+      if (mp == null) {
+        err.println("mp == null");
+        continue; 
+      }
+      sb = new StringBuilder(128); 
+      
+      name = m.getName();
+      JavaTypeInstance retType = mp.getReturnType(); 
+      List<JavaTypeInstance> paramTypes = mp.getArgs(); 
+      Set<AccessFlagMethod> accessFlags = m.getAccessFlags();
+      
+      // modifiers
+      String mods = Arrays.toString(accessFlags.toArray()).replaceAll("[\\[\\], ]+", " ").replaceAll("^ *([^ ].*[^ ]) *", "$1 ");
+      sb.append(dumpMembers.colorize(mods,"1;30")); 
+      
+      // return type
+      if (retType != null) { 
+        sb.append(dumpMembers.colorize(
+           retType.toString().replaceAll(           "java\\.(?:io\\.|lang\\.|jang\\.reflect\\.|util\\.(?:zip\\.|jar\\.|regex\\.)?)?", ""), "1;36"
+        )); 
+      }
+      
+      // name
+      sb.append(' '); 
+      sb.append(dumpMembers.colorize(m.getName(), "1;33"));
+      
+      
+      // parameter names
+      String[] paramNames = new String[paramTypes.size()];
+      try {
+        Map attrsByName = getfldval(m, "attributes");
+        Attribute codeAttr = attrsByName.get("Code"); 
+        try {
+          AttributeLocalVariableTable lvt 
+            = codeAttr.getLocalVariableTable();
+          List<LocalVariableEntry> entries 
+           = lvt.getLocalVariableEntryList(); 
+          int varOffset = 0;
+          for (int pidx = 0; pidx < paramTypes.size(); pidx++) {
+            LocalVariableEntry entry = entries.get(pidx+varOffset);
+            short nameIndex = entry.getNameIndex(); 
+            String varName = cp.getEntry(nameIndex).getValue(); 
+            if (varName.equals("this")) {
+              varOffset += 1;
+              pidx -= 1; // back up to do this parameter agaib
+              continue; 
+            }
+            paramNames[pidx] = varName;
+          } // param name for
+        } catch (Throwable e) {
+          //paramNames[pidx] = "";
+        }
+        
+       
+      } catch (Throwable e) { 
+        // trouble finding param name(s)
+        err.println(e.toString());
+        //e.printStackTrace();
+      }
+      // render parameters
+      sb.append('('); 
+      int paramIdx = -1;
+      for (JavaTypeInstance paramType: paramTypes) {
+        paramIdx++;
+        if (paramIdx > 0) sb.append(", ");
+        String typeName = paramType.toString();             
+        String typeAbbr = typeName.replaceAll(
+          "java\\.(?:io|lang(?:\\.reflect)?|net|util)\\.",
+          ""
+        );
+        sb.append(dumpMembers.colorize(typeAbbr, "1;32"));
+        if (paramNames[paramIdx] != null) {
+          sb.append(String.format("%c[0m %s", 0x1b,
+            paramNames[paramIdx]
+          ));
+        }
+      } // render params for
+      sb.append(')');
+      // end of method render
+      out.println(sb.toString());
+      
+    } catch (Throwable e) {
+      // trouble processing method
+      err.println(e.toString());
+      //e.printStackTrace();
+    } // method catch
+    //out.println(sb.toString());
+  } // for (methods)
+  
+  return mtds;
+}
+
+
+
+
+public static void dumpCfMethods(int dummy, String zipPath, String _clsName) 
+{
+  /*String name = clsName.replace('.', '/') + ".class"; 
+  ZipFile zf = new ZipFile(new File(zipPath)); 
+  ZipEntry ze = zf.getEntry(name);
+  if (ze == null) {
+    System.err.printf("%s [%s]: ZipEntry == null: %s\n", 
+      zipPath, zf.toString(), name
+    );
+    return;
+  }
+  InputStream is = zf.getInputStream(ze);
+  if (is == null) {
+    System.err.printf(
+      "%s [%s]: zf.getInputStream(ze) == null: %s\n", 
+      zipPath, zf.toString(), name
+    );
+    return;
+  }
+  */
+  String clsName = _clsName.replace('.', '/') + ".class"; 
+  ZipFile zf = new ZipFile(new File(zipPath)); 
+  ZipEntry ze = zf.getEntry(clsName);
+  InputStream is = zf.getInputStream(ze);
+  byte[] clsBytes = IOUtils.toByteArray(is);
+  OffsetBackedByteData bd = new OffsetBackedByteData(clsBytes, 0);
+  DCCommonState cs = new DCCommonState(null, null); 
+  String pathName = zipPath;
+  ClassFile cf = new ClassFile(bd, pathName, cs);
+  System.err.println(cf);
+  dumpCfMethods(cf);
+}
+
+public static ClassFile getCfClass(String zipPath, String clsName) {
+  String clsName = clsName.replace('.', '/') + ".class"; 
+  ZipFile zf = new ZipFile(new File(zipPath)); 
+  ZipEntry ze = zf.getEntry(clsName);
+  InputStream is = zf.getInputStream(ze);
+  byte[] clsBytes = IOUtils.toByteArray(is);
+  OffsetBackedByteData bd = new OffsetBackedByteData(clsBytes, 0);
+  DCCommonState cs = new DCCommonState(null, null); 
+  String pathName = zipPath;
+  ClassFile cf = new ClassFile(bd, pathName, cs);
+  return cf;
+}
+
+public static List getCfMethods(String zipPath, String clsName) {
+  String clsName = clsName.replace('.', '/') + ".class"; 
+  ZipFile zf = new ZipFile(new File(zipPath)); 
+  ZipEntry ze = zf.getEntry(clsName);
+  InputStream is = zf.getInputStream(ze);
+  byte[] clsBytes = IOUtils.toByteArray(is);
+  OffsetBackedByteData bd = new OffsetBackedByteData(clsBytes, 0);
+  DCCommonState cs = new DCCommonState(null, null); 
+  String pathName = zipPath;
+  ClassFile cf = new ClassFile(bd, pathName, cs);
+  return cf.getMethods();
+}
+
+
+public static void dumpCfMethods(InputStream is, String pathName) 
+{
+  byte[] clsBytes = IOUtils.toByteArray(is);
+  
+  OffsetBackedByteData bd = new OffsetBackedByteData(clsBytes, 0);
+  DCCommonState cs = new DCCommonState(null, null); 
+  ClassFile cf = new ClassFile(bd, pathName, cs);
+  dumpCfMethods(cf);
+}
+
+public static void dumpCfMethods(InputStream is) { 
+  dumpCfMethods(is, null);
+}
+
+
+
+/*
+public static void dumpCfMethods(File f) { 
+  if (f.getName().indexOf(".class") == f.getName().length() - 6) {
+    ZipFile zf = new ZipFile(f); 
+    names = mtd.invoke(null, new URL("file://" + jarPath)); 
+    ZipEntry ze = zf.getEntry(clsName);
+  dumpCfMethods( zf.getInputStream(ze) );
+  byte[] clsBytes = IOUtils.toByteArray(is);
+  
+  OffsetBackedByteData bd = new OffsetBackedByteData(clsBytes, 0);
+  DCCommonState cs = new DCCommonState(null, null); 
+  ClassFile cf = new ClassFile(bd, zf.getName(), cs);
+  dumpCfMethods(cf);
+}
+*/
+
+
+public static void dumpCfMethods(String jarPath, int idx) {
+  mtd = findMethod(BshClassPath.class, "searchJarForClasses"); 
+  names = mtd.invoke(null, new URL("file://" + jarPath)); 
+  if (names.length >= idx+1) {
+    String name = names[idx]; 
+    dumpCfMethods(jarPath, name);
+  }
+}
+
+
+public static void dumpCfMethods(String jarPath) {
+  mtd = findMethod(BshClassPath.class, "searchJarForClasses"); 
+  names = mtd.invoke(null, new URL("file://" + jarPath)); 
+  
+  if (names.length > 0) {
+    CollectionUtil.print(names);
+    String name = names[0]; 
+    dumpCfMethods(jarPath, name);
+  }
+}
+
+
+public static List dumpCfMethods(String path, String clsName) {
+  List methods = getCfMethods(path, clsName); 
+  if (methods.size() == 0) return methods; 
+  return dumpCfMethods(methods.get(0).getClassFile());
+}
+
+public static String dumpCfMethods(bsh.ClassIdentifier ci) {
+  Class cls = (Class) ((bsh.ClassIdentifier) ci).getTargetClass(); 
+  String[] sources = ClassPathUtil.findClassSource(cls.getName()).toArray(new String[0]); 
+  if (sources.length == 0) {
+    System.err.printf(
+      "Class '%s' not found in classpath\n", 
+      cls.getName()
+    );
+    return null;
+  }
+  System.err.printf(
+    "Found %d source classpath elements: %s\n",
+    sources.length,
+    Arrays.toString(sources)
+  );
+  for (String source: sources) {
+    System.err.printf("Source: %s\n", source);
+    try {
+      dumpCfMethods(source, cls.getName());
+    } catch (Throwable e) {
+      e.printStackTrace();
+      continue;
+    }
+  }
+  return null;   
+}
+
+public static String dumpCfMethods(Class cls) {
+  String[] sources = ClassPathUtil.findClassSource(cls.getName()).toArray(new String[0]);
+  if (sources.length == 0) {
+    System.err.printf(
+      "Class '%s' not found in classpath\n",
+      cls.getName()
+    ); 
+    return null;
+  }
+  System.err.printf("Found %d source classpath elements: %s\n", sources.length, Arrays.toString(sources)); for (String source: sources) { System.err.printf("Source: %s\n", source); try { dumpCfMethods(source, cls.getName()); } catch (Throwable e) { e.printStackTrace(); continue; }; } return null;
+  }
+
+
+
+

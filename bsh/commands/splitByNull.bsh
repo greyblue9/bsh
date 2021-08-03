@@ -1,0 +1,30 @@
+
+
+
+public static Map/*<Pair, byte[]>*/ splitByNull(byte[] data) {
+  Map map = new TreeMap();
+  
+  int lastNullPos = -1;
+  int nullPos;
+  byte[] NULLBYTE = new byte[]{ (byte) 0x0 };
+  while ((nullPos = ByteUtil.indexOf(data, NULLBYTE, lastNullPos+1)) != -1) {
+    int start = lastNullPos + 1;
+    int stop = nullPos;
+    int len = stop - start;
+    byte[] seg = Arrays.copyOfRange(data, start, stop);
+    map.put(Pair.of(start, len), seg);
+    lastNullPos = nullPos;
+  }
+  
+  if (lastNullPos != -1) {
+    int start = lastNullPos + 1;
+    int stop = data.length;
+    int len = stop - start;
+    byte[] seg = Arrays.copyOfRange(data, start, stop);
+    map.put(Pair.of(start, len), seg);
+  }
+  
+  return map;
+}
+
+

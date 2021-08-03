@@ -1,0 +1,17 @@
+
+
+
+
+
+
+public static Map parseStackDumpThreadInfo2(String stackDumpStringKey, Map map) { if (map == null) map = new TreeMap(); List<Pair> pairs = new ArrayList<Pair>();  StringBuffer sb = new StringBuffer(stackDumpStringKey.length() * 4); String patStr = "^ *\"(?<s:name>[^\"]*)\" prio=(?<d:priority>-?[0-9]+) tid=(?<d:threadId>[0-9]+) (?<s:vmState>\\S+\\S*)"; Matcher nmchr = Pattern.compile("\\(\\?<(?:([a-z]):|)((?:[^>]|\\\\>)+)>").matcher(patStr);  int lastend = 0; while (nmchr.find()) {  sb.append(patStr.subSequence(lastend, nmchr.start(0))); lastend = nmchr.end(0); nmchr.appendEvaluated(sb, "("); pairs.add(Pair.of(nmchr.group(2), nmchr.group(1)));   };  if (lastend < patStr.length()) { sb.append(patStr.subSequence(lastend, patStr.length())); };  String pat = sb.toString();          Matcher mchr = Pattern.compile(pat, Pattern.DOTALL | Pattern.UNIX_LINES).matcher(stackDumpStringKey);  if (mchr.find()) { for (int i=0, gcnt=mchr.groupCount(); i<gcnt; ++i) { String val = mchr.group(i+1); Pair nameType = i < pairs.size()? pairs.get(i): Pair.of("?", String.format("field%02d", i+1)); String name = nameType.getKey(), typeChar = nameType.getValue(); /* System.err.printf("%2d %20s (%s) = %s\n", i, name, typeChar, val); */ Object value = ("s".equals(typeChar)? val: ("d".equals(typeChar)? Integer.parseInt(val, 10): ("x".equals(typeChar)? Long.parseLong(val, 16): val))); map.put(name, value); }; }; return map; };
+
+
+
+
+
+
+public static Map parseStackDumpThreadInfo2(String stackDumpStringKey) { return parseStackDumpThreadInfo2(stackDumpStringKey, (Map) null); };
+
+
+

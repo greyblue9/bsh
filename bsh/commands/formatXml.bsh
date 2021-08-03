@@ -1,0 +1,8 @@
+public static String formatXml(org.jsoup.nodes.Element root) {
+  org.jsoup.examples.HtmlToPlainText htp = new org.jsoup.examples.HtmlToPlainText();
+  org.jsoup.examples.HtmlToPlainText.FormattingVisitor fv = new org.jsoup.examples.HtmlToPlainText.FormattingVisitor(htp);
+  org.jsoup.nodes.Document.OutputSettings os = root.getOutputSettings().prettyPrint(true).indentAmount(2);
+  return String.valueOf(root.traverse(fv));
+}
+
+ 

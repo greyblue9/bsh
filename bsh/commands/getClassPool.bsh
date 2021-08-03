@@ -1,0 +1,119 @@
+
+import javassist.*; 
+import javassist.bytecode.*; 
+import java.util.regex.*;
+
+
+public static ClassPool getClassPool() {
+  ClassPool cp = this.interpreter.get("cp");
+  if (cp == void || cp == null) {
+    String base = "/external_sd/_projects/sdk/bsh/trunk";
+    cp = getClassPool(
+      base,
+      new File(base, "bsh-mod.jar")
+    );
+    this.interpreter.set("cp", cp);
+  }
+  return cp;
+}
+
+public static ClassPool getClassPool(String projBase) { 
+  return getClassPool(projBase, null);
+}
+
+public static ClassPool getClassPool
+(String projBase, File extraFile) 
+{ 
+  
+  ClassPool cp = ClassPool.getDefault();
+  ClassPoolTail cpt 
+   = (ClassPoolTail) Reflect.getfldval(cp, "source"); 
+  ClassPathList cpl 
+   = (ClassPathList) Reflect.getfldval(cpt, "pathList"); 
+  HashSet files = new HashSet(); 
+  do { 
+    
+    ClassPath cpth = Reflect.getfldval(cpl, "path");
+    if (cpth instanceof JarClassPath) {
+      JarClassPath jcp = (JarClassPath) cpth;
+      JarFile jf = Reflect.getfldval(jcp, "jarfile");
+      String path = Reflect.getfldval(jf, "filename");
+      File crntFile = new File(path);
+      files.add(crntFile); 
+    } else {
+      //dumpMembersExp(cpth);
+    }
+    cpl = Reflect.getfldval(cpl, "next");
+  } while (cpl != null);
+  
+  // CollectionUtil.print(files.toArray());
+  
+  if (extraFile != null) {
+    files.add(extraFile);
+  }
+  String buildScript = IOUtils.toString(
+    new FileInputStream(new File(projBase, "build.sh"))
+  ); 
+  Pattern jarRegex = Pattern.compile(
+    "-l[\t \"]*([A-Za-z_.0-9./-]+\\.jar)"
+  );
+  Matcher mr = jarRegex.matcher(buildScript); 
+  while (mr.find()) { 
+  
+    String libJarPath = mr.group(1).toString();
+    if (libJarPath.indexOf("/") == 0) { 
+      files.add(new File(mr.group(1))); 
+    } else { 
+      files.add(new File(
+        projBase, libJarPath.replaceAll("\\.\\./", "")
+      )); 
+    }
+  } 
+  File[] libFiles = files.toArray(new File[0]); 
+  CollectionUtil.print(libFiles); 
+  
+  for (File jar: libFiles) { 
+    cp.appendClassPath(jar.getPath()); 
+  } 
+  this.interpreter.set("cp", cp);
+  this.interpreter.set("files", files);
+  this.interpreter.set("mr", mr);
+  this.interpreter.set("jarRegex", jarRegex);
+  
+  return cp; 
+}
+
+
+public static ClassPool getClassPool(File[] addFiles)
+{
+  ClassPool cp = ClassPool.getDefault();
+  ClassPoolTail cpt
+   = (ClassPoolTail) Reflect.getfldval(cp, "source");
+  ClassPathList cpl
+   = (ClassPathList) Reflect.getfldval(cpt, "pathList");
+  HashSet files = new HashSet();
+  do {
+    ClassPath cpth = Reflect.getfldval(cpl, "path");
+    if (cpth instanceof JarClassPath) {
+      JarClassPath jcp = (JarClassPath) cpth;
+      JarFile jf = Reflect.getfldval(jcp, "jarfile");
+      String path = Reflect.getfldval(jf, "filename");
+      File crntFile = new File(path);
+      files.add(crntFile);
+    } else {
+      //dumpMembersExp(cpth);
+    }
+    cpl = Reflect.getfldval(cpl, "next");
+  } while (cpl != null);
+  Collections.addAll(files, addFiles);
+  File[] libFiles = files.toArray(new File[0]);
+  CollectionUtil.print(libFiles);
+  for (File jar: libFiles) {
+    cp.appendClassPath(jar.getPath());
+  }
+  this.interpreter.set("cp", cp);
+  this.interpreter.set("files", files);
+  this.interpreter.set("mr", mr);
+  this.interpreter.set("jarRegex", jarRegex);
+  return cp;
+}

@@ -1,0 +1,7 @@
+
+import android.app.IActivityManager;
+
+public static Object openc(Object pathOrFile) {
+  return open((Object) pathOrFile, 'c');
+}
+

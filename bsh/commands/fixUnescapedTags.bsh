@@ -1,0 +1,22 @@
+public static String fixUnescapedTags(String html) {
+  return html;
+  Matcher tagMchr = Pattern.compile("<([a-zA-Z0-9_]+)([^<>a-zA-Z0-9_][^<>]*|)>", Pattern.DOTALL).matcher("");
+  Set<String> htmlTags = new LinkedHashSet<String>(Arrays.asList("a", "abbr", "address", "area", "article", "aside", "audio", "b", "base", "bdi", "bdo", "blockquote", "body", "br", "button", "canvas", "caption", "cite", "code", "col", "colgroup", "data", "datalist", "dd", "del", "details", "dfn", "dialog", "div", "dl", "dt", "em", "embed", "fieldset", "figure", "footer", "form", "h1", "h2", "h3", "h4", "h5", "h6", "head", "header", "hgroup", "hr", "html", "i", "iframe", "img", "input", "ins", "kbd", "keygen", "label", "legend", "li", "link", "main", "map", "mark", "menu", "menuitem", "meta", "meter", "nav", "noscript", "object", "ol", "optgroup", "option", "output", "p", "param", "pre", "progress", "q", "rb", "rp", "rt", "rtc", "ruby", "s", "samp", "script", "section", "select", "small", "source", "span", "strong", "style", "sub", "summary", "sup", "table", "tbody", "td", "template", "textarea", "tfoot", "th", "thead", "time", "title", "tr", "track", "u", "ul", "var", "video", "wbr", "figcaption", "svg", "font"));
+  tagMchr.reset(html);
+  List<Pair> replacements = new ArrayList();
+  while (tagMchr.find()) {
+    String tagName = tagMchr.group(1);
+    String rest = tagMchr.group(2);
+    if (htmlTags.contains(tagName.toLowerCase()))
+      continue;
+    String replacement = StringEscapeUtils.escapeHtml4(String.format("<%s%s>", tagName, rest));
+    replacements.add(Pair.of(tagMchr.group(0), replacement));
+  }
+  if (replacements.isEmpty())
+    continue;
+  for (Pair p : replacements) {
+    html = html.replace(p.getKey(), p.getValue());
+    System.err.printf("Replace unescaped string \"%s\" with \"%s\" ...", p.getKey(), p.getValue());
+  }
+  return html;
+}

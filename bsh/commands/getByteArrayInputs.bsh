@@ -1,0 +1,64 @@
+
+  public static byte[][] getByteArrayInputs(List<Object> inputs, int desiredMagic,
+    String defaultZipEntryName)
+  {
+    List<ByteArr> byteArrays = new ArrayList<ByteArr>();
+    Deque<Object> q = new ArrayDeque<Object>();
+    q.addAll(inputs);
+    
+    while (!q.isEmpty()) {
+      Object input = q.poll();
+      if (input instanceof String) {
+        File inputFile = new File(input);
+        q.offer(inputFile.getAbsoluteFile());
+      } else if (input instanceof File) {
+        File inputFile = (File) input;
+        if (! inputFile.exists()) {
+          IOException e = new FileNotFoundException(String.format(
+            "input file '%s' does not exist", inputFile.getPath()
+          ));
+          Log.e("arscmerger", e);
+          throw Reflector.Util.sneakyThrow(e);
+        }
+        q.offer(FileUtils.readFileToByteArray(inputFile));
+      } else if (input instanceof URL) {
+        q.offer(IOUtils.toByteArray((URL) input));
+      } else if (input instanceof InputStream) {
+        q.offer(IOUtils.toByteArray((InputStream) input));
+      } else if (input instanceof Path) {
+        q.offer(Files.readAllBytes((Path) input));
+      } else if (input instanceof ZipFile) {
+        byte[] arscBytes
+          = ZipUtil.toByteArray((ZipFile) input, defaultZipEntryName);
+        if (arscBytes == null) {
+          IOException ioe = new FileNotFoundException(String.format(
+            "input zip file '%s' does not contain a '%s' entry",
+            ((ZipFile) input).getName(), defaultZipEntryName
+          ));
+          Log.e("arscmerger", ioe);
+          throw Reflector.Util.sneakyThrow(ioe);
+        }
+        q.offer(arscBytes);
+      } else if (input instanceof byte[]) {
+        byte[] b = (byte[]) input;
+        int magic = ByteBuffer.wrap(b).getInt();
+        if (magic == 0x02000C00) {
+          byteArrays.add(b);
+        } else if (magic == 0x504B0304) {
+          byte[] arscBytes = ZipUtil.toByteArray(b, defaultZipEntryName);
+          byteArrays.add(arscBytes);
+        } else {
+          IllegalArgumentException e = new IllegalArgumentException(String.format(
+            "Unrecognized input while processing ARSC input #%d/%d: %08X:\n%s",
+            byteArrays.size()+1, inputs.size(), magic,
+            HexDump.dump(b, 0, Math.min(256, b.length), 0L, ByteOrder.LITTLE_ENDIAN)
+          ));
+          Log.e("arscmerger", e);
+          throw Reflector.Util.sneakyThrow(e);
+        }
+      }
+    }
+    return byteArrays.toArray(new byte[0][]);
+  }
+
+

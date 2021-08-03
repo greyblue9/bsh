@@ -1,0 +1,30 @@
+
+
+
+public static String disassemble(Object o) {
+  if (o instanceof CtBehavior) {
+    return disassemble((CtBehavior) o);
+  }
+  Class cls = dumpMembers.getClass(o);
+  System.err.println(new bsh.ClassIdentifier(cls).toString());
+  CtClass ct = JavassistUtil.getCtClass(cls);
+  return StringUtils.join(disassemble(ct), "\n").replaceAll("com.strobel\\.(?:[a-z]+\\.)*([A-Z])", "$1").replaceAll("invoke[a-z]* #[0-9]+ = Method ([^\n(]*)\\.([^(. ]+)\\(\\(([^)]*)\\)([^)]*)\\)", "result = $1.$2($3)").replaceAll("L([^; ]*)/([^; /]+);", "$2").replaceAll("result = ([^\n]*)\n *[0-9:]+ (.)store[ _]([^\n ]*)", "$2$3 = $1").replaceAll("(.)load[ _]([0-9]*)[^\n]*\n *[0-9:]* ([a-z][^(]*)\\(([^\n]*)\\)(?=\n)", "$3(\u001b[1;35m$1$2\u001b[0m)").replaceAll("(\n *)([0-9]+:) ((?:if|get|put|invoke|check|[a-z]ret|goto|return|j|b|jsr)[a-z]*_?[0-9]*)(?: ?([^\n ][^\n ]*|(?=\n)))", "$1$2 \u001b[1;36m$3\u001b[1;30m -> \u001b[1;32m$4\u001b[0m").replaceAll("(\n *)([0-9]+): ", "$1\u001b[0;36m$2\u001b[0m  ").replaceAll("\n[^\n]* [a-z](?:load|store)[_ ][0-9]+(?=\n)", "").replaceAll("\n\n  ([^ (]*)\\.([^ (.]*)\\(([^)]*)\\) \\{", "\n\n  \u001b[1;31m$1\u001b[1;30m::\u001b[1;33m$2\u001b[1;37m(\u001b[1;32m$3\u001b[1;37m) \u001b[0m{");
+}
+
+ 
+
+public static List disassemble(CtClass ct) {
+  List disasms = new ArrayList();
+  for (CtBehavior cm : ct.getDeclaredMethods()) {
+    ByteArrayOutputStream baos = new ByteArrayOutputStream();
+    PrintStream ps = new PrintStream(baos);
+    JavassistHelper.disassemble(cm, ps);
+    String disasm = ("\n".concat(StringUtils.trim(Pattern.compile("(?<=^|\n)(?=[0-9])").matcher(java.nio.charset.StandardCharsets.UTF_8.newDecoder().decode(ByteBuffer.wrap(baos.toByteArray())).toString()).replaceAll("  ").replaceFirst("\\)", ") {")).concat("\n}\n"))).replace("\n", "\n  ");
+    disasms.add(disasm);
+    ps.close();
+    baos.close();
+  }
+  return CollectionUtil.print(disasms);
+}
+
+ 

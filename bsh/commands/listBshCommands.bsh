@@ -1,0 +1,1 @@
+public static File[] listBshCommands() { return expandGlob("/data/media/0/bsh/commands/[a-z]*.bsh").toArray(new String[0]).to(File).sort().select(FunctionUtil.eval("""return m -> { StringUtils.substringBeforeLast(m.getName(), ".bsh"); }""")).print().select(FunctionUtil.eval("""return m -> { new(File, "bsh/commands", m); }""")); }

@@ -1,0 +1,151 @@
+
+import org.apache.commons.lang3.tuple.Pair;
+import java.util.regex.*;
+import java.lang.reflect.*;
+import java.util.*;
+import SQLite.*;
+
+
+public static Collection getNamesAbbrev(Class[] classes) 
+{
+  int MIN_ABBR_LEN = 2;
+  int MAX_ABBR_LEN = 6;
+  
+  Map abbrMap = readUtextData(500);
+  
+
+  //HashMap cmb = new HashMap(); 
+  List pairs = new ArrayList();
+  //StringBuilder sb = new StringBuilder(76 * 100); 
+  
+  //Map<String, List<BshMethod>> mmap = this.namespace.parent.methods;
+  //String[] names = mmap.keySet().toArray(new String[0]);
+  //List<BshMethod> mthds = mmap.get(name);
+  for (Class cls: classes) {
+    boolean clsIsPublic
+      = Modifier.isPublic(cls.getModifiers());
+    if (! clsIsPublic) {
+      System.err.printf(
+        "I: Skipping non-public class %s\n", 
+        cls.getCanonicalName()
+      );
+      continue; 
+    }   
+    for (Method mthd: cls.getDeclaredMethods())
+    {
+      int mods = mthd.getModifiers();
+      boolean isPublic = Modifier.isPublic(mods);
+      if (! isPublic) {
+        continue; 
+      }
+      boolean isStatic = Modifier.isStatic(mods);
+      
+      String name = mthd.getName();
+      String realName = name;
+      if (isStatic) {
+        // Arrays.toString
+        realName = cls.getSimpleName() +
+         "." + mthd.getName();
+        // ArraysToString
+        name = cls.getSimpleName() 
+          + String.valueOf(mthd.getName().charAt(0)).toUpperCase()
+          + mthd.getName().substring(1);
+      }
+       
+      boolean firstIsUpper 
+        = String.valueOf(name.charAt(0)).toUpperCase().charAt(0) == name.charAt(0);
+        
+      // "getNameSpace" -> "g__N___S____"
+      String capsMixedWithUnderscores
+          = String.valueOf(name.charAt(0))
+          + name.substring(1).replaceAll("[^A-Z]", "_");
+      String regex = capsMixedWithUnderscores
+          .replaceAll("([A-Za-z])(_*)", "(($1)($2))").replace('_', '.');
+      
+        // `((g)(..))((N)(...))((S)(....))`
+      Pattern ptrn = Pattern.compile(regex);
+      Matcher mchr = ptrn.matcher(name);
+      MatchResult mr = mchr.find()
+        ? mchr.toMatchResult()
+        : null;
+        
+        // "gNS"
+      String capsMixedCase = capsMixedWithUnderscores
+          .replaceAll("_", "");
+        // "gns"
+      String capsLc = capsMixedCase.toLowerCase();
+      String abbrev = capsLc;
+      
+      
+      List byAbbr = abbrMap.get(abbrev);
+      int numExisting = byAbbr != null? byAbbr.size(): 0;
+      int charsAdded = 0;
+      String charSupply = "";
+      if (abbrev.length() < MIN_ABBR_LEN 
+       || numExisting > 3)
+      {
+        if (mr == null) {
+          System.err.printf("Skipping too-short name: `%s`\n", name);
+          continue; 
+        }
+        // "gns" -> add next letter to last group
+        // ((g)(et))((N)(ame))((S)(pace))
+        // would be "Space"
+        int lastGroupOffset = mr.groupCount() - 2; 
+        // "S"
+        int leadingCharSubGroupIdx = lastGroupOffset + 1;
+        // "pace"
+        int restSubGroupIdx = lastGroupOffset + 2;
+        charSupply = mr.group(restSubGroupIdx).toLowerCase();
+        for (int n=0; n<charSupply.length(); n++) {
+          abbrev += charSupply.charAt(n);
+          byAbbr = abbrMap.get(abbrev);
+          numExisting = byAbbr != null? byAbbr.size(): 0;
+          if (abbrev.length() >= MIN_ABBR_LEN
+               && numExisting <= 3) 
+          {
+            break;  
+          }
+        }
+      }
+      if (abbrev.length() > MAX_ABBR_LEN) {
+        abbrev = abbrev.substring(0, MAX_ABBR_LEN);
+      }
+      
+      Class[] types = mthd.getParameterTypes(); 
+      String suffixSyms;
+      if (types.length == 0) {
+        suffixSyms = "()";
+      } else if (types[0] == String.class) {
+        // types.length > 0 here
+        suffixSyms = "(\"";   
+      } else {
+        suffixSyms = "(";
+      }
+      String expandedName = realName + suffixSyms;
+            
+      System.out.printf(
+        "%18s -> %-18s\n", abbrev, expandedName
+      );
+      
+      pairs.add(Pair.of(abbrev, expandedName));
+    } // methods
+  } // classes
+  
+  return pairs;
+}
+
+
+
+public static java.lang.String getNamesAbbrev(Class[] classes) {
+
+  Map abbrMap = readUtextData(100000);
+  ClassPool cp = getClassPool();
+  cp.appendClassPath("/storage/extSdCard/_projects/sdk/lib/sqlite.jar");
+  String __src = FileUtils.readFileToString(new File("/data/media/0/bsh/commands/__getNamesAbbrev.bsh"));
+  Object r = genClass(__src);
+  this.interpreter.set("r", r);
+  return r.getNamesAbbrev(abbrMap, classes); 
+
+}
+

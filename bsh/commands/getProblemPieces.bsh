@@ -1,0 +1,2 @@
+public static List<String> getProblemPieces(String problemTsv) { List<String> pieces = new ArrayList<String>(); int last = -1, pos; while ((pos = problemTsv.indexOf('\t', last + 1)) != -1) { pieces.add(problemTsv.substring(last + 1, pos)); last = pos; }; pieces.add(problemTsv.substring(last + 1)); return pieces; }   
+

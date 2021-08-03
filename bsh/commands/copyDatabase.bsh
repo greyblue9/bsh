@@ -1,0 +1,27 @@
+
+
+
+
+
+public static File copyDatabase(File primaryDbFile, boolean verbose) { File[] origDbFiles = null; List<File> newDbFiles = new ArrayList<File>(); File mainDbCopyFile = null; InputStream is = null; OutputStream os = null; File tmpDir = PosixFileInputStream.createTemporaryDirectory(".tmp_clipperdb"); File newDbFile = (mainDbCopyFile = new File(tmpDir, primaryDbFile.getName()));   try { os = new BufferedOutputStream(new FileOutputStream(newDbFile), 32768);  origDbFiles = primaryDbFile.getParentFile().listFiles(); for (File dbf: origDbFiles.filter(Pattern.compile(String.format("^.+/%s(?:-[a-z0-9-_]*)?$", getEscapeRegex().translate(primaryDbFile.getName()))).matcher(""))) { Log.d("copyDatabase", "Copying %s ...", dbf.getName()); if (is != null) { IOUtils.closeQuietly(is); is = null; }; try { is = new org.apache.commons.io.input.AutoCloseInputStream(new BufferedInputStream(new FileInputStream(dbf))); if (verbose) Log.d("copyDatabase", "Copying datastream from \"%s\" into the output file ...\n", dbf); IOUtils.copyLarge(is, os); } catch (IOException ioe) { Log.e("copyDatabase", String.format("Oh no! The copy operation failed while transferring \"%s\" to \"%s\"!", dbf, mainDbCopyFile), ioe); try { os.flush(); } catch (Throwable xxx) { ; }; return Reflector.Util.sneakyThrow(ioe); } finally { if (is != null) IOUtils.closeQuietly(is); is = null; }; }; } finally { os.flush(); os.close(); };     if (origDbFiles.length > 1) { Log.d("copyDatabase", "VACUUMing up database from (%s) ...", StringUtils.join(newDbFiles, ", ")); }; Log.d("copyDatabase", "Copy of primary database file: [%s]", mainDbCopyFile); System.err.println(PosixFileInputStream.pexecSync("sqlite3.armv7-pie", mainDbCopyFile.getPath(), "VACUUM; REINDEX;  "));  for (File otherFile: newDbFiles) { if (otherFile.equals(mainDbCopyFile)) { Log.d("copyDatabase", "(keeping [%s])", otherFile); continue; }; Log.d("copyDatabase", "(cleaning up temporary copy of journal-file: \"%s\")", otherFile.getPath()); if (! otherFile.delete()) Log.e("copyDatabase", "Failed to delete temp journal copy! (path: \"%s\")", otherFile); }; return mainDbCopyFile; };
+
+
+
+
+
+
+
+
+public static File copyDatabase(File primaryDbFile) { return copyDatabase(primaryDbFile, false); }
+
+
+
+
+
+public static File copyDatabase(String primaryDbFilepath) { File file = new File(PosixFileInputStream.resolve(primaryDbFilepath)); return copyDatabase(file.exists() && file.isFile()? file: Reflector.Util.sneakyThrow(new IllegalArgumentException(String.format("The %s \"%s\" %s.", file.exists()? "file": "item", file.getPath(), file.exists()? "is not a regular file. A database was expected": "does not exist"), new java.io.FileNotFoundException(file.getPath())))); }
+
+
+
+
+
+

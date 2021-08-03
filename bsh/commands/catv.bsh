@@ -1,0 +1,65 @@
+
+
+
+public static String catv(String fileOrText) {
+  return catv(fileOrText, "v");
+}
+
+public static String catv(String fileOrText, String flags) {
+  File file;
+  byte[] readBuf = 
+      (fileOrText.length() < 256 
+  &&   fileOrText.indexOf(' ') == -1
+  &&  (file = new File(fileOrText)).exists()) 
+        ? FileUtils.readFileToByteArray(file)
+        : fileOrText.getBytes("UTF-8");
+  return catv(readBuf, flags);
+}
+
+public static String catv(byte[] readBuf) {
+  return catv(readBuf, "v");
+}
+
+public static String catv(byte[] readBuf, String flags) {
+  
+  boolean catv_opt_v = flags != null && flags.indexOf('v') != -1;
+  boolean catv_opt_t = flags != null && flags.indexOf('t') != -1;
+  boolean catv_opt_e = flags != null && flags.indexOf('e') != -1;
+  
+  //char[] readBuf = input.toCharArray();
+  int len = readBuf.length;
+  StringBuilder writeBuf = new StringBuilder(readBuf.length * 2);
+  
+  for (int i=0; i<len; i+=1) {
+    char c = (char) readBuf[i];
+    if (c > 126 && catv_opt_v) {
+      if (c == 127) {
+        writeBuf.append("^?");
+        continue;
+      }
+      writeBuf.append("M-");
+      c = (char) ((byte) (((int)c) - 128));
+      //writeBuf.append(c);
+    }
+    if ((int)c < 32) {
+      if (c == (char)10) {
+        if (flags & catv_opt_e) {
+          writeBuf.append('$');
+        } 
+      } else if ((c == (char)9) ? catv_opt_t: catv_opt_v) {
+        writeBuf.append(String.format(
+          "^%c",  (char) (byte) (((int)c) + ((int)'@'))
+        ));
+        continue;
+      }
+    }
+    writeBuf.append(c);
+  }
+  
+  String value = writeBuf.toString();
+  sb = null;
+  readBuf = null;
+  return value;
+}
+
+

@@ -1,0 +1,42 @@
+public static java.util.Map readUtextData(int limit) {
+  java.lang.String sql = String.valueOf("select u._id, u.title, u.note from utext u where length(u.title) between 2 and 5 and length(u.note) between 3 and 50 and u.note not like '% %' limit ").concat(String.valueOf(limit)).concat(";");
+  java.lang.System.out.println(sql);
+  java.util.HashMap abbrMap = new java.util.HashMap();
+  SQLite.Database db = new SQLite.Database();
+  SQLite.TableResult tbl = null;
+  try {
+    db.open(
+       "/data/data/klye.usertext/databases/utext.db", 0
+    );
+    java.lang.System.err.println("Fetching data...");
+    tbl = db.get_table(sql);
+    java.lang.System.err.println(
+       String.valueOf(tbl.rows.size()).concat(" rows returned from query ...\n")
+    );
+    Object[] rows = tbl.rows.toArray( );
+    int _id;
+    int procNum = -1;
+    java.lang.String abbr;
+    java.lang.String expanded;
+    java.util.ArrayList withAbbr;
+    for (int i=0; i<rows.length; i++) {
+      java.lang.String[] row = (java.lang.String[]) (Object) rows[i];
+
+      if (procNum++ % 100 == 0) {
+        java.lang.System.err.println(
+          String.valueOf(procNum)    
+             .concat(" of ").concat(String.valueOf( rows.length )).concat(" rows processed ...")
+        );
+      }
+      abbr = row[1];
+      if ((withAbbr = abbrMap.get(abbr)) == null) {
+        abbrMap.put(abbr, (withAbbr = new java.util.ArrayList(4)));
+      }
+      withAbbr.add((expanded = row[2]));
+    } // for row: rows
+  } finally {
+     db.close();
+  }
+  return abbrMap;
+}
+

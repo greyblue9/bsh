@@ -1,0 +1,13 @@
+
+public static String formatAstText(String text) {
+
+  return Pattern.compile(
+    "\\}\\s*((else if|else|catch|finally)( [^\n]*|)) \\{", Pattern.DOTALL
+  ).matcher(
+    (text.indexOf("\n  }") == -1 && text.indexOf("\n  {") == -1)
+      ? text.replace("    ", "  ")
+      : text
+  ).replaceAll("} $1 {");
+
+};
+

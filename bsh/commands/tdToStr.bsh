@@ -1,0 +1,3 @@
+
+public static String tdToStr(Object clz) { com.strobel.assembler.metadata.TypeDefinition td = (clz instanceof com.strobel.assembler.metadata.TypeDefinition)? (com.strobel.assembler.metadata.TypeDefinition) clz: ProcyonUtil.getTypeDefinition(clz); List al = new ArrayList(); for (com.strobel.assembler.metadata.MethodReference md: td.getDeclaredMethods()) { al.add(mdToStr(md)); }; return StringUtils.join(al, "\n"); }
+

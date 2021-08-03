@@ -1,0 +1,58 @@
+
+public static Triple findLine(String text, int midline) { 
+  int linest = midline;
+  int oldguess = -2;
+  do { 
+    oldguess = linest; 
+    linest = text.lastIndexOf("\n", linest);
+  } while (linest != -1 && linest-- == oldguess);
+  if (linest == -1) linest = 0;
+  else linest += 2;
+  int lineend = text.indexOf("\n", linest);
+  if (lineend == -1) lineend = text.length();
+  
+  return Triple.of(linest, text.substring(linest, lineend), lineend);
+}
+
+
+public static String[] getLinesOfContext(String text, int midpoint, int numctx) {
+  Triple lineinfo = null;
+  String[] lines = new String[numctx];
+  for (int[] range: new int[][]{ 
+    { lines.length/2, lines.length, 1 }, 
+    { (lines.length/2), -1, -1 }     
+  })
+  {
+    int i = range[0];
+    lineinfo = null;
+    while (i != range[1]) {
+      lineinfo = findLine(
+        text, 
+        lineinfo == null
+          ? midpoint
+          : (
+              (i >= lines.length/2)
+                ? lineinfo.getRight()+1
+                : lineinfo.getLeft()-1
+            )
+      );
+      if (!(i == range[0] && range[2] < 0)) {
+        lines[i] = i == range[0]
+          ? dumpMembers.colorize(lineinfo.getMiddle(), "1;33")
+          : lineinfo.getMiddle();
+      }
+        
+      i += range[2];
+    }
+  } 
+  return lines;
+}
+
+
+public static Map grep(String regex, String dir, String filefilt) { Matcher mchr = Pattern.compile(regex != null? regex: "(?:Debug.ToString.*?PathInfo|PathInfo.*?Debug.ToString)", Pattern.CASE_INSENSITIVE | Pattern.DOTALL | Pattern.MULTILINE | Pattern.UNIX_LINES).matcher(""); this.interpreter.set("grep_mchr", mchr); this.interpreter.set("grep_out", System.out);  PrintStream out = System.out; List rs = findFiles.iterate(dir != null? dir: "/storage/extSdCard/_projects/sdk/bsh/trunk/src", filefilt != null? filefilt: ".*\\.java").select(evalJexl("""m -> { text = FileUtils.readFileToString(m); if (grep_mchr.reset(text).find()) { grep_out.println(m); return Pair.of(m, grep_mchr.toMatchResult()); } else { return null; } }""")); Map results = new RealArrayMap(); for (Pair pr: rs) { System.out.println(dumpMembers.colorize(pr.getKey().toString(), "1;44;37")); String[] cx; CollectionUtil.print(cx = getLinesOfContext(Reflect.getfldval(pr.getValue(), "text"), pr.getValue().start(), 17)); results.put(pr.getKey(), StringUtils.join(cx, "\n")); } unset("grep_mchr");  unset("grep_out"); return results; }
+
+public static Map grep(String regex, String dir) { return grep(regex, dir, null); }
+
+public static Map grep(String regex) { return grep(regex, null); }
+
+public static Map grep() { return grep(null); }

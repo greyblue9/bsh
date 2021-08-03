@@ -1,0 +1,19 @@
+import java.util.Map.Entry;
+/**
+	"Undefine" the variable specifed by 'name' (So that it tests == void).
+	<p>
+	<em>Note: there will be a better way to do this in the future.  This is 
+	currently equivalent to doing namespace.setVariable(name, null);</em>
+*/
+
+
+void unset( java.lang.String name ) 
+{
+	if ( arg == null ) // ???
+		return;
+
+	this.caller.namespace.unsetVariable( name );
+}
+
+public static ArrayList unset() { BshBinding _ns = this.caller.namespace; Entry[] entries = _ns.variables.entrySet().toArray(new Entry[0]); ArrayList removed = new ArrayList(); BshBinding ns = this.namespace; for (int i=0; i<entries.length; i+=1) { Object rem = Reflect.getfldval(_ns.variables.remove(entries[i].getKey()),"value"); if (!(rem instanceof bsh.Node || rem instanceof Throwable || rem instanceof bsh.BshMethod) || rem instanceof Collection) removed.add(rem); } try { return removed; } finally { _ns.clear(); _ns.loadDefaultImports(); source("/data/media/0/bsh/commands/unset.bsh"); } ; }
+

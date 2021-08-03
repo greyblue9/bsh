@@ -1,0 +1,135 @@
+import org.d6r.ClassPathUtil2;
+import org.d6r.Reflect;
+import sun.misc.Unsafe;
+import com.sun.tools.javac.code.Source;
+import com.sun.tools.javac.parser.Keywords;
+import com.sun.tools.javac.parser.Scanner;
+import com.sun.tools.javac.parser.ParserFactory;
+import com.sun.tools.javac.parser.Parser;
+import com.sun.tools.javac.tree.TreeMaker;
+import com.sun.tools.javac.tree.JCTree;
+import com.sun.tools.javac.util.Context;
+// import com.sun.tools.javac.util.Log;
+import com.sun.tools.javac.util.Names;
+import com.sun.tools.javac.util.Options;
+import javax.tools.JavaFileObject;
+// import javax.lang.model.element.NestingKind;
+// import javax.lang.model.element.Modifier;
+import com.sun.tools.javac.main.OptionName;
+
+import javax.tools.JavaFileManager;
+import com.sun.tools.javac.file.JavacFileManager;
+
+
+public static Source getSourceVersion() {
+  Source[] values = Source.class.getEnumConstants();
+  return values[values.length-1];
+}
+
+
+public static JCTree.JCCompilationUnit getJcTree(File srcFile) {
+  return getJcTree(srcFile, true);
+}
+
+public static JCTree.JCCompilationUnit getJcTree(File srcFile, boolean changeSource)
+{
+  String src = FileUtils.readFileToString(srcFile);
+  return getJcTree(src, changeSource);
+}
+
+public static JCTree.JCCompilationUnit getJcTree(bsh.ClassIdentifier id) {
+  return getJcTree((bsh.ClassIdentifier) id, true);
+}
+
+public static JCTree.JCCompilationUnit getJcTree(bsh.ClassIdentifier id, boolean changeSource)
+{
+  return getJcTree(
+    (String) IOUtils.toString(SourceUtil.findSource((bsh.ClassIdentifier) id)),
+    changeSource
+  );
+}
+public static JCTree.JCCompilationUnit getJcTree(Class cls) {
+  return getJcTree((Class) cls, true);
+}
+public static JCTree.JCCompilationUnit getJcTree(Class cls, boolean changeSource) {
+  return getJcTree(
+    (String) IOUtils.toString(SourceUtil.findSource((Class) cls)),
+    changeSource
+  );
+}
+public static JCTree.JCCompilationUnit getJcTree(String origSrc) {
+  return getJcTree(origSrc, true);
+}
+public static JCTree.JCCompilationUnit getJcTree(String origSrc, boolean changeSource) {
+  return getJcTree(origSrc, changeSource, true, true, true);
+}
+
+
+  
+public static Parser getParser(
+String _jcsrc, com.sun.tools.javac.util.Context _jcctx, 
+boolean doRegisterFileManager)
+{
+  // ===========================
+  // REUSABLE HERE ...
+  JavaFileManager _jcfm = _jcctx.get(JavaFileManager.class);
+  if (_jcfm == null) {
+    _jcfm = new JavacFileManager(
+      _jcctx, doRegisterFileManager, Charset.forName("UTF-8")
+    );
+  }
+  
+  Source JDK1_X = getSourceVersion();
+  _jcctx.put(JavaFileManager.class, _jcfm);
+  com.sun.tools.javac.util.Options _jcopts 
+    = com.sun.tools.javac.util.Options.instance(_jcctx);
+  _jcopts.put(OptionName.SOURCE, JDK1_X.name);
+  
+  Scanner.Factory _sf = Scanner.Factory.instance(_jcctx);
+  if (_sf == null) _sf = new Scanner.Factory(_jcctx);
+  org.d6r.Reflect.setfldval(_sf, "source", JDK1_X); // (WORKAROUND)
+  
+  ParserFactory _pf = ParserFactory.instance(_jcctx);
+  TreeMaker _tm = TreeMaker.instance(_jcctx);
+  org.d6r.Reflect.setfldval(_pf, "F", _tm); // (WORKAROUND)
+  
+  if (! CollectionUtil.dbg.containsKey("jc$TreeMaker")) {
+    CollectionUtil.dbg.put("jc$TreeMaker", _tm);
+  }
+  if (! CollectionUtil.dbg.containsKey("jc$ParserFactory")) {
+    CollectionUtil.dbg.put("jc$ParserFactory", _pf);
+  }
+  
+  // ===========================
+  // LINKED TO A SOURCE FILE ...
+  com.sun.tools.javac.parser.Scanner _sc = _sf.newScanner(_jcsrc);  
+  com.sun.tools.javac.parser.Parser _p = _pf.newParser(
+    _jcsrc,
+    true, // was 'a'
+    true, // was 'b'
+    true  // was 'c'
+  );  
+  return _p;
+}
+
+
+public static JCTree.JCCompilationUnit getJcTree(
+String origSrc, boolean changeSource, boolean a, 
+boolean b, boolean c) 
+{ 
+  if (origSrc == null) {
+    throw new IllegalArgumentException("origSrc == null");
+  }
+  com.sun.tools.javac.util.Context _jcctx
+    = new com.sun.tools.javac.util.Context();  
+  // Hack to make classes with Diamond operator still get parsed.
+  String _jcsrc = (changeSource && (
+      JDK_X == JDK1_6 || JDK_X == JDK1_5 || JDK_X == JDK1_4))
+          ? origSrc.replaceAll("<([^<>]*)>(.*)<>", "<$1>$2<$1>")
+          : origSrc;  
+  Parser _p = getParser(_jcsrc, _jcctx, true);
+  JCTree.JCCompilationUnit _jccu = _p.parseCompilationUnit();
+  return _jccu;
+}
+
+

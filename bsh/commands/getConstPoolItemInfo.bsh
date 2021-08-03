@@ -1,0 +1,23 @@
+
+
+public static Map getConstPoolItemInfo(javassist.bytecode.ConstPool cp, boolean includeItem, int index) { import javassist.bytecode.*; Object item = cp.getItem(index), origItem = item; Map m = new TreeMap();  if (item instanceof MemberrefInfo) { NameAndTypeInfo nat = cp.getItem(item.nameAndTypeIndex); String name = cp.getItem(nat.memberName).string; String desc = cp.getItem(nat.typeDescriptor).string; m.put("name", name); m.put("desc", desc); int classIndex = Reflect.getfldval(item, "classIndex").intValue(); javassist.bytecode.ClassInfo cinfo = cp.getItem(classIndex); item = cinfo; }; if (item instanceof javassist.bytecode.ClassInfo) { String className = ClassInfo.typeToName(cp.getItem(cinfo.name).string); m.put("className", className); }; m.put("kind", StringUtils.substringBeforeLast(StringUtils.substringAfterLast(origItem.getClass().getName(), "."), "Info").replaceAll("^(.+)ref$", "$1")); if (includeItem) m.put("item", origItem); return m; };
+
+
+public static Map getConstPoolItemInfo(javassist.bytecode.ConstPool cp, int index) { return getConstPoolItemInfo(cp, false, index); }
+
+
+public static Map getConstPoolItemInfo(javassist.bytecode.ClassFile cf, int index) { return getConstPoolItemInfo(cf.getConstPool(), false, index); }
+
+
+public static Map getConstPoolItemInfo(javassist.CtClass ct, int index) { return getConstPoolItemInfo(ct.getClassFile().getConstPool(), false, index); }
+
+
+public static Map getConstPoolItemInfo(javassist.CtMember cm, int index) { return getConstPoolItemInfo(cm.getDeclaringClass().getClassFile().getConstPool(), false, index); }
+
+
+public static Map getConstPoolItemInfo(InputStream is, int index) { javassist.bytecode.ClassFile cf = new javassist.bytecode.ClassFile(new DataInputStream(is)); Map m = getConstPoolItemInfo(cf.getConstPool(), false, index); m.put("classFile", cf); return m; }
+
+
+public static Map getConstPoolItemInfo(byte[] classBytes, int index) { javassist.bytecode.ClassFile cf = new javassist.bytecode.ClassFile(new DataInputStream(new ByteArrayInputStream(classBytes))); Map m = getConstPoolItemInfo(cf.getConstPool(), false, index); m.put("classFile", cf); return m; }
+
+

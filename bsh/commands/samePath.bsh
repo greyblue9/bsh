@@ -1,0 +1,7 @@
+
+
+
+public static boolean samePath(String path1, String path2) { Path[] paths = { Paths.get(path1), Paths.get(path2) }; sun.nio.fs.UnixFileStore st1 = pr.getFileStore(paths[0]), st2 = pr.getFileStore(paths[1]); sun.nio.fs.UnixMountEntry ment1 = st1.findMountEntry(), ment2 = st2.findMountEntry(); String node1 = ment1.name(), node2 = ment2.name(), mpt1 = ment1.directory(), mpt2 = ment2.directory(); if (node1.equals(node2)) { String rest1 = paths[0].toFile().getAbsolutePath().substring(mpt1.length()+1), rest2 = paths[1].toFile().getAbsolutePath().substring(mpt2.length()+1); return rest1.equals(rest2); }; return false; }
+
+
+

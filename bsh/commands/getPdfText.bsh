@@ -1,0 +1,3 @@
+
+public static String getPdfText(String filePath) { com.itextpdf.text.pdf.PdfReader pdfr = new com.itextpdf.text.pdf.PdfReader(readbytes(filePath)); pdfcp = new com.itextpdf.text.pdf.parser.PdfReaderContentParser(pdfr); StringBuilder sb = new StringBuilder(76 * 10); int numpg = pdfr.getNumberOfPages(); for (int i=0; i<numpg; i++) { String pgText = com.itextpdf.text.pdf.parser.PdfTextExtractor.getTextFromPage(pdfr, i + 1); sb.append(String.format("%s\n--\n", pgText));  System.err.printf("Processed page %d of %d\n", i+1, numpg); }  return sb.toString();  }
+

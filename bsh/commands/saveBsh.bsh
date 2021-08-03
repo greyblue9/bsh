@@ -1,0 +1,15 @@
+public static File saveBsh(String src) {
+  String s = null;
+  try {
+    s = parseBsh(src, false);
+  } catch (Throwable e) {
+    Log.e("saveBsh", "Syntax error", Reflector.getRootCause(e));
+    throw Reflector.Util.sneakyThrow(Reflector.getRootCause(e));
+    return null;
+  }
+  File outputFile = new File(new File("/data/media/0/bsh/commands/"), String.format("%s.bsh", parseBsh(s, true).getName()));
+  FileUtils.writeStringToFile(outputFile, StringUtils.join(Iterables.concat(Arrays.asList(((outputFile.exists()) ? Arrays.asList(FileUtils.readFileToString(outputFile, java.nio.charset.StandardCharsets.UTF_8)) : Arrays.asList()), Arrays.asList(parseBsh(s, false), " ")).toArray(new Iterable[0])).toList(), "\n\n"));
+  return outputFile;
+}
+
+ 

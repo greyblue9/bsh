@@ -1,0 +1,41 @@
+
+
+public static Object parseBsh2(String src) {
+  return parseBsh2(src, false);
+}
+
+public static Object parseBsh2(String src, boolean returnAst) {
+  return parseBsh2(src, returnAst, false);
+}
+
+public static Object parseBsh2(String src, boolean returnAst, boolean entire)
+{
+  int limpt = (src).lastIndexOf("import ");
+  Matcher forMchr = null, mchr = null;
+  String srcNoImports = (forMchr = Pattern.compile("for ?\\(([a-zA-Z0-9_]+):").matcher(srcNoImports = src.substring(src.indexOf('\n', src.indexOf(';', limpt) + 1)).trim())).find() ? forMchr.replaceAll("for \\(Object $1:") : srcNoImports;
+  Object ast = null;
+  mchr = Pattern.compile("line ([0-9]+),").matcher("");
+  try {
+    ast = parseBsh(srcNoImports, returnAst, entire);
+  } catch (Throwable e) {
+    mchr.reset(Reflector.getRootCause(e).getMessage());
+  }
+  int lineNo = 0;
+  List<String> lineCtx = null;
+  String ctxStr = null;
+  if (mchr.find()) {
+    lineNo = Integer.parseInt(mchr.group(1), 10);
+    lineCtx = new ArrayList(Arrays.asList(srcNoImports.split("\n")).subList(lineNo - 5, lineNo + 4));
+    int lineIndex = (int) ((lineCtx.size() + 0.5) / 2);
+    String badLine = lineCtx.get(lineIndex);
+    lineCtx.add(lineIndex, String.format("\u001b[1;31m%s\u001b[0m", badLine));
+    lineCtx.remove(lineIndex + 1);
+    ctxStr = lineCtx.join("\n").toString();
+    System.err.println(ctxStr);
+    return null;
+  }
+  return ast;
+}
+
+;
+

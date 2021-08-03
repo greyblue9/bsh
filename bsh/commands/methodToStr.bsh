@@ -1,0 +1,95 @@
+
+import bsh.*;
+import java.util.*;
+import java.lang.reflect.*;
+
+
+
+public static Object methodToStr (String name, int idx) {
+  
+  Map/*<String, List<BshMethod>>*/ methodMap 
+    = getfldval(this.namespace.getParent(), "methods");
+  
+  //System.out.println(methodMap);
+    
+  List/*<BshMethod>*/ methods = methodMap.get(name);
+  if (methods == null) methods = Collections.emptyList();
+  
+  System.out.println(String.format(
+    "%d matching methods:\n",
+    methods.size()
+    //methods.toString()
+  ));
+  
+  if (methods.size() == 0) return "";
+  if (methods.size() < idx + 1) return "";
+  
+  BshMethod method = methods.get(idx); 
+  String sigStr = getsigStr(method);
+  StringBuilder sb = new StringBuilder(384);
+  sb.append(sigStr);
+  sb.append(' ');
+  
+  block = method.methodBody; 
+  tostr(block, sb, "");
+  
+  return sb.toString().replaceAll("\\n  \\}", "\n}").replaceAll(" ?([\\(,\\)]) ", "$1").replaceAll(",", ", ").replaceAll("([a-z]+) ?\\(([^\\)]+)\\)", "$1 ($2) ").replaceAll(" ; ?", "; ");
+}
+
+
+
+
+
+
+public static String getsigStr (BshMethod meth) {
+  
+  StringBuilder sb = new StringBuilder(96); 
+  Modifiers mods = meth.getModifiers();
+  Map modMap = getfldval(mods, "modifiers");
+  Set modSet = modMap.keySet();
+  boolean spaceBeforeArgs = false;
+  
+  for (modifierName: modSet) { 
+    sb.append(modifierName); 
+    sb.append(' ');
+  }
+  
+  String typeReplaceRegex = "java\\.lang\\.(reflect\\.)?";
+  Class/*<?>*/ retCls = meth.getReturnType();
+  if (retCls != null) {
+    sb.append(
+      retCls.getName().replaceAll(typeReplaceRegex, "")
+    ); 
+    sb.append(' '); 
+  }
+  
+  String methodName = meth.getName();
+  sb.append(methodName);
+  if (spaceBeforeArgs) sb.append(' ');
+  
+  sb.append('('); 
+  Class[] paramTypes = meth.getParameterTypes(); 
+  String[] paramNames = meth.getParameterNames(); 
+  for (int i=0; i < paramNames.length; i++) {
+    if (i > 0) sb.append(", "); 
+    
+    Class pCls = paramTypes[i];
+    if (pCls != null) {
+      sb.append(
+        pCls.getName().replaceAll(typeReplaceRegex, "")
+      ); 
+      sb.append(' '); 
+    }
+    
+    sb.append(paramNames[i]); 
+  }  
+  sb.append(')'); 
+  
+  return sb.toString();
+}
+
+
+
+
+
+

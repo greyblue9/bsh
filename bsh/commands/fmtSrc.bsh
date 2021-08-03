@@ -1,0 +1,5 @@
+
+public static Pair fmtSrc(String src, String prefix) { String s = src; String src_m = src; if (prefix != null) { src_m = src_m.replaceAll("([^a-zA-Z0-9_$.])(com.googlecode|org.objectweb|pxb)", ("$1" + (StringUtils.endsWith(prefix,".")?prefix:prefix.concat(".")) + "$2")); }; s = TextUtil.colorrm(parseJava(src_m).getRight().getValue().toString()); String lasts = s; src_m = s; s = lasts; Matcher mchr = Pattern.compile("\n( +)(/?\\*[^\n]*)\n\\1 +", Pattern.CASE_INSENSITIVE | Pattern.DOTALL | Pattern.UNIX_LINES | Pattern.DOTALL).matcher(""); do { mchr.reset(s); if (!mchr.find()) break; s = mchr.replaceAll("\n$1$2\n$1"); if (s.equals(lasts)) break; System.out.println("replaced"); } while (true);   pkg = String.valueOf(parseJava(s,true).getPackageDeclaration().get().getName());  name = String.valueOf(parseJava(s,true).getTypes()[0].getName()); className=StringUtils.join(Arrays.asList(pkg,name),"."); return Pair.of(className, s); };
+
+public static Pair fmtSrc(String src) { return fmtSrc(src, null); };
+

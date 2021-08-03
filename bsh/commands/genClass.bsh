@@ -1,0 +1,3 @@
+
+public static Object genClass(String mbody) { import javassist.*; ClassPool cp = getClassPool(); String cn; CtClass ct = cp.makeClass(cn = String.format("Xtest%s", String.valueOf(System.currentTimeMillis()).substring(4))); CtMethod cm = CtNewMethod.make(mbody, ct); ct.addMethod(cm); Class cls = ct.toClass(); this.interpreter.set("cls", cls); this.interpreter.set("ct", ct); Object o = cls.newInstance(); this.interpreter.set("o", o); this.interpreter.set("cn", cn); this.interpreter.set("cp", cp); return o; }
+

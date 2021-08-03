@@ -1,0 +1,3 @@
+
+public static List<Class> getImpls2(Class cls, int depth, int maxdepth) { ArrayList al = new ArrayList(); Class[] ims = getImpls(cls).print(); Collections.addAll(al, ims); for (Class im: ims) { if (depth < maxdepth) { al.addAll(getImpls2(im, depth+1, maxdepth)); } else al.add(im);   }; return Arrays.asList(new HashSet(CollectionUtil.flatten(al)).toArray()).sort(); };
+

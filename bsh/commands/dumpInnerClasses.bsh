@@ -1,0 +1,25 @@
+public static void dumpInnerClasses(Class cls) { 
+
+  ArrayDeque q = new ArrayDeque(Arrays.asList(cls)); ArrayDequeout =new ArrayDeque(); ArrayDeque out = new ArrayDeque(); while (!q.isEmpty()) { cl = q.pollLast(); System.out.println(cl); Collections.addAll(out,cl.getDeclaredClasses()); Collections.addAll(q, cl.getDeclaredClasses()); int anonIdx = 0; do { anonclsname = StringUtils.join(cl.getName(), "$", ++anonIdx); System.out.println(anonclsname);  if (! bsh.Capabilities.classExists(anonclsname)) break; anoncls  = Class.forName(anonclsname, false, Thread.currentThread().getContextClassLoader()); out.push(anoncls); q.offerFirst(anoncls); } while (true); } Class[] outarr = out.toArray(new Class[0]); Arrays.sort(outarr, new ToStringComparator()); for (Class ccls: outarr) { int idx = -1; int count = -1; indent = ""; do { count +=1; idx = ccls.toString().indexOf("$", idx+1); indent += "  "; } while (idx != -1); System.out.println(indent + dumpMembers.colorize(dumpMembers1.typeToString(ccls),"1;33").replace("$", String.format("%c[1;34m$%c[1;36m", 0x1b,0x1b))+"  implements  \n  "+indent+dumpMembers.colorize(StringUtils.join(ccls.getGenericInterfaces(), ", \n  "+indent), "0;36")); }
+
+}
+
+public static void dumpInnerClasses(bsh.ClassIdentifier ci) { 
+
+  dumpInnerClasses(  (Class)  ((bsh.ClassIdentifier)ci).getTargetClass() );
+
+}
+
+
+public static void dumpInnerClasses(Class cls, boolean dump) { 
+
+  ArrayDeque q = new ArrayDeque(Arrays.asList(cls)); ArrayDequeout =new ArrayDeque(); ArrayDeque out = new ArrayDeque(); while (!q.isEmpty()) { cl = q.pollLast(); System.out.println(cl); Collections.addAll(out,cl.getDeclaredClasses()); Collections.addAll(q, cl.getDeclaredClasses()); int anonIdx = 0; do { anonclsname = StringUtils.join(cl.getName(), "$", ++anonIdx); System.out.println(anonclsname);  if (! bsh.Capabilities.classExists(anonclsname)) break; anoncls  = Class.forName(anonclsname, false, Thread.currentThread().getContextClassLoader()); out.push(anoncls); q.offerFirst(anoncls); } while (true); } Class[] outarr = out.toArray(new Class[0]); Arrays.sort(outarr, new ToStringComparator()); for (Class ccls: outarr) { int idx = -1; int count = -1; indent = ""; do { count +=1; idx = ccls.toString().indexOf("$", idx+1); indent += "  "; } while (idx != -1); System.out.println(ccls.toString()+" ______________\n"+dumpMembers.dumpMembers(null, ccls, false).replace("\n", "\n"+indent.substring(2).replaceAll("//", "  //").replaceAll(".*interface(.*\n)*\n",""))); }
+
+}
+
+public static void dumpInnerClasses(bsh.ClassIdentifier ci, boolean dump) { 
+
+  dumpInnerClasses(  (Class)  ((bsh.ClassIdentifier)ci).getTargetClass() , true);
+
+}
+

@@ -1,0 +1,122 @@
+
+import java.util.ArrayList;
+
+import java.util.*;
+import java.io.*;
+import java.nio.ByteBuffer;
+import java.nio.channels.FileChannel;
+import java.lang.ProcessManager;
+
+java.lang.reflect.Method printlnFn = null;
+Object printlnReceiver = null; 
+try {
+  printlnFn = System.out.getClass().getDeclaredMethod("println", new java.lang.Class[]{ java.lang.String.class }); 
+} catch (java.lang.Throwable ignored) { }
+try { 
+  bsh.Interpreter interp = eval("(bsh.Interpreter) this.interpreter"); 
+  printlnFn = interp.getClass().getDeclaredMethod("println", new java.lang.Class[]{ java.lang.Object.class }); 
+  printlnReceiver = interp; 
+} catch (java.lang.Throwable ignored) { };
+
+
+public static void xprintln(java.lang.Object o) {
+  java.lang.String str; 
+  if (o == null) str = "<null>"; 
+  else if (o instanceof java.lang.String) str = o; 
+  else if (o.getClass().getName().charAt(0) == '[') {
+    str = java.util.Arrays.toString(o);
+  } else str = o.toString(); 
+  printlnFn.invoke(printlnReceiver, new java.lang.Object[]{ str });
+}
+
+
+
+public static Map run(java.lang.String[] args) {
+  
+  Map ret = new HashMap ();
+  try {         
+  
+    java.lang.Runtime rt = Runtime.getRuntime();
+    java.lang.Process proc = rt.exec(args);
+    
+    Map sMap = new HashMap();
+    
+    sMap.put("err", proc.getErrorStream());
+    sMap.put("out", proc.getInputStream());
+    
+    //sMap.put("out", proc.getOutputStream());
+    int exitVal = proc.waitFor();
+    for (HashMap$HashMapEntry entry: sMap.entrySet()) {
+      
+        java.lang.String name = (java.lang.String) entry.getKey();
+        java.lang.Object oStream = (java.lang.Object) entry.getValue();
+        
+        xprintln(
+            "Processing stream: "+name
+            +": "+ oStream.toString()
+        );
+        java.lang.StringBuilder ssb = new java.lang.StringBuilder(76 * 10);
+        java.lang.String line = null;
+        
+        if (oStream instanceof
+          java.lang.ProcessManager$ProcessInputStream) 
+        {
+            InputStream is = ( InputStream ) oStream;
+            InputStreamReader isr
+                 = new InputStreamReader(is);
+            BufferedReader br = new BufferedReader(isr);
+            if ( is.available() > 0 ) {
+              while ( (line = br.readLine()) != null ) {
+                 ssb.append(line + "\n");
+              }
+            }
+        } else if (oStream instanceof
+          java.lang.ProcessManager$ProcessOutputStream) 
+        {
+          
+          java.lang.ProcessManager$ProcessOutputStream os 
+            = (java.lang.ProcessManager$ProcessOutputStream) oStream;
+          FileChannel ch = os.getChannel();
+          ByteBuffer bbuf 
+            = ByteBuffer.allocate((int)ch.size());
+          long numRead = 1;
+          
+          while (numRead > 0) {
+            numRead = ch.write(bbuf, 
+              ch.position(), ch.size - ch.position() );
+            xprintln(numRead);
+            xprintln("Position: "+(ch.position()));
+          }
+          
+          BufferedReader br = new BufferedReader(bbuf);
+          while ( (line = br.readLine()) != null ) {
+            ssb.append(line + "\n");
+          }
+          
+        } else {
+            xprintln("Unrecognized: "+(oStream.toString()));
+            continue; 
+        }
+        // save output to (to be returned) map
+        ret.put(name, ssb.toString());
+        xprintln(ssb.toString());
+    } // foreach out, err, etc.
+    
+    
+    xprintln("java.lang.Process exitValue: " + exitVal);
+    ret.put("status", Integer.valueOf(exitVal));
+    
+  } catch (java.lang.Throwable t) {
+     xprintln(t.toString());
+     xprintln(t.getStackTrace());
+     
+     return null;
+  }
+     
+  return ret;
+} 
+
+
+
+
+

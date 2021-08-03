@@ -1,0 +1,2 @@
+print_r(arr_in) { arr = java.util.Arrays.copyOfRange(arr_in, 0, (arr_in.length > 25? 25: arr_in.length)); System.out.println(java.util.Arrays.toString(arr).replaceAll(java.lang.String.format("(, |^.|.$)([^, ]* |[^ ,]+%c.)*", 0x5c), java.lang.String.format("%c  ", (char)0x0a))); }
+  

@@ -1,0 +1,10 @@
+
+
+
+
+public static String toUnderscores(String s, boolean capitalize) { Matcher mchr = Pattern.compile("([a-z]+|[^a-zA-Z0-9_]+)([A-Z][A-Z]*[a-z0-9]*)", Pattern.DOTALL).matcher(""); while (mchr.reset(s).find()) { s = mchr.replaceFirst("$1_$2"); }; if (StringUtils.startsWith(s, "m_")) s = s.substring(2); return (capitalize)? s.toUpperCase(): s; };
+
+
+public static String toUnderscores(String s) { return toUnderscores(s, true); }
+
+

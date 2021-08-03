@@ -1,0 +1,220 @@
+import org.jsoup.nodes.Document;
+import org.jsoup.nodes.Element;
+
+import java.nio.charset.CharsetDecoder;
+import libcore.icu.NativeConverter;
+import com.itextpdf.text.pdf.codec.PngImage;
+import com.itextpdf.text.Image;
+import com.itextpdf.text.Image;
+import org.json.JSONObject;
+import org.apache.commons.lang3.StringEscapeUtils;
+import org.apache.commons.lang3.time.FastDateFormat;
+import org.jsoup.nodes.TextNode;
+import org.jsoup.parser.Tag;
+import org.jsoup.nodes.Attribute;
+import org.jsoup.nodes.Attributes;
+import org.jsoup.nodes.Document;
+import org.jsoup.nodes.Element;
+import org.jsoup.select.Elements;
+import org.jsoup.parser.Parser;
+import org.jsoup.safety.Cleaner;
+import org.jsoup.safety.Whitelist;
+import org.jsoup.helper.DataUtil;
+import org.jsoup.helper.HttpConnection;
+
+
+
+
+public static Object stripHtml_main(String[] args) {
+  String TAG = "stripHtml_main";
+  List<File> outFiles = new ArrayList<File>(); 
+  Document lastDoc;
+  try {
+    for (String input: args) {
+      Document doc;
+      String baseUrl, html;
+      
+      Matcher googleMchr = Pattern.compile(
+        "https://www.google.com/url\\?(?:(?!&url).)*?&url=(.+)(?:&ved=.*$)?$"
+      ).matcher(input);
+      if (googleMchr.find()) {
+        String realUrl = googleMchr.group(1);
+        if (realUrl != null) {
+          Log.d(TAG, "google URL -> [%s]", realUrl);
+          input = realUrl;
+        }
+      }
+      
+      
+      if (input.length() < 255 && !input.matches("^https?://.*?") 
+      && new File(input).exists())
+      { 
+        baseUrl = PosixFileInputStream.resolve(new File(input)).toURI().toString();
+        Log.d(TAG, "baseUrl (local) = %s", baseUrl);
+        
+        try {
+          doc = getDocWithBaseUrl(baseUrl);
+        } catch (Throwable e) {
+          e.printStackTrace();
+          doc = Jsoup.getDocWithBaseUrl(baseUrl);
+        }
+        
+        lastDoc = doc;
+      } else if (input.matches("^https?://[^/]*c2[^/]*/.*")) {
+        baseUrl = input;
+        System.err.println("c2");
+        try {
+          doc = getC2WikiDoc(input);
+        } catch (Throwable e) {
+          e.printStackTrace();
+          input = android.net.Uri.parse(input.replace("&", "?")).buildUpon().clearQuery().build().toString();
+          baseUrl = input;
+          doc = getC2WikiDoc(input);
+        }
+        lastDoc = doc;
+      } else if (input.indexOf("bugs.openjdk.java.net/browse") != -1
+      || input.indexOf("bugs.openjdk") != -1)
+      {
+        baseUrl = input;
+        doc =  getJdkIssueDoc(input);
+        lastDoc = doc;
+      } else {
+        baseUrl = input;
+        Log.d(TAG, "baseUrl (remote) = %s", baseUrl);
+        try {
+          doc = getDocWithBaseUrl(baseUrl);
+        } catch (Throwable e) {
+          e.printStackTrace();
+          try {
+            doc = Jsoup.getDocWithBaseUrl(baseUrl);
+          } catch (Throwable e) {
+            e.printStackTrace();
+            baseUrl = android.net.Uri.parse(input.replace("&", "?")).buildUpon().clearQuery().build().toString();
+            doc = Jsoup.getDocWithBaseUrl(baseUrl);
+          }
+        }
+        lastDoc = doc;
+      }
+      Elements scrs = doc.select("script[src*=gist.github.com]");
+      Log.d(TAG, "Matching scripts: \n  - %s", 
+        StringUtils.join(CollectionUtil.toArray(scrs), ",\n  - "));
+        
+      if (scrs.size() != 0) {
+        String html = doc.toString();
+        File tf = File.createTempFile("tmp_gist_processing", ".html");
+        FileUtils.writeStringToFile(tf, html, "UTF-8");
+        String result = PosixFileInputStream.pexecSync(
+          new String[]{ "gistfilt", tf.getPath() }
+        );
+        if (result.indexOf("<pre>") != -1) {
+          doc.html(result);
+        }
+      }
+      
+      /*try {
+        doc.select("[class*=icon]").remove();
+        doc = cleanDoc(doc);
+      } catch (Throwable t) {
+        t.printStackTrace();
+      }*/
+      
+      doc = stripHtml_doc(doc);
+
+      if (doc != null) lastDoc = doc;
+      String title = doc.select("title").text().trim();
+      doc.select("details").remove();
+      for (Object elem: doc.select("task-lists p").toArray()) {
+        if (elem.text().trim().isEmpty()) elem.remove();
+        if (elem.text().indexOf("{") != -1 || 
+            elem.text().indexOf(");") != -1)
+          {
+          elem.tagName("pre");
+          elem.attr("class", "hljs hijs java");
+          elem.select("br").remove();
+        }
+      }
+      
+      String filename, titlefn = titleFileName(title);
+      File outFile, outDir = new File("/data/media/0/David/www/");
+      
+      int i = -1; 
+      while ((outFile = new File(
+        outDir, filename = new StringBuilder(titlefn).append(++i == 0? "": String.valueOf(i)).append(".html").toString()
+        )).exists()) ;
+      
+      FileUtils.writeStringToFile(
+        new File("/data/media/0/David/www/.inc/header.html"),
+        FileUtils.readFileToString(
+          new File("/data/media/0/David/www/.inc/header_template.html")
+        ).replaceAll(
+          "\\.js\"", // \"
+          String.format(
+            ".js?v=%x\"", // \"
+            (new java.util.Random()).nextLong()
+          )
+        )
+      );
+      
+      String newHtml = doc.toString();
+      
+      newHtml = newHtml
+        .replace("\t", "  ").replace("&#160;", " ").replace("&nbsp;", " ").replace("\r", "\n").replace("scala&gt;", "\nscala&gt;");
+      
+      Matcher tableMchr = Pattern.compile(
+       "</?\\s*(table|tr|td|th|tbody|hgroup|rowgroup|colgroup|tfoot)[^<>]*>",
+       Pattern.DOTALL | Pattern.CASE_INSENSITIVE
+      ).matcher(newHtml);
+      /*
+      if (tableMchr.find()) {
+        newHtml = tableMchr.replaceAll("\n");
+      }
+      */
+      FileUtils.writeStringToFile(
+        outFile, newHtml, 
+        "ISO-8859-1"
+      );
+      
+      Log.d(
+        TAG, 
+        PosixFileInputStream.pexecSync(
+          "htmlvhdr", "-i", outFile.getPath()
+        )
+      );
+      
+      outFiles.add(outFile);
+    } // end of args loop
+    if (outFiles.size() == 1) {
+      String filepath = outFiles.iterator().next().toString();
+      System.out.printf("Wrote: %s\n", filepath);
+      System.err.println(PosixFileInputStream.pexecSync("fix_html_unicode", "-i", filepath));
+      
+      PosixFileInputStream.pexecSync(
+        "am", "start", "--user", "0", "-a", "android.intent.action.VIEW", 
+        "-d", "http://localhost/" 
+          + filepath.replaceAll("^.+www/", ""),
+        "-t", "text/html", "-n", 
+        "com.chrome.canary/org.chromium.chrome.browser.ChromeTabbedActivity"
+      );
+    };
+    return outFiles;
+    
+  } catch (Throwable exc) {
+    String sts = (
+      StringUtils.join(ExceptionUtils.getRootCauseStackTrace(exc), "\n").replace(" [wrapped] ", "Caused by: ") +
+        exc.toString() +
+        StringUtils.join(ExceptionUtils.getRootCauseStackTrace(
+          Reflector.getRootCause(exc)
+      ), "\n").replace(" [wrapped] ", "Caused by: ")
+    );
+    exc.printStackTrace();
+    System.err.println(sts);
+    Runnable r2 = new Runnable() {
+      public void run() { 
+        System.err.println(PosixFileInputStream.pexecSync("exception", TextUtil.colorrm(sts)));
+        System.err.println(PosixFileInputStream.pexecSync("vibe"));
+      }
+    };
+    new Thread(r2, "CrashBroadcasterAndViber").start();
+  }
+  return outFiles.isEmpty()? lastDoc: outFiles;
+}

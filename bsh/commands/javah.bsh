@@ -1,0 +1,42 @@
+
+
+public static int javah(String baseDirPath) {
+  File projectDir = new File(baseDirPath);
+  File projectJar = new File(projectDir, String.format("%s.jar", baseDirPath));
+  File projectOutDir = new File(projectDir, "out");
+  File projectSourcesDir = new File(projectDir, "src");
+  Collection<File> sourceFiles = findFiles.iterate(projectSourcesDir.getPath(), 10, String.format("^%s[a-zA-Z0-9_$/]*\\.java$", Pattern.quote(projectSourcesDir.getPath())));
+  Collection<String> classNames = new ArrayList<String>();
+  for (File sourceFile : sourceFiles) {
+    String relPath = StringUtils.substringAfterLast(sourceFile.getPath(), projectSourcesDir.getPath());
+    while (relPath.length() != 0 && relPath.charAt(0) == '/') relPath = relPath.subSequence(1, relPath.length());
+    if (relPath.length() < 6)
+      continue;
+    String className = ClassInfo.typeToName(relPath.subSequence(0, relPath.length() - 5));
+    File outClassFile = new File(projectOutDir, ClassInfo.classNameToPath(className, "class"));
+    if (outClassFile.exists()) {
+      classNames.add(className);
+      System.err.printf("Added class: %s\n", className);
+    } else {
+      System.err.printf("Skipped class: %s (no class file found)\n", className);
+    }
+  }
+  ;
+  File nativeSourcesDir = new File(projectDir, "csrc");
+  if (!nativeSourcesDir.exists()) {
+    if (!nativeSourcesDir.mkdirs()) {
+      nativeSourcesDir.mkdirErrno();
+    }
+  }
+  ;
+  String extraArgsPropertyValue = System.getProperty("javah.extraArgs");
+  String extraArgsDelimiter = System.getProperty("javah.extraArgs.delimiter");
+  String[] extraArgs = (extraArgsPropertyValue != null && extraArgsDelimiter != null) ? StringUtils.splitByWholeSeparator(extraArgsPropertyValue, extraArgsDelimiter).filter(Pattern.compile("\\S+")) : new String[0];
+  String[] javahArgs = ArrayUtils.addAll(ArrayUtils.addAll(new String[] { "-d", nativeSourcesDir.getPath(), "-verbose", "-jni", "-classpath", projectOutDir.getPath() }, extraArgs), classNames.toArray(new String[0]));
+  String argsStr = StringUtils.join(javahArgs.select(FunctionUtil.bind("return m -> { String.format('\"%s\"', StringEscapeUtils.escapeJava(m)); }")), "\n  ");
+  System.err.printf("\n\n--- Current working directory: ---\n\n  '%s'\n\n--- Arguments: ---\n\n  javah.run(new String[]{ \n  %s\n  });\n\n", PosixFileInputStream.cwd(), argsStr);
+  int result = com.sun.tools.javah.Main.run(javahArgs, new PrintWriter(System.err));
+  System.err.printf("\n[ %d ] javah result: %s\n\n", result, (result == 0) ? "SUCCESS" : "FAILURE");
+  return result;
+}
+

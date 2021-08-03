@@ -1,0 +1,4 @@
+
+
+public static List<String> getCmdLine() { byte[] cmdb = FileUtils.readFileToByteArray(new File(PosixFileInputStream.procfs("cmdline"))); List args = new ArrayList(); int pos = 0; int sep = 0; do { sep = ZipUtil.indexOf(cmdb, new byte[]{ 0 }); if (sep == -1) { args.add(new String(cmdb, pos, cmdb.length)); break; }; args.add(new String(cmdb, pos, sep)); cmdb = Arrays.copyOfRange(cmdb, sep+1, cmdb.length); } while (sep != -1); return Collections.unmodifiableList(args); }
+

@@ -1,0 +1,16 @@
+
+
+// import org.mozilla.javascript.*; 
+import org.mozilla.javascript.ErrorReporter;
+
+
+public static ErrorReporter getErrorReporter() {
+  Map im = getInstanceMap();
+  ErrorReporter errorReporter = im.get(ErrorReporter.class);
+  if (errorReporter == null) {
+    errorReporter = getCompilerEnvirons().getErrorReporter();
+    im.put(ErrorReporter.class, errorReporter);
+  };
+  return errorReporter;
+};
+

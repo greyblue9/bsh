@@ -1,0 +1,133 @@
+import org.apache.commons.collections4.set.ListOrderedSet;
+import org.jsoup.select.Elements; 
+import org.jsoup.Connection;
+import org.jsoup.Connection.Response;
+
+public static String getPrimaryDomain(String hostOrUri) { 
+  if (hostOrUri == null || (hostOrUri = hostOrUri.trim()).length() == 0) {
+    hostOrUri = "www.unknown-host-"
+      .concat(Long.toString(System.nanoTime(), 10)).concat(".com");
+  };
+  String host 
+    = (hostOrUri.indexOf(":") != -1 || hostOrUri.indexOf("/") != -1)
+        ? new URI(hostOrUri).getHost()
+        : hostOrUri.trim();
+  String[] domainParts
+    = StringUtils.split((host != null? host: "example.com").trim(), "."); 
+  ArrayUtils.reverse(domainParts);
+  String[] top2 = Arrays.copyOfRange(
+    domainParts, 0, Math.min(2, domainParts.length)
+  );
+  ArrayUtils.reverse(top2);
+  String domain = StringUtils.join(top2, ".");
+  return domain;
+};
+
+public static boolean isSamePrimaryDomain(String hostOrUri1,
+String hostOrUri2)
+{
+  if (hostOrUri1 == null || hostOrUri2 == null) return false;
+  String domain1 = getPrimaryDomain(hostOrUri1), 
+         domain2 = getPrimaryDomain(hostOrUri2);
+  return (
+    domain1 != null && 
+    domain2 != null && 
+    StringUtils.equalsIgnoreCase(domain1, domain2));
+};
+
+
+public static Document getDocumentFromToc(String tocUrl) {
+  String TAG = "getDocumentFromToc";
+  
+  Document toc = getDocWithBaseUrl(tocUrl);
+  Elements links = toc.select("a[href]");
+  List<Pair> pairList = new ArrayList<Pair>(links.size());
+
+  for (Element link: links) {
+    String linkUrl = Jsoup.normalizeUri(link.attr("href"), toc.baseUri());
+    String linkUrlNoFragment = StringUtils.substringBefore(linkUrl, "#");
+    pairList.add(Pair.of(link, linkUrlNoFragment));
+  }
+  Map linkToUrlMap = RealArrayMap.toMap(pairList);
+  ListOrderedSet<Element> linkListSet = ListOrderedSet.listOrderedSet(
+    Arrays.asList(linkToUrlMap.keySet().toArray(new Element[0]))
+  );
+  List<Pair> pairListUniq = new ArrayList<Pair>(links.size());
+  Set<Element> addedLinks = new IdentityHashSet<Element>();
+  for (Element link: linkListSet) {
+    if (addedLinks.contains(link)) continue;    
+    String url = (String) linkToUrlMap.get(link);
+    Pair pair = Pair.of(link, url);
+    if (! isSamePrimaryDomain(tocUrl, url)) continue;
+    pairListUniq.add(pair);
+  }
+  
+  ListOrderedSet<Pair> pairSet = ListOrderedSet.listOrderedSet(pairListUniq);
+  Pair[] pairs = pairSet.asList().toArray(new Pair[0]);
+  
+  Document doc = Jsoup.parse(
+    "<!doctype html><html><head><title></title></head><body></body></html>"
+  );
+  Element body = doc.body();
+  for (Element elem: (toc.body() != null? toc.body(): toc).childNodes()) { 
+    elem.parentNode = null;
+    body.appendChild(elem);
+  };
+  
+  for (int i=0, len=pairs.length; i<len; ++i) { 
+    Log.d(TAG, "Working on section %d of %d ...", i+1, len);
+    Pair pair = pairs[i];
+    Element link = pair.getKey();
+    String url = pair.getValue();
+    Log.d(TAG, "Processing sub-document: [%s]", url);
+    Connection c = Jsoup.connect(url);
+    Log.d(TAG, "Connection: %s", c);
+    Response resp = null;
+    Document subdoc = null;
+    
+    try {
+      resp = c.execute();
+      Log.d(TAG, "c.execute() returned response: %s",resp);
+      subdoc = resp.parse();
+      Log.d(TAG, 
+        "resp.parse() returned: %s@%08x",
+        subdoc != null? subdoc.getClass().getName(): "null",
+        subdoc != null? subdoc.hashCode(): 0
+      );
+      subdoc.setBaseUri(url);
+    } catch (IOException ie) {
+      ioEx.printStackTrace();
+      Log.w(TAG, "c.execute() threwan exception; using fallback method", ie);
+      
+      subdoc = Jsoup.parse("<!doctype html><html><head /><body /></html>");
+      String html = PosixFileInputStream.pexecSync("curl", "-Lks", url);
+      Log.d(TAG, "Length of response html: %d chars", html.length());
+      ((html.indexOf("<body") != -1 || html.indexOf("<BODY") != -1)
+        ? subdoc.body()
+        : subdoc.childNodes().firstOrDefault()
+      ).html(html);
+      subdoc.setBaseUri(url);
+    }
+    
+    subdoc = stripHtml(subdoc);
+    
+    String nameVal = new URI(url).getPath().replaceAll("\\.[a-z0-9]{1,6}$", "").replaceAll("[-zA-Z0-9_-]+", "-").replaceAll("", "");
+    Element anchor
+      = doc.createElement("a").attr("name", nameVal).attr("id", nameVal); 
+    link.attr("href", String.format("#%s", nameVal));
+    Element section
+      = doc.createElement("section").attr("data-original-url", url);
+    // Prepare section contents
+    section.appendChild(anchor);
+    Element subdocBodyOrTop = (subdoc.body() != null)? subdoc.body(): subdoc;
+    for (Element elem: subdocBodyOrTop.childNodes()) {
+      elem.parentNode = null;
+      section.appendChild(elem);
+    };
+    Log.d(TAG, "Adding section %d of %d ...", i+1, len);
+    doc.body().appendChild(section);
+  }
+  
+  return doc;
+} 
+  

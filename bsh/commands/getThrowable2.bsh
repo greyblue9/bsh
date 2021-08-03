@@ -1,0 +1,305 @@
+
+public static Throwable getThrowable2(String str) {
+  String TAG = "getThrowable2";
+  str = str.replaceAll(
+    "Exception in thread \"[^\"]*\"[\t ]*", ""
+  );
+  str = Pattern.compile(
+    "(^|\n|Caused by: |Suppressed: )" +
+    "((?:[a-zA-Z0-9_$][a-zA-Z0-9_$]*\\.)*[A-Z][a-zA-Z0-9_$]*)[\t ]*(\n)",
+    Pattern.DOTALL
+  ).matcher(str).replaceAll("$1$2: $3");
+  
+  ArrayDeque exs = new ArrayDeque();
+  List all = new ArrayList();
+  Matcher stkmr = Pattern.compile(
+    "([^\\s()]+)\\.([^\\s().]+)\\(([^()\n:]+)(?::?([0-9]*))\\)"
+  ).matcher("");
+  String EXCEPTION_NAME_REGEX = "[a-zA-Z0-9_.$]*(?:Exception|Error|Death|android.app.IntentReceiverLeaked|ServiceConnectionLeaked|[.$]InstanceCountViolation|[.$]LogStackTrace|[.$]StrictModeCustomViolation|[.$]StrictModeDiskReadViolation|[.$]StrictModeDiskWriteViolation|[.$]StrictModeNetworkViolation|[.$]StrictModeViolation|ZygoteStartFailedEx|[.$]TerribleFailure|[.$]TerribleFailure|WindowLeaked|ExceptionWithContext|[.$]MethodAndArgsCaller|ThreadDeath|Throwable|DataTruncation|SQLWarning|ComparisonFailure|FoundIndex)";
+  
+  Matcher hm = Pattern.compile(
+    String.format(
+      "([a-zA-Z0-9._$]*(?:%s)[a-zA-Z0-9._$]*)(: ((?:(?!\n\tat |\nCaused by:).)*)|)",
+      EXCEPTION_NAME_REGEX
+    )
+  ).matcher(str);
+  List<MatchResult> hmrs = new ArrayList();
+  MatchResult hmr = null;
+  String className = null;
+  String msg = null;
+  int lasthend = -1, hend = -1;
+  int idx = -1;
+  
+  while (hm.find()) {
+    idx++;
+    hmr = hm.toMatchResult();
+    hmrs.add(hmr);
+  };
+  if (idx == -1) {
+    return getThrowable2("java.lang.UnknownError\n\t" + str.trim());
+  }
+  
+  for (int i=0; i<hmrs.size(); i++) {
+    hmr = hmrs.get(i);
+    className = hmr.group(1);
+    msg = hmr.group(2);
+    stktr = str.subSequence(
+      hmr.end(2),
+      (i<hmrs.size()-1)
+        ? hmrs.get(i+1).start(1)
+        : str.length()
+    );
+    if (className.indexOf(" ") != -1) continue; 
+    Log.d(TAG, "className: %s, msg: %s, stktr: %s", className,
+      (msg != null) ? String.format("\"%s\"", StringEscapeUtils.escapeJava(msg)): null,
+      (stktr == null) ? null : (
+        (stktr.length()>400) ? stktr.subSequence(0,120).concat("..").concat(stktr.subSequence(stktr.length()-120,stktr.length()))
+        : stktr));
+    stkmr.reset(stktr);
+    stes = new ArrayList();
+    while (stkmr.find()) {
+      /*
+      System.out.printf(
+        "  <%s> <%s> <%s> <%s>\n",
+        stkmr.group(1), stkmr.group(2), stkmr.group(3), stkmr.group(4)
+      );
+      */
+      ste = new StackTraceElement(
+        stkmr.group(1),
+        stkmr.group(2),
+        stkmr.group(3),
+        (stkmr.group(4) != null && stkmr.group(4).matches("^-?[0-9]+$"))
+          ? Integer.valueOf(stkmr.group(4), 10).intValue()
+          : -1
+      );
+      stes.add(ste);
+    };
+    StackTraceElement[] stk = stes.toArray(new StackTraceElement[0]);
+    if (!className.matches("^[a-zA-Z0-9_$.]+$")) {
+      className = "java.lang.Throwable";
+    }
+    
+    Throwable ex = null;
+    try {
+      if (DexVisitor.classForName(className) != null) {
+        ex = DexVisitor.classForName(className).getDeclaredConstructor(String.class).newInstance(msg);
+      } else {
+        ex = new java.lang.UnknownError(String.valueOf(msg));
+      }
+    } catch (Throwable e2) {
+      e2.printStackTrace();
+      ex = new Error();
+    };
+    Reflect.setfldval(
+      ex, "detailMessage", (msg != null)? msg.replaceAll("^: ", ""): null
+    );
+    Reflect.setfldval(ex, "stackTrace", stk);
+    if (! exs.isEmpty()) {
+      setCause(exs.pollLast(),  ex);
+    };
+    exs.offerLast(ex);
+    all.add(ex);
+  };
+  Throwable t = all.iterator().next();
+  
+  // Add duplicate StackTraceElements
+  Throwable cur = t, last = null;
+  while (cur != null && last != cur &&
+         cur.getCause() != null && cur.getCause() != cur)
+  {
+    if (last != null) {
+      cur.stackTrace
+        = ArrayUtils.addAll(cur.getStackTrace(), last.getStackTrace());
+    };
+    last = cur;
+    cur = cur.getCause();
+  };
+  if (last != null) {
+    cur.stackTrace = ArrayUtils.addAll(cur.getStackTrace(), last.getStackTrace());
+  }
+  return t;
+}
+
+public static Throwable getThrowable2(String str) {
+  str = str.replaceAll("\\(\\(null\\)[^()]*\\)", "(Unknown Source)");
+  String TAG = "getThrowable2";
+  str = str.replaceAll("Exception in thread \"[^\"]*\"[\t ]*", "");
+  str = Pattern.compile("(^|\n|Caused by: |Suppressed: )" + "((?:[a-zA-Z0-9_$][a-zA-Z0-9_$]*\\.)*[A-Z][a-zA-Z0-9_$]*)[\t ]*(\n)", Pattern.DOTALL).matcher(str).replaceAll("$1$2: $3");
+  ArrayDeque exs = new ArrayDeque();
+  List all = new ArrayList();
+  Matcher stkmr = Pattern.compile("([^\\s()]+)\\.([^\\s().]+)\\(([^()\n:]+)(?::?([0-9]*))\\)").matcher("");
+  String EXCEPTION_NAME_REGEX = "[a-zA-Z0-9_.$]*(?:Exception|Error|Death|android.app.IntentReceiverLeaked|ServiceConnectionLeaked|[.$]InstanceCountViolation|[.$]LogStackTrace|[.$]StrictModeCustomViolation|[.$]StrictModeDiskReadViolation|[.$]StrictModeDiskWriteViolation|[.$]StrictModeNetworkViolation|[.$]StrictModeViolation|ZygoteStartFailedEx|[.$]TerribleFailure|[.$]TerribleFailure|WindowLeaked|ExceptionWithContext|[.$]MethodAndArgsCaller|ThreadDeath|Throwable|DataTruncation|SQLWarning|ComparisonFailure|FoundIndex)";
+  Matcher hm = Pattern.compile(String.format("([a-zA-Z0-9._$]*(?:%s)[a-zA-Z0-9._$]*)(: ((?:(?!\n\tat |\nCaused by:).)*)|)", EXCEPTION_NAME_REGEX)).matcher(str);
+  List<MatchResult> hmrs = new ArrayList();
+  MatchResult hmr = null;
+  String className = null;
+  String msg = null;
+  int lasthend = -1, hend = -1;
+  int idx = -1;
+  while (hm.find()) {
+    idx++;
+    hmr = hm.toMatchResult();
+    hmrs.add(hmr);
+  }
+  if (idx == -1) {
+    return getThrowable2("java.lang.UnknownError\n\t" + str.trim());
+  }
+  for (int i = 0; i < hmrs.size(); i++) {
+    hmr = hmrs.get(i);
+    className = hmr.group(1);
+    msg = hmr.group(2);
+    stktr = str.subSequence(hmr.end(2), (i < hmrs.size() - 1) ? hmrs.get(i + 1).start(1) : str.length());
+    if (className.indexOf(" ") != -1)
+      continue;
+    Log.d(TAG, "className: %s, msg: %s, stktr: %s", className, (msg != null) ? String.format("\"%s\"", StringEscapeUtils.escapeJava(msg)) : null, (stktr == null) ? null : ((stktr.length() > 400) ? stktr.subSequence(0, 120).concat("..").concat(stktr.subSequence(stktr.length() - 120, stktr.length())) : stktr));
+    stkmr.reset(stktr);
+    stes = new ArrayList();
+    while (stkmr.find()) {
+      /*
+  System.out.printf(
+  "  <%s> <%s> <%s> <%s>\n",
+  stkmr.group(1), stkmr.group(2), stkmr.group(3), stkmr.group(4)
+  );
+  */
+      ste = new StackTraceElement(stkmr.group(1), stkmr.group(2), stkmr.group(3), (stkmr.group(4) != null && stkmr.group(4).matches("^-?[0-9]+$")) ? Integer.valueOf(stkmr.group(4), 10).intValue() : -1);
+      stes.add(ste);
+    }
+    StackTraceElement[] stk = stes.toArray(new StackTraceElement[0]);
+    if (!className.matches("^[a-zA-Z0-9_$.]+$")) {
+      className = "java.lang.Throwable";
+    }
+    Throwable ex = null;
+    try {
+      if (DexVisitor.classForName(className) != null) {
+        ex = DexVisitor.classForName(className).getDeclaredConstructor(String.class).newInstance(msg);
+      } else {
+        ex = new java.lang.UnknownError(String.valueOf(msg));
+      }
+    } catch (Throwable e2) {
+      e2.printStackTrace();
+      ex = new Error();
+    }
+    Reflect.setfldval(ex, "detailMessage", (msg != null) ? msg.replaceAll("^: ", "") : null);
+    Reflect.setfldval(ex, "stackTrace", stk);
+    if (!exs.isEmpty()) {
+      setCause(exs.pollLast(), ex);
+    }
+    exs.offerLast(ex);
+    all.add(ex);
+  }
+  Throwable t = all.iterator().next();
+  // Add duplicate StackTraceElements
+  Throwable cur = t, last = null;
+  while (cur != null && last != cur && cur.getCause() != null && cur.getCause() != cur) {
+    if (last != null) {
+      cur.stackTrace = ArrayUtils.addAll(cur.getStackTrace(), last.getStackTrace());
+    }
+    last = cur;
+    cur = cur.getCause();
+  }
+  if (last != null) {
+    cur.stackTrace = ArrayUtils.addAll(cur.getStackTrace(), last.getStackTrace());
+  }
+  return t;
+}
+
+ 
+
+public static Throwable getThrowable2(String str) {
+  str = str.replaceAll("\\(\\(null\\)[^()]*\\)", "(Unknown Source)");
+  String TAG = "getThrowable2";
+  str = str.replaceAll("Exception in thread \"[^\"]*\"[\t ]*", "");
+  str = Pattern.compile("(^|\n|Caused by: |Suppressed: )" + "((?:[a-zA-Z0-9_$][a-zA-Z0-9_$]*\\.)*[A-Z][a-zA-Z0-9_$]*)[\t ]*(\n)", Pattern.DOTALL).matcher(str).replaceAll("$1$2: $3");
+  ArrayDeque exs = new ArrayDeque();
+  List all = new ArrayList();
+  Matcher stkmr = Pattern.compile("([^\\s()]+)\\.([^\\s().]+)\\(([^()\n:]+)(?::?([0-9]*))\\)").matcher("");
+  String EXCEPTION_NAME_REGEX = "[a-zA-Z0-9_.$]*(?:Exception|Error|Death|android.app.IntentReceiverLeaked|ServiceConnectionLeaked|[.$]InstanceCountViolation|[.$]LogStackTrace|[.$]StrictModeCustomViolation|[.$]StrictModeDiskReadViolation|[.$]StrictModeDiskWriteViolation|[.$]StrictModeNetworkViolation|[.$]StrictModeViolation|ZygoteStartFailedEx|[.$]TerribleFailure|[.$]TerribleFailure|WindowLeaked|ExceptionWithContext|[.$]MethodAndArgsCaller|ThreadDeath|Throwable|DataTruncation|SQLWarning|ComparisonFailure|FoundIndex)";
+  Matcher hm = Pattern.compile(String.format("([a-zA-Z0-9._$]*(?:%s)[a-zA-Z0-9._$]*)(: ((?:(?!\n\tat |\nCaused by:).)*)|)", EXCEPTION_NAME_REGEX)).matcher(str);
+  List<MatchResult> hmrs = new ArrayList();
+  MatchResult hmr = null;
+  String className = null;
+  String msg = null;
+  int lasthend = -1, hend = -1;
+  int idx = -1;
+  while (hm.find()) {
+    idx++;
+    hmr = hm.toMatchResult();
+    hmrs.add(hmr);
+  }
+  if (idx == -1) {
+    return getThrowable2("java.lang.UnknownError\n\t" + str.trim());
+  }
+  for (int i = 0; i < hmrs.size(); i++) {
+    hmr = hmrs.get(i);
+    className = hmr.group(1);
+    msg = hmr.group(2);
+    stktr = str.subSequence(hmr.end(2), (i < hmrs.size() - 1) ? hmrs.get(i + 1).start(1) : str.length());
+    if (className.indexOf(" ") != -1)
+      continue;
+    Log.d(TAG, "className: %s, msg: %s, stktr: %s", className, (msg != null) ? String.format("\"%s\"", StringEscapeUtils.escapeJava(msg)) : null, (stktr == null) ? null : ((stktr.length() > 400) ? stktr.subSequence(0, 120).concat("..").concat(stktr.subSequence(stktr.length() - 120, stktr.length())) : stktr));
+    stkmr.reset(stktr);
+    stes = new ArrayList();
+    while (stkmr.find()) {
+      /*
+  System.out.printf(
+  "  <%s> <%s> <%s> <%s>\n",
+  stkmr.group(1), stkmr.group(2), stkmr.group(3), stkmr.group(4)
+  );
+  */
+      ste = new StackTraceElement(stkmr.group(1), stkmr.group(2), stkmr.group(3), (stkmr.group(4) != null && stkmr.group(4).matches("^-?[0-9]+$")) ? Integer.valueOf(stkmr.group(4), 10).intValue() : -1);
+      stes.add(ste);
+    }
+    StackTraceElement[] stk = stes.toArray(new StackTraceElement[0]);
+    if (!className.matches("^[a-zA-Z0-9_$.]+$")) {
+      className = "java.lang.Throwable";
+    }
+    Throwable ex = null;
+    try {
+      if (DexVisitor.classForName(className) != null) {
+        ex = DexVisitor.classForName(className).getDeclaredConstructor(String.class).newInstance(msg);
+      } else {
+        ex = new java.lang.UnknownError(String.valueOf(msg));
+      }
+    } catch (Throwable e2) {
+      e2.printStackTrace();
+      ex = new Error();
+    }
+    Reflect.setfldval(ex, "detailMessage", 
+      (msg != null)
+        ? (msg = msg.replaceAll("^\\s*:\\s*", "")).length() > 0
+            ? msg
+            : null
+        : null
+    );
+    Reflect.setfldval(ex, "stackTrace", stk);
+    if (!exs.isEmpty()) {
+      setCause(exs.pollLast(), ex);
+    }
+    exs.offerLast(ex);
+    all.add(ex);
+  }
+  Throwable t = all.iterator().next();
+  // Add duplicate StackTraceElements
+  Throwable cur = t, last = null;
+  while (cur != null && last != cur && cur.getCause() != null && cur.getCause() != cur) {
+    if (last != null) {
+      cur.stackTrace = ArrayUtils.addAll(cur.getStackTrace(), last.getStackTrace());
+    }
+    last = cur;
+    cur = cur.getCause();
+  }
+  if (last != null) {
+    cur.stackTrace = ArrayUtils.addAll(cur.getStackTrace(), last.getStackTrace());
+  }
+  return t;
+}
+
+
+public static void setCause(Throwable t, Throwable c) {
+  Reflect.setfldval(t, "cause", c);
+  Reflect.initByType(t, c);
+}
+
+
+
+ 

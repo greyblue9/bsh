@@ -1,0 +1,15 @@
+
+
+
+public static String writeBshMethod(String s) {
+  Object t = parseBsh(s, true);
+  String name = t.getName().toString();
+  System.err.println(name);
+  File cmdFile = new File(String.format("/data/media/0/bsh/commands/%s.bsh", name));
+  String src2 = cmdFile.exists() ? StringUtils.join(new String[] { FileUtils.readFileToString(cmdFile, java.nio.charset.StandardCharsets.UTF_8).trim(), parseBsh(s, false), "" }, "\n\n\n") : StringUtils.join(new String[] { "", parseBsh(s, false), "" }, "\n\n\n");
+  String src3 = Pattern.compile("\n *\n *\n[\n ][\n ]*").matcher(src2).replaceAll("\n\n\n\n");
+  FileUtils.writeStringToFile(cmdFile, src3, java.nio.charset.StandardCharsets.UTF_8);
+  return src3;
+}
+
+

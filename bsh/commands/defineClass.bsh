@@ -1,0 +1,143 @@
+
+import java.io.*;
+import java.net.*;
+import java.util.*;
+import java.lang.reflect.*;
+import dalvik.system.DexFile;
+import dalvik.system.BaseDexClassLoader;
+
+
+  public static Class defineClassNative
+  (String name, ClassLoader loader, int cookie)
+  {
+    Method m = DexFile.class.getDeclaredMethod(
+      "defineClassNative",
+      String.class, ClassLoader.class, Integer.TYPE 
+    );
+    m.setAccessible(true);
+    
+    Class clz = m.invoke(null, name, loader, cookie);
+    return clz;
+  }
+  
+  public static Class defineClassNative
+  (String name, ClassLoader loader, int cookie)
+  {
+    Method m = DexFile.class.getDeclaredMethod(
+     "defineClassNative", 
+      String.class, ClassLoader.class, Integer.TYPE 
+    );
+    m.setAccessible(true);
+    
+    Class clz = m.invoke(null, name, loader, cookie);
+    return clz;
+  }
+
+
+  
+  public static Class defineClass 
+  (String name, ClassLoader loader, int cookie) 
+  {
+    Method m = DexFile.class.getDeclaredMethod(
+      "defineClass", 
+      String.class, ClassLoader.class, Integer.TYPE
+    );
+    m.setAccessible(true);
+    
+    Class clz = m.invoke(null, name, loader, cookie);
+    return clz;
+  }
+  
+  
+  
+  public static Class defineClass(String path, String name) { 
+    Class/*<?>*/ dexPathListClass
+      = Class.forName("dalvik.system.DexPathList");
+    this.interpreter.set("dexPathListClass",dexPathListClass);
+    
+    Method mthd_sp 
+      = findMethod(dexPathListClass, "splitPaths");
+    this.interpreter.set("mthd_sp", mthd_sp);
+    System.out.println(
+      dumpMembers.colorize(mthd_sp));
+    
+    Method mthd_mde 
+      = findMethod(dexPathListClass, "makeDexElements");
+    this.interpreter.set("mthd_mde", mthd_mde);
+    System.out.println(
+      dumpMembers.colorize(mthd_mde));
+    
+    Method mthd_fc
+      = findMethod(dexPathListClass, "findClass");
+    this.interpreter.set("mthd_fc", mthd_fc);
+    System.out.println(
+      dumpMembers.colorize(mthd_fc));
+    
+    String nativeLibPath 
+      = System.getProperty("java.library.path");
+    this.interpreter.set("nativeLibPath", nativeLibPath);
+    
+    
+    Object/*DexPathList*/ pathList 
+      = getUnsafe().allocateInstance(dexPathListClass);
+    this.interpreter.set("pathList", pathList);
+    
+    ArrayList/*<File>*/ classPathFiles 
+      = mthd_sp.invoke(null, path, nativeLibPath, false); 
+    this.interpreter.set("classPathFiles", classPathFiles);
+    
+    ArrayList/*<File>*/ exList = new ArrayList();
+    this.interpreter.set("exList", exList);
+    
+    Object[]/*DexPathList$Element[]*/ dexElements 
+      = mthd_mde.invoke(null, 
+          classPathFiles, 
+          // TODO: Check this parameter
+          // (this usage is just a wild guess)
+          new File("/data/local/tmp_clazzes"), 
+          exList
+        ); 
+    this.interpreter.set("dexElements", dexElements);
+    
+    ArrayList/*<File>*/ libraryPathFiles 
+      = mthd_sp.invoke(null,
+          path, nativeLibPath, true
+        ); 
+    this.interpreter.set("libraryPathFiles",libraryPathFiles);
+    
+    setfldval(pathList, 
+      "nativeLibraryDirectories", 
+      // set (File[]) DexPathList.nativeLibraryDirectories
+      libraryPathFiles.toArray(new File[0])
+    );
+    Dumper.dump(pathList, 1);
+    
+    setfldval(pathList, 
+      "dexElements", 
+      // set (DexPathList$Element[]) DexPathList.dexElements
+      dexElements
+    );
+    Dumper.dump(pathList, 1);
+    
+    // TODO: Set up any other properties in DexPathList
+    
+    Class/*<?>*/ cls 
+      = mthd_fc.invoke(pathList, name, exList);
+    
+    this.interpreter.set("cls", cls);
+    return cls;
+  }
+  
+  
+
+public static Class defineClass(String className) {
+  Object ucp = ClassLoader.getSystemClassLoader().ucp.getResource(ClassInfo.typeToName(className).replace('.', '/').concat(".class"), false);
+  InputStream is = (ucp != null) ? ucp.cachedInputStream() : new ByteArrayInputStream(ClassInfo.getClassBytes(className).getValue());
+  byte[] classBytes = IOUtils.toByteArray(is);
+  ClassLoader acl = (!CollectionUtil.dbg.containsKey("acl")) ? new bsh.classpath.AndroidClassLoader() : CollectionUtil.dbg.get("acl");
+  CollectionUtil.dbg.put("acl", acl);
+  Class clz = acl.defineClass(ClassInfo.getClassName(classBytes), classBytes);
+  return clz;
+}
+
+ 

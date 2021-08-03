@@ -1,0 +1,146 @@
+import org.json.JSONArray;
+import org.json.JSONObject;
+import java.nio.charset.StandardCharsets;
+import java.nio.charset.CharsetDecoder;
+import java.nio.charset.CoderResult;
+
+
+public static Object parseNetExport0(Object export) {
+  return parseNetExport0(export, null);
+} 
+
+public static Object parseNetExport0(Object export, Pattern urlFilter) {
+  
+  ByteBuffer bb = null;
+  CharBuffer cb = null;
+  if (export instanceof byte[]) {
+    bb = ByteBuffer.wrap((byte[]) export);
+  } else if (export instanceof ByteBuffer) {
+    bb = (ByteBuffer) export;
+  } else {
+    byte[] bytes = null;
+    if (export instanceof CharSequence) {
+      if (((CharSequence) export).length() < 256) {
+        bytes = FileUtils.readFileToByteArray(
+          new File(CharSequenceUtil.toString((CharSequence) export)));
+      } else {
+        bytes = CharSequenceUtil.toString((CharSequence) export).getBytes(StandardCharsets.UTF_8);
+      }
+    } else if (export instanceof File) {
+      bytes = FileUtils.readFileToByteArray((File) export);
+    } else {
+      throw new IllegalArgumentException(String.format(
+        "parseNetExport0: Unsupported input argument type (%s)",
+        export != null
+          ? ClassInfo.typeToName(export.getClass().getName())
+          : "null"
+      ));
+    }
+    bb = ByteBuffer.wrap(bytes);
+  }
+  
+                  
+  int limitChars = (cb = CharBuffer.allocate(bb.capacity())).limit();
+  CharsetDecoder dec = StandardCharsets.UTF_8.newDecoder(); 
+  CoderResult cr = dec.decode(bb, cb, true);
+  if (cr.isError()) {
+    System.err.println(cr);
+    try {
+      cr.throwException();
+    } catch (Exception e) {
+      throw new IllegalArgumentException(String.format(
+        "byte-to-char conversion failed for net export input "
+        + "(type: %s), giving result %s: %s",
+        ClassInfo.typeToName(export.getClass().getName()), cr, e
+      ), e);
+    }
+  }
+  
+  
+  CharBuffer cbForRead = cb.flip();
+  int charsLength = cbForRead.length();
+  
+  
+  String blankStr = null;
+  Reflect.setfldval(
+    (blankStr = Reflect.allocateInstance(String.class)),
+    "value", cb.protectedArray()
+  ); 
+  Reflect.setfldval(blankStr, "count", cb.length()); 
+  Reflect.setfldval(blankStr, "offset", 0);
+  
+  JSONObject obj = new JSONObject(blankStr);
+  return extractNetEvents(obj, urlFilter);
+}
+
+
+public static Object extractNetEvents(JSONObject obj, Pattern urlFilter) {
+  JSONArray _events = obj.getJSONArray("events");
+  List<JSONObject> events = Reflect.getfldval(_events, "values");
+  int lastId = 0;
+  int skipped = 0;
+  Map ret = new TreeMap();
+  Object lastUrl = null;
+  
+  for (Iterator it = events.iterator(); it.hasNext();) {
+    JSONObject event = (JSONObject) it.next();
+    int id = (++lastId);
+    Map eventData = Reflect.getfldval(event, "nameValuePairs", false);
+    if (eventData == null) continue;
+    if (! eventData.containsKey("params")) continue;
+    Map paramData
+      = Reflect.getfldval(eventData.get("params"), "nameValuePairs", false);
+    if (paramData == null) continue;
+    String url = null;
+    if (paramData.containsKey("url")) {
+      url = String.valueOf(paramData.get("url"));
+      lastUrl = url;
+    } else {
+      url = lastUrl;
+    }
+    if (url.indexOf("pagead") != -1 ||
+        url.indexOf("doubleclick") != -1 ||
+        url.indexOf("googlead") != -1)
+    {
+      skipped++;
+      continue;
+    }
+    if (urlFilter != null && urlFilter.matcher(url).find()) {
+      skipped++;
+      continue;
+    }
+    
+    if (! paramData.containsKey("hex_encoded_bytes")) continue;
+    String hexEncodedBytes = paramData.get("hex_encoded_bytes");
+    byte[] data = ByteUtil.hexStringToByteArray(hexEncodedBytes);
+    
+    List<Object> urlEventsData;
+    if (! ret.containsKey(url)) {
+      ret.put(url, (urlEventsData = new ArrayList<Object>()));
+    } else {
+      urlEventsData = ret.get(url);
+    }
+    
+    urlEventsData.add(Pair.of(new Map[]{ eventData, paramData }, data));
+    System.err.printf(
+      "event #%3d [data: %d bytes] for URL <%s>\n",
+      urlEventsData.size(), data.length, url
+    );    
+  }
+  return ret;
+}
+
+
+/*
+  ByteUtil.hexStringToByteArray(
+    events.subList(6000, 7039).filter("hex_encoded_bytes")[0].nameValuePairs.get("params").nameValuePairs.get("hex_encoded_bytes"));
+(pairs = obj.nameValuePairs.get("events").values.select(FunctionUtil.bind("""return m -> { var url = Reflect.getfldval(Reflect.getfldval(m, "nameValuePairs").get("params"), "nameValuePairs").get("url"); return url.indexOf("doubleclick") == -1 && url.indexOf("google.com") == -1 && url.indexOf(".js") == -1 && url.indexOf(".css") == -1? Pair.of(url, m): null; }"""))).size();;
+  
+  
+}
+*/
+
+
+
+
+

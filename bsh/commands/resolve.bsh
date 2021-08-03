@@ -1,0 +1,8 @@
+public static java.lang.Class resolve(java.lang.String name) { 
+
+  cm = this.namespace.getClassManager(); cm.cacheClassInfo("bsh.BSHAmbiguousName", Thread.currentThread().getContextClassLoader().loadClass("bsh.BSHAmbiguousName")); import bsh.BSHAmbiguousName; ctor = bsh.BSHAmbiguousName.class.getDeclaredConstructors()[0]; ctor.setAccessible(true); an = ctor.newInstance(new java.lang.Object[]{ 0 }); fld = ((bsh.BSHAmbiguousName)an).getClass().getDeclaredField("text"); fld.setAccessible(true); fld.set(an, name); m = an.getClass().getDeclaredMethod("toClass", new java.lang.Class[]{  bsh.CallStack.class, bsh.Interpreter.class }); cls = (java.lang.Class) m.invoke(an, new java.lang.Object[]{ this.callstack, this.interpreter }); 
+
+  return cls; 
+
+}
+

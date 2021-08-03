@@ -1,0 +1,7 @@
+
+
+
+public static jadx.core.dex.nodes.DexNode getDexNode(String apkpath) { File outDir = PosixFileInputStream.createTemporaryDirectory("axml_out"); JadxArgs args = new JadxArgs(outDir.getPath()); jadx.core.dex.nodes.RootNode root = new jadx.core.dex.nodes.RootNode(args); System.err.println("Loading APK input file into RootNode ..."); jadx.core.utils.files.InputFile inFile; root.load(Arrays.asList(inFile = new jadx.core.utils.files.InputFile(new File(apkpath)))); root.initClassPath(); inFile.searchDexFiles(); jadx.core.utils.files.DexFile dexFile = inFile.dexFiles.firstOrDefault(); Dex dexBuf = dexFile.getDexBuf(); jadx.core.dex.nodes.DexNode dex = new jadx.core.dex.nodes.DexNode(root, dexFile); dex.loadClasses(); dex.initInnerClasses(); FileUtils.forceDelete(outDir); return dex; }
+
+
+

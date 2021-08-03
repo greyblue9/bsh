@@ -1,0 +1,3 @@
+
+public static int putInstances(Iterable<Object> itb) { Map im = getInstanceMap(); Iterator it = itb.iterator(); int totalnew = 0; while (it.hasNext()) { Object o = it.next(); if (o == null) continue; try { totalnew += (im.put(o.getClass(), o) != null)? 0: 1; } catch (Throwable e) { System.err.printf("%s: %s\n", e.getClass().getSimpleName(), Reflect.getfldval(e, "detailMessage")); continue; }; }; return totalnew; }
+

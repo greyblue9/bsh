@@ -1,0 +1,10 @@
+
+public static Object printGenericInterfaces(Map implsGenMap) { 
+
+  ArrayList al2 = new ArrayList(implsGenMap.values()); 
+  return StringCollectionUtil.toStringFilter(al2, new Matcher[]{ Pattern.compile(".*<.*", Pattern.CASE_INSENSITIVE | Pattern.DOTALL | Pattern.MULTILINE | Pattern.UNIX_LINES).matcher("") });
+  //     .sort()
+  //     .select("""m => m.replaceAll("java\\.(?:n?io|util(?:\\.zip|\\.regex|\\.jar)?|net|lang(?:\\.ref|\\.reflect)?)\\.", "").replace("implements", "")""").print();
+
+}
+

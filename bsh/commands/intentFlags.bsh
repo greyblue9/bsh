@@ -1,0 +1,4 @@
+
+
+public static String intentFlags(long flags) { return "                        " + StringUtils.join(ConstUtil.constantMap(android.content.Intent.class, "FL", flags).values().select(FunctionUtil.bind("return m -> { String.format(\"Intent.%s\", m); }")), " |\n                        "); };
+

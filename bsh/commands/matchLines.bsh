@@ -1,0 +1,32 @@
+
+List/*<List<String>>*/matchLines(CharSequence[] input, 
+   Matcher mchr)
+   {
+     List/*<List<String>>*/ rows 
+       = new ArrayList/*<List<String>>*/(input.length);
+     List<CharSequence> matches;
+     int r = -1;     
+     boolean succ = false;
+     do { 
+       if (r == -1 || !(succ = mchr.find())) {
+         if (r != -1) rows.add(matcches);
+         r += 1;
+         matches = new ArrayList<CharSequence>();
+         mchr.reset(input[r], 0, input[r].length());
+        
+       }
+       if (succ) {
+         int groupNum = -1; 
+         while (++groupNum <= mchr.groupCount()) {
+           matches.add(mchr.group(groupNum));
+         }
+         
+         succ = false;
+       }
+     } while (succ);
+     return matches;
+   }
+   public static List matchLines(CharSequence input, java.lang.String regex) { Matcher mchr = java.util.regex.Pattern.compile(regex, 43).matcher(""); NumberedLines nl = new org.d6r.NumberedLines(input instanceof String ? input : input.toString()); int[] lens = nl.getLengths(); int nlines = lens.length; List lineResults = new java.util.ArrayList(nlines); String lastLine = null, line = null; int lineStart = 0; for (int l = 0; l < nlines; ++l) { lineStart += (lastLine != null)? lastLine.length() + 1: 0; lastLine = line; List lineGroupLists = new java.util.ArrayList(); line = nl.getLine(l + 1); mchr.reset(line); while (mchr.find()) { List groups = new java.util.ArrayList(mchr.groupCount()+1); groups.add(0, Pair.of(lineStart, nl.subSequence(lineStart, lineStart + line.length()))); groups.add(1, mchr.toMatchResult()); for (int g = 1; g <= mchr.groupCount(); ++g) { CharSequence val = mchr.group(g); if (!(val == null || val.isEmpty())) groups.add(val); } lineGroupLists.add(groups.subList(2, groups.size())); } lineResults.addAll(lineGroupLists); } return (List)lineResults; }
+
+
+

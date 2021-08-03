@@ -1,0 +1,292 @@
+import java.util.Map.Entry;
+
+/*
+public static Map get(com.sun.jdi.ObjectReference objRef) { 
+  return RealArrayMap.toMap(
+    RealArrayMap.toMap(objRef.getValues(objRef.referenceType().allFields()))
+      .entrySet().select(
+        FunctionUtil.bind(
+          "return m -> { Pair.of(m.getKey().name(), " +
+          "  (SRI != null && SRI.isInstance(m.getValue())) " +
+          "    ? m.getValue().value()" +
+          "    : m.getValue()); }",
+          "SRI",
+          DexVisitor.classForName("com.sun.tools.jdi.StringReferenceImpl")
+        )
+      )
+  );
+} */
+
+public static Map get(com.sun.jdi.ObjectReference objRef) {
+  return RealArrayMap.toMap(
+    objRef.type().allFields().select(
+      FunctionUtil.bind(
+        "return m -> { var val = objRef.getValue(m); return Pair.of(m.name(), ArrayReferenceImpl.isInstance( val)? val.getValues(): val); }",
+        "objRef", objRef,
+        com.sun.tools.jdi.ArrayReferenceImpl.class
+      )
+    )
+  );
+}
+
+
+public static Map get(Member[] mbs, Object target) {
+  return get(mbs, target, 0);
+}
+
+public static Map get(Member[] mbs, Object target, int tryDepth) {
+  Class accClass = Class.forName(
+    "sun.reflect.UnsafeQualifiedStaticObjectFieldAccessorImpl");
+  Constructor<UnsafeFieldAccessorImpl> ctor
+    = accClass.getDeclaredConstructor(Field.class, Boolean.TYPE);
+  ctor.setAccessible(true);
+  Method get = accClass.getDeclaredMethod("get", Object.class);
+  get.setAccessible(true);
+  
+  Map m = new RealArrayMap();
+  for (Member mb : mbs) {
+    if (mb == null) continue;
+    mb.setAccessible(true);
+    int acc = mb.getModifiers();
+    if ((acc & 8) == 0 && target == null) continue;
+    
+    try {
+      if (mb instanceof Field) {
+        Field fld = (Field) mb;
+        Class fldType = fld.getType(),
+              declaringClass = fld.getDeclaringClass();
+        Object item = null;
+        
+        if (fldType.isPrimitive() || fldType.isEnum()) continue;
+        if ((acc & Modifier.STATIC) != 0) {
+          Object accessor = ctor.newInstance(fld, false);
+          try {
+            item = get.invoke(accessor, null);
+            if (item == null) continue;
+          } catch (Throwable t) {
+          }
+        }
+        if (item == null) {
+          item = fld.get(
+            ((acc & Modifier.STATIC) != 0)
+              ? null
+              : declaringClass.isAssignableFrom(target.getClass())
+                 ? target
+                 : ((Modifier.ABSTRACT & declaringClass) == 0 &&
+                    !fldType.getName().startsWith("java.l"))
+                      ? Reflect.allocateInstance(fldType)
+                      : tryGetInstance(fldType, 0, tryDepth)
+          );
+        }
+        if (item != null) safePut(m, mb, item);
+      } else if (mb instanceof Method &&
+        mb.getParameterTypes().length == 0 &&
+        mb.startsWith("get"))
+      {
+        mb.setAccessible(true);
+        item = ((Method) mb).invoke((acc & Modifier.STATIC) != 0 
+          ? target 
+          : ((Modifier.ABSTRACT & mb.getType()) == 0 
+            && !mb.getType().getName().startsWith("java."))
+              ? Reflect.allocateInstance(mb.getType()) 
+              : tryGetInstance(mb.getType(), 0, 0), new Object[0]);
+        if (item == null) continue;
+        System.err.printf(
+          "got item (%s) from method %s#%s\n",
+          ClassInfo.typeToName(item),
+          ClassInfo.typeToName(mb.getDeclaringClass()), 
+          mb.getName()
+        );
+        if (item != null) safePut(m, mb, item);
+      } else {
+        System.err.printf(
+          "Constructors not yet supported by get(): %s\n",
+          dumpMembers.colorize(mb)
+        );
+      }
+    } catch (Throwable t) {
+    }
+  }
+  return m;
+}
+
+public static boolean safePut(Map map, Object key, Object item) {
+  String mname = null;
+  try {
+    mname = "toString"; item.toString(); 
+    mname = "hashCode"; item.hashCode(); 
+    mname = "equals";   item.equals(null);
+  } catch (Throwable e) {
+    System.err.printf(
+      "Skipping '%s' instance with broken %s() implementation (%s)\n",
+      ClassInfo.typeToName(item), mname, Reflector.getRootCause(e)
+    );
+    return false;
+  }
+  if (item instanceof char[]) item = String.valueOf((char[]) item);
+  map.put(key, item);
+  return true;
+}
+
+
+
+public static Map convertFieldKeysToNameOrClass(
+  Map memberMap, boolean byClass)
+{
+  Map ret = new RealArrayMap(memberMap.size());
+  for (Entry e: memberMap.entrySet()) {
+    if (!(e.getKey() instanceof java.lang.reflect.Field)) {
+      return memberMap;
+    } else {
+      ret.put(
+       (byClass) ? e.getKey().getType(): e.getKey().getName(),
+       e.getValue()
+      );
+    }
+  }
+  return ret;
+}
+
+public static Map getMap(Map map) { return getMap((Map) target, false); }
+public static Map getMap(Map map, boolean forceClasses) {
+  Map ret = null;
+  if ((map instanceof RealArrayMap || map instanceof java.util.AbstractMap) 
+  && !(map instanceof Throwable))
+  {
+    for (Map.Entry ent: map.entrySet()) {
+      if (ent instanceof java.lang.reflect.Field) {
+        ret = convertFieldKeysToNameOrClass(map, forceClasses);
+        break;
+      }
+      break;
+    }
+  };
+  if (ret == null || ret.isEmpty() || ret == map) {
+    ret = getObject((Object) map, forceClasses);
+  };
+  return ret;
+}
+
+
+
+public static Map getObject(Object target) {
+  return getObject((Object) target, false);
+}
+public static Map getObject(Object target, boolean forceClasses) {
+  int errorsPrinted = 0;
+  Map ret = null;
+  List<Field> flds = new ArrayList<Field>();
+  Class cls = target.getClass();
+  do {
+    flds.addAll(Arrays.asList(cls.getDeclaredFields()));
+  } while ((cls = cls.getSuperclass()) != null);
+  
+  if (ret == null) {
+    ret = new TreeMap();
+  }
+  if (ret == null || ret.isEmpty()) {
+    for (java.lang.reflect.Field fld : flds) {
+      try {
+        ret.put(
+          (forceClasses) ? fld.getType() : fld.getName(),
+          Reflect.access.accessfld(target, fld, null, false)
+        );
+      } catch (java.lang.Throwable t) {
+        if (++errorsPrinted <= 5) {
+          Log.d(
+            "getObject",
+            "Error getting (%s) field \"%s\" of target %s: %s",
+            ClassInfo.getSimpleName(fld.getType().getName()),
+            fld.getName(),
+            ClassInfo.getSimpleName(target.getClass().getName()),
+            (t instanceof Error && t.getClass().getName().startsWith("bsh"))
+              ? org.d6r.Util.getRootCause(t)
+              : t
+          );
+        }
+      }
+    }
+  };
+  if (ret == null || ret.isEmpty()) {
+    ret = RealArrayMap.toMap(
+      ObjectUtil.searchObjectPath(
+        target, Object.class, false, 0, 2
+      ).select(
+        FunctionUtil.bind(
+          "return m -> { " +
+          "  Pair.of(m.getKey().name.substring(1), m.getValue()); " +
+          "}"
+        )
+      )
+    );
+  };
+  return ret;
+}
+
+
+public static Map get(Object target) { return get((Object) target, false); }
+public static Map get(Object target, boolean forceClasses) {
+  return (target instanceof Map)
+    ? getMap((Map) target, forceClasses)
+    : (target instanceof java.lang.reflect.Member[])
+        ? getMembers((java.lang.reflect.Member[]) target, forceClasses)
+        : getObject(target, forceClasses);
+}
+
+
+
+
+
+
+
+
+
+ 
+
+public static List get(sun.jvm.hotspot.oops.ObjArray arroop) {
+  List list = new ArrayList();
+  for (int i = 0, len = (int) (arroop.getLength()); i < len; ++i) {
+    list.add(arroop.getObjAt((long) i));
+  }
+  return list;
+}
+
+ 
+
+public static Map get(sun.jvm.hotspot.oops.Oop oop, int depthRem) {
+  Map m = new HashMap();
+  for (Object fld : (flds = getFields(oop, true).getValue())) {
+    Object val = fld.getValue(oop);
+    Object fldid = fld.getID();
+    String name = (fldid != null) ? fldid.name : String.format("field_%d", fld.getFieldIndex());
+    if (val instanceof sun.jvm.hotspot.oops.ObjArray)
+      val = get((sun.jvm.hotspot.oops.ObjArray) val);
+    if (val instanceof sun.jvm.hotspot.oops.Instance && "Ljava/lang/String;".equals(val.getKlass().signature())) {
+      sun.jvm.hotspot.oops.TypeArray tarr = CollectionUtil.firstOrDefault(CollectionUtil2.typeFilter(getFields(val, false).getValue(), sun.jvm.hotspot.oops.OopField.class)).getValue(val);
+      int len = (int) tarr.getLength();
+      char[] charValue = new char[len];
+      for (int i = 0; i < len; ++i) {
+        charValue[i] = (char) tarr.getCharAt((long) i);
+      }
+      String strval = String.valueOf(charValue);
+      val = strval;
+    }
+    if (val instanceof List) {
+      for (int i = 0; i < val.size(); ++i) {
+        if (val.get(i) instanceof sun.jvm.hotspot.oops.Oop && depthRem > 0)
+          val.set(i, get((sun.jvm.hotspot.oops.Oop) val.get(i), depthRem - 1));
+      }
+    }
+    if (val instanceof sun.jvm.hotspot.oops.Oop && depthRem > 0)
+      val = get((sun.jvm.hotspot.oops.Oop) val, depthRem - 1);
+    m.put(name, val);
+  }
+  return m;
+}
+
+public static com.sun.jdi.ObjectReference get(com.sun.jdi.ObjectReference objRef, String fieldName) {
+  com.sun.jdi.Field fld = objRef.type().fieldByName(fieldName);
+  return objRef.getValue(fld);
+}
+
+

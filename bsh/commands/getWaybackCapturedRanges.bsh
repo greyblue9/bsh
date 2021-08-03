@@ -1,0 +1,3 @@
+
+public static Object getWaybackCapturedRanges(String url) { String sparkUrl = String.format("https://web.archive.org/__wb/sparkline?url=%s&output=json", java.net.URLEncoder.encode(url.replaceAll("^https?://", ""))); URL surl = new URL(sparkUrl); String json = IOUtils.toString(surl); return json.charAt(0) == '{'? new org.json.JSONObject(json): new org.json.JSONArray(json); }
+

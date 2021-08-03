@@ -1,0 +1,4 @@
+
+
+public static Object getIrMethod(d2jcd9.com.googlecode.d2j.node.DexMethodNode dmn) { d2jcd9.com.googlecode.d2j.node.DexCodeNode code = dmn.codeNode; d2jcd9.com.googlecode.d2j.Method minfo = dmn.method; boolean isStatic = ((dmn.access & Modifier.STATIC) != 0); d2jcd9.com.googlecode.d2j.converter.Dex2IRConverter conv = new d2jcd9.com.googlecode.d2j.converter.Dex2IRConverter(); return conv.convert(isStatic, minfo, code); };
+

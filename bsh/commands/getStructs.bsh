@@ -1,0 +1,26 @@
+public static Map getStructs(Object tu) {
+  List decls = ObjectUtil.searchObject(tu, org.eclipse.cdt.core.dom.ast.IASTDeclaration.class, false, 0, 120);
+  List ast_decls = Arrays.asList(ArrayUtils.addAll(CollectionUtil2.typeFilter(decls.toArray(), org.eclipse.cdt.internal.core.dom.parser.c.CASTSimpleDeclaration.class), CollectionUtil2.typeFilter(decls.toArray(), org.eclipse.cdt.internal.core.dom.parser.cpp.CPPASTSimpleDeclaration.class)));
+  Map sm = RealArrayMap.toMap(ast_decls.select(FunctionUtil.eval("return m -> { Pair.of(m.getDeclSpecifier().getName().toString(), m); }")));
+  return sm;
+}
+
+ 
+
+public static Map getStructs(Object tu) {
+  CollectionUtil.getInterpreter().getNameSpace().importClass("org.eclipse.cdt.internal.core.dom.parser.c.CASTSimpleDeclaration");
+  List decls = CollectionUtil.flatten(tu.fActiveDeclarations.select(FunctionUtil.eval("return m -> { CollectionUtil2.filter(CollectionUtil2.typeFilter(m.getParent().getDeclarations(), CASTSimpleDeclaration), \"^(typedef )?(union|struct|class)\"); }")));
+  Map sm = RealArrayMap.toMap(ast_decls.select(FunctionUtil.eval("return m -> { Pair.of(m.getDeclSpecifier().getName().toString(), m); }")));
+  return sm;
+}
+
+ 
+
+public static Map getStructs(Object tu) {
+  CollectionUtil.getInterpreter().getNameSpace().importClass("org.eclipse.cdt.internal.core.dom.parser.c.CASTSimpleDeclaration");
+  List decls = ObjectUtil.searchObject(tu, org.eclipse.cdt.core.dom.ast.IASTDeclaration.class, false, 0, 120);
+  Map sm = RealArrayMap.toMap(decls.select(FunctionUtil.eval("return m -> { Pair.of(m.getDeclSpecifier().getName().toString(), m); }")));
+  return sm;
+}
+
+ 

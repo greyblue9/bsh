@@ -1,0 +1,81 @@
+
+import org.apache.commons.jexl3.*;
+import org.apache.commons.jexl3.JexlContext;
+import org.apache.commons.jexl3.JexlScript;
+import org.apache.commons.jexl3.internal.introspection.Uberspect;
+import org.apache.commons.jexl3.introspection.JexlUberspect;
+
+public static Object evalJexl(String exprText, boolean logIt)
+{
+  Interpreter interpreter = this.interpreter;
+  JexlEngine jexlEngine = interpreter.get("ej$je");
+  JexlContext jexlContext = interpreter.get("ej$ctx");
+
+  if (jexlEngine == null || jexlContext == null) {
+    BshBinding namespace = interpreter.getNameSpace();
+    Map nsmap = new HashMap(namespace.importedClasses); 
+    
+    JexlBuilder jexlBuilder = new JexlBuilder();
+    // TODO: Fix ctor selection with null args
+    JexlUberspect us = new Uberspect(
+      new JexlLogger(), jexlBuilder.strategy()
+    );
+    System.err.println(us);
+    JexlUberspect uberspect = (logIt)
+      ? LoggingProxyFactory.newProxy(us, JexlUberspect.class)
+      : us;
+    jexlBuilder.uberspect(uberspect);
+    jexlEngine = jexlBuilder.create();
+    JexlContext _ctx = new JexlContext() { 
+    
+      public Object get(String objectKey) { 
+        Name name = new Name(namespace, objectKey); 
+        Object obj = name.toObject(
+          new CallStack(), interpreter
+        ); 
+        if (obj instanceof ClassIdentifier) { 
+          obj = (Class)
+            ((ClassIdentifier) obj).getTargetClass();
+        } 
+        return obj != void? obj: null;
+      }
+      
+      public boolean has(String objectKey) { 
+        try { 
+          Object obj = interpreter.getu(objectKey);
+          if (obj == void || obj == null) return false;
+          return true;
+        } catch (Throwable e) { };
+        return false;
+      } 
+      
+      public void set(String objectKey, Object obj) {
+        interpreter.setu(objectKey, obj);
+      }       
+    }; // new JexlContext() { .. }
+    
+    jexlContext = (logIt)
+      ? LoggingProxyFactory.newProxy(_ctx, JexlContext.class)
+      : _ctx;
+    interpreter.set("ej$je", jexlEngine);
+    interpreter.set("ej$ctx", jexlContext);    
+  }// if (? == null);
+  return evalJexl(jexlEngine, jexlContext, exprText);  
+}
+  
+public static Object evalJexl(String exprText) {
+  return evalJexl(exprText, false);
+}
+
+public static Object evalJexl(JexlEngine jexlEngine, JexlContext jexlContext, String exprText) 
+{
+  JexlScript jexlScript = jexlEngine.createScript(exprText);
+  // System.err.println(expr.toString());
+  return jexlScript.evaluate(jexlContext);      
+}
+
+
+
+    
+    
+    

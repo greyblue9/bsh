@@ -1,0 +1,37 @@
+public static Map fixInnerClassAttributes(CtClass[] cts) {
+  Map combinedMap = new TreeMap();
+  for (CtClass ct : cts) {
+    Reflect.setfldval(ct, "wasChanged", false);
+    Reflect.setfldval(ct, "wasPruned", false);
+    Reflect.setfldval(ct, "wasFrozen", false);
+    ct.defrost();
+    ct.stopPruning(true);
+    ct.defrost();
+    Map icmap = new TreeMap();
+    javassist.bytecode.ClassFile classFile = ct.getClassFile();
+    javassist.bytecode.InnerClassesAttribute ica = classFile.getAttribute(javassist.bytecode.InnerClassesAttribute.tag);
+    for (int i = 0, len = ica.tableLength(); i < len; ++i) {
+      String key = ica.innerClass(i).replace('/', '.').equals(ClassInfo.typeToName(classFile.getName())) ? ica.outerClass(i) : ica.innerClass(i);
+      icmap.put(key, Quad.of(ica.innerClass(i), ica.outerClass(i), ica.innerName(i), ica.accessFlags(i)));
+    }
+    combinedMap.putAll(RealArrayMap.toMap(icmap.entrySet().filter(String.format("^%s\\$", classFile.getName().replace("$", ".").replace("/", ".")))));
+  }
+  Map jar = new TreeMap();
+  for (CtClass ct : cts) {
+    javassist.bytecode.ClassFile classFile = ct.getClassFile();
+    classFile.getAttributes().remove(classFile.getAttribute(javassist.bytecode.InnerClassesAttribute.tag));
+    javassist.bytecode.ConstPool pool = classFile.getConstPool();
+    javassist.bytecode.InnerClassesAttribute finalAttr = new javassist.bytecode.InnerClassesAttribute(pool);
+    for (Quad ent : combinedMap.values()) {
+      for (Quad ent : combinedMap.values()) {
+        finalAttr.append(ent.getLeft() != null ? pool.addClassInfo(ent.getLeft()) : 0, ent.getMiddle() != null ? pool.addClassInfo(ent.getMiddle()) : 0, ent.getNext() != null ? pool.addUtf8Info(ent.getNext()) : 0, ent.getRight().intValue());
+      }
+    }
+    classFile.getAttributes().add(finalAttr);
+    classFile.compact();
+    jar.put(ClassInfo.classNameToPath(ClassInfo.typeToName(classFile.getName()), "class"), ct.toBytecode());
+  }
+  return jar;
+}
+
+ 

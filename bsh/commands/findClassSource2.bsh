@@ -1,0 +1,5 @@
+public static String findClassSource2(Class cls) { List<Pair> pairs = findRawResources(Thread.currentThread().getContextClassLoader().pathList.dexElements, "classes.dex"); List<Pair> pairsBySize = pairs.select("""m => Pair.of(Long.valueOf(((ZipEntry)m.getValue()).getSize()), ((ZipFile)m.getKey()).getName())"""); Map jarPathsByDexSize = RealArrayMap.toMap(pairsBySize); return jarPathsByDexSize.get(Long.valueOf(org.d6r.ClassInfo.getDex(cls).data.capacity)); }
+
+public static String findClassSource2(String className) { return findClassSource2((Class) Class.forName(className)); }
+
+public static String findClassSource2(bsh.ClassIdentifier ci) { return findClassSource2((Class) ((bsh.ClassIdentifier) ci).getTargetClass()); }

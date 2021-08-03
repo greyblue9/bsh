@@ -1,0 +1,111 @@
+import java.util.Map.Entry;
+
+
+
+
+
+
+
+
+public static java.util.Map mapMethods(java.lang.Object obj) 
+{ 
+  return mapMethods(obj, new java.util.HashMap());
+}  
+
+
+
+
+
+
+
+
+
+public static java.util.Map mapMethods(java.lang.Object obj, java.util.Map methods) 
+{ 
+
+  java.lang.Class cls = null; 
+  
+  if (obj instanceof java.lang.Class) {
+    cls = (java.lang.Class) obj; 
+  } else if (obj instanceof bsh.ClassIdentifier) {
+    cls = ((bsh.ClassIdentifier) obj).getTargetClass(); 
+  } else if (obj != null) {
+    cls = obj.getClass();  
+  }
+  
+  if (methods == null) {
+    methods = new java.util.HashMap(); 
+  }
+  
+  for (java.lang.reflect.Method m: cls.getDeclaredMethods()) 
+  { 
+    java.lang.String name = m.getName(); 
+    // Already in map
+    if (methods.get(name) != null) continue;
+    
+    m.setAccessible(true); 
+    methods.put(name, m); 
+  }
+  
+  if (! cls.equals(java.lang.Object.class)) {
+    
+    java.util.ArrayList ext = new java.util.ArrayList(4);    
+    
+    try {
+      print( cls.getSuperclass() );
+      ext.add(cls.getSuperclass()); 
+      for (java.lang.Class iface: cls.getInterfaces()) {
+        print(iface);
+        ext.add(iface);
+      }
+      
+    } catch (java.lang.Throwable e) {
+      java.lang.System.err.println(
+        "Warning: mapMethods: call to getSuperclass() on "
+        + cls.getName() + " threw "
+        + e.getClass().getSimpleName()
+        + (e.getCause() == null? "" : ": "+e.getCause()));
+    }
+    
+    java.util.ArrayList$ArrayListIterator it = ext.iterator();
+    while (it.hasNext()) {
+      java.lang.Class superCls = (java.lang.Class) it.next();
+      
+      try {
+        methods = mapMethods(superCls, methods); 
+      } catch (java.lang.Throwable e) {
+/*
+        java.lang.System.err.println(
+          "Warning: mapMethods: recursive call to "
+          + "mapMethods() for " + superCls.getName() + " "
+          + "(superclass of "+cls.getName()+") "
+          + "threw " + e.getClass().getSimpleName()
+          + (e.getCause() == null? "" : ": "+e.getCause()));
+*/
+      }
+    }//while
+  }
+  return methods;
+}
+
+
+
+
+
+
+
+
+
+
+
+public static Map mapMethods(Object stackTraceElementsOrNamePairsIterable) { Map bad = new IdentityHashMap(); for (Object badmdp: stackTraceElementsOrNamePairsIterable) { String className = (badmdp instanceof Entry)? ((Entry)badmdp).getKey(): ((StackTraceElement) badmdp).getClassName(), methodName = (badmdp instanceof Entry)? ((Entry)badmdp).getValue(): ((StackTraceElement) badmdp).getMethodName(); Class cls = DexVisitor.classForName(className); if (cls == null) { bad.put(badmdp, badmdp); continue; }; List<Member> nameMatches = new ArrayList(); Member[] declared = (methodName.equals("<init>"))? cls.getDeclaredConstructors(): (methodName.equals("<clinit>"))? new Member[]{ Reflect.getDeclaredConstructorOrMethod(cls, "<clinit>", new Class[0]) }: cls.getDeclaredMethods();  if (declared.length == 1) { bad.put(badmdp, declared[0]); continue; }; for (Member mb: declared) { if (! methodName.equals(mb.getName())) continue;  int acc = mb.getModifiers(); if ((Modifier.ABSTRACT & acc) != 0) continue; nameMatches.add(mb); }; if (nameMatches.size() == 1) { bad.put(badmdp, nameMatches.iterator().next()); continue; };   bad.put(badmdp, nameMatches); }; return bad; };
+
+
+
+
+
+
+public static Map mapMethods(Object stackTraceElementsOrNamePairsIterable) { Map bad = new LinkedHashMap(); for (Object badmdp: stackTraceElementsOrNamePairsIterable) { String className = (badmdp instanceof Entry)? ((Entry)badmdp).getKey(): ((StackTraceElement) badmdp).getClassName(), methodName = (badmdp instanceof Entry)? ((Entry)badmdp).getValue(): ((StackTraceElement) badmdp).getMethodName(); Class cls = DexVisitor.classForName(className); if (cls == null) { bad.put(badmdp, badmdp); continue; }; List<Member> nameMatches = new ArrayList(); Member[] declared = (methodName.equals("<init>"))? cls.getDeclaredConstructors(): (methodName.equals("<clinit>"))? new Member[]{ Reflect.getDeclaredConstructorOrMethod(cls, "<clinit>", new Class[0]) }: cls.getDeclaredMethods();  if (declared.length == 1) { bad.put(badmdp, declared[0]); continue; }; for (Member mb: declared) { if (! methodName.equals(mb.getName())) continue;  int acc = mb.getModifiers(); if ((Modifier.ABSTRACT & acc) != 0) continue; nameMatches.add(mb); }; if (nameMatches.size() == 1) { bad.put(badmdp, nameMatches.iterator().next()); continue; };          bad.put(badmdp, nameMatches);   Iterable<Member> choices = nameMatches;  int index = ArrayUtils.indexOf(stackTrace, badmdp);  StackTraceElement mustCall = (index > 0)? stackTrace[index-1]: null; StackTraceElement calledBy = (stackTrace.length > index+1)? stackTrace[index+1]: null;  int methodIndex = (bad.get(mustCall) instanceof Method)? ((Method) bad.get(mustCall)).getDexMethodIndex(): bad.get(mustCall) instanceof Constructor? ((Constructor) bad.get(mustCall)).getDexMethodIndex(): bad.get(mustCall) instanceof Collection? bad.get(mustCall).iterator().next(): -1;  System.out.printf("%s -> %d\n", mustCall, methodIndex); Iterator it = choices.iterator(); while (it.hasNext()) { Member mb = it.next();  int acc = mb.getModifiers(); if ((acc & Modifier.PRIVATE) != 0 && bad.get(calledBy) instanceof Member && ! mb.getDeclaringClass().getName().equals(bad.get(calledBy).getDeclaringClass().getName())) { System.err.printf("accessViolation: %s -> %s\n", calledBy, mb); it.remove(); }; }; if  (choices.size() == 1) { bad.put(badmdp, choices.iterator().next());     System.err.printf("Successfully reduced to 1 candidate: %s: %s\n", badmdp, choices);  continue; };  bad.put(badmdp, choices);   }; return bad; };
+
+
+

@@ -1,0 +1,7 @@
+
+
+
+public static Object getTesseract() { if (Thread.currentThread().getContextClassLoader().pathList.dexElements.filter("com.thesimplest.ocrpro.apk").length == 0) { Object dexElement1 = appendClassPathFile("/external_sd/_projects/sdk/tesseract/com.thesimplest.ocrpro.apk"); dexElement1.maybeInit(); byte[] zipBytes1 = IOUtils.toByteArray(new org.apache.commons.io.input.AutoCloseInputStream(ZipUtil.toInputStream(dexElement1.zipFile))); Map nls = loadNativeLibrariesFromApk(zipBytes1); }; CollectionUtil.getInterpreter().getNameSpace().importClass("com.googlecode.tesseract.android.TessBaseAPI"); Object t = new com.googlecode.tesseract.android.TessBaseAPI(); t.nativeSetDebug(true); t.init("/external_sd/_projects/sdk/tesseract/data", null); return t; };
+
+
+

@@ -1,0 +1,7 @@
+
+
+
+public static List<Map> toResultSet(android.database.AbstractCursor c) { int oldPos = c.getPosition(); try { c.moveToFirst(); Map colfns = RealArrayMap.toMap(ConstUtil.constantMap(DatabaseUtil.class, "FIELD_TYPE_", -1).entrySet().select(FunctionUtil.bind("return m -> { Pair.of(m.getKey(), Reflect.findMethod(c.getClass(), StringUtils.capitalize(StringUtils.substringAfterLast(m.getValue(), \"_\").toLowerCase()).replace(\"Null\", \"String\").replace(\"Integer\", \"Int\").replaceAll(\"^\", \"get\"))); }"))); List<Map> rows = new ArrayList(c.getCount()); do { Map row = RealArrayMap.toMap(c.getColumnNames().indexed().select(FunctionUtil.bind("return m -> { var colIdx = m.getKey().intValue(); var colName = m.getValue(); var obj = colfns.get(c.getType(colIdx)).invoke(c, colIdx); return Pair.of(colName, obj != null? obj: Null.NULL); }", "c", c, "colfns", colfns))); rows.add(row); } while (c.moveToNext()); return rows; } finally { c.moveToPosition(oldPos); }; return null; };
+
+
+

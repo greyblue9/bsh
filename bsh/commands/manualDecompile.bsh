@@ -1,0 +1,159 @@
+
+import com.strobel.decompiler.ast.Expression;
+import com.strobel.decompiler.ast.Variable;
+import com.strobel.decompiler.languages.java.ast.AstMethodBodyBuilder;
+
+
+public static Map manualDecompile(MethodDefinition md) {
+  
+  Object body = md.getBody(); 
+  com.strobel.decompiler.ast.AstBuilder builder 
+    = new com.strobel.decompiler.ast.AstBuilder();
+  
+  builder._body = body;
+  builder._context = ProcyonUtil.getDecompilerContext();
+  builder._context.setCurrentType(md.getDeclaringType());
+  builder._context.setCurrentMethod(md);
+  builder._optimize = true;
+  builder._instructions = body.getInstructions();
+  builder._exceptionHandlers = new ArrayList();
+  builder._optimize = false;
+  builder._instructions
+    = com.strobel.decompiler.ast.AstBuilder.copyInstructions(
+        body.getInstructions()); 
+  
+  Collection oldInstructions = body.getInstructions();
+  Collection newInstructions = builder._instructions;
+  builder._originalInstructionMap = new IdentityHashMap(); 
+  for (int i=0, nsz=newInstructions.size(); i<nsz; ++i) {
+    builder._originalInstructionMap.put(
+      newInstructions.get(i), oldInstructions.get(i)
+    );
+  }
+  
+  builder._exceptionHandlers
+    = com.strobel.decompiler.ast.AstBuilder.remapHandlers(
+        body.getExceptionHandlers(), builder._instructions
+      );
+  
+  Collections.sort(builder._exceptionHandlers);
+  
+  builder.trimAggressiveCatchBlocks();
+  builder.trimAggressiveFinallyBlocks();
+  builder.removeEmptyCatchBlockBodies(); 
+  builder.removeSelfHandlingFinallyHandlers(); 
+  builder.pruneExceptionHandlers();
+  builder.mergeSharedHandlers();
+  builder.pruneExceptionHandlers();
+  
+  builder._cfg
+    = com.strobel.assembler.flowanalysis.ControlFlowGraphBuilder.build(
+        builder._instructions,
+        builder._exceptionHandlers
+      );
+  
+  com.strobel.assembler.flowanalysis.ControlFlowGraph cfg = builder._cfg;
+  
+  List<ByteCode> bc = builder.performStackAnalysis();
+  
+  List<Node> ast = builder.convertToAst(bc);
+  
+  List varExprs = ast.typeFilter(Expression.class).select(FunctionUtil.bind(
+      "return m -> { Variable.isInstance(m.getOperand())? m: null; }",
+      Variable.class
+    ));
+  
+  List<Variable> vars 
+    = ast.typeFilter(Expression.class).select(FunctionUtil.bind(
+          "return m -> { Variable.isInstance(m.getOperand()) && " +
+          "  m.getOperand().getOriginalVariable() != null " +
+          "    ? m.getOperand(): null; }",
+          Variable.class
+        )).uniq();
+  
+  
+  varExprs = ast.typeFilter(Expression.class).select(FunctionUtil.bind(
+    "return m -> { Variable.isInstance(m.getOperand())? m: null; }",
+    Variable.class
+  ));
+  vars = ast.typeFilter(Expression.class).select(FunctionUtil.bind(
+    "return m -> { Variable.isInstance(m.getOperand()) && " +
+    "m.getOperand().getOriginalVariable() != null? m.getOperand(): null; }",
+    Variable.class
+  )).uniq();
+  
+  
+  Map infoByBar = new HashMap();
+  Map usesByVar = new HashMap();
+  
+  for (Variable stackVar: vars) {
+     
+    List<Expression> stackVarDefs = ast.typeFilter(Expression.class).select(
+      FunctionUtil.bind(
+        "return m -> { m.getOperand().equals(v)? m: null; }", "v", stackVar
+      )
+    );
+    
+    List<Expression> uses = new ArrayList();
+    for (Expression expr: ast.typeFilter(Expression.class)) {
+      for (Object arg: expr.getArguments()) {
+        if (arg instanceof Expression && arg.getOperand() != null &&
+           StringUtils.substringBeforeLast(arg.getOperand().toString(),"_").equals(
+           StringUtils.substringBeforeLast(stackVar.toString(),"_")))
+        {
+          System.err.println(expr);
+          uses.add(expr);
+        };
+      };
+    };
+    
+    usesByVar.put(stackVar, uses);
+    
+    com.strobel.decompiler.ast.AstBuilder.VariableInfo info 
+      = builder.processVariableUnoptimized(
+            md, 
+            stackVar.getOriginalVariable().getSlot(),
+            stackVarDefs, uses, stackVar.getOriginalVariable()
+          );
+    infoByBar.put(stackVar, info);
+  }
+  
+  jbuilder = new com.strobel.decompiler.languages.java.ast.AstBuilder(
+    ProcyonUtil.getDecompilerContext()
+  );
+  mbb = new AstMethodBodyBuilder(
+    jbuilder, md, ProcyonUtil.getDecompilerContext()
+  );
+  
+  // TODO: FIXME!
+  bsts = ast.typeFilter(Expression.class).select(FunctionUtil.bind(
+    "return m -> { mbb.transformExpression(m, true); }", "mbb", mbb
+  ));
+  
+  blkst = new com.strobel.decompiler.languages.java.ast.BlockStatement(
+    bsts.select(FunctionUtil.bind(
+      "return m -> { Statement.isInstance(m)? m: new(ExpressionStatement, m); }", 
+      com.strobel.decompiler.languages.java.ast.Statement.class,
+      com.strobel.decompiler.languages.java.ast.ExpressionStatement.class  
+    ))
+  );
+  
+  /*for (node: CollectionUtil.toArray(blkst)) {
+    node.remove();
+    blkst.addChild(
+      node,
+      com.strobel.decompiler.languages.java.ast.Roles.EMBEDDED_STATEMENT
+    );
+  };*/
+  
+  System.out.printf(
+    "{\n  %s\n}\n",
+    StringUtils.join(CollectionUtil.toArray(blkst.getChildren()), "\n  ")
+  );
+  
+  return getAllVariables2().get("manualDecompile");
+  
+}
+
+
+

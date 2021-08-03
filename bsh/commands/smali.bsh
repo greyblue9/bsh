@@ -1,0 +1,194 @@
+import org.jf.util.ClassFileNameHandler;
+import org.jf.baksmali.BaksmaliOptions;
+import org.jf.baksmali.Baksmali;
+import org.jf.dexlib2.dexbacked.DexBackedOdexFile;
+import org.jf.dexlib2.Opcodes;
+import org.jf.dexlib2.analysis.ClassProvider;
+import org.jf.dexlib2.iface.ClassDef;
+import com.android.dex.Dex;
+import org.jf.dexlib2.dexbacked.DexBackedDexFile;
+import org.jf.dexlib2.analysis.ClassPath;
+import libcore.io.IoUtils;
+import org.jf.dexlib2.util.SyntheticAccessorResolver;
+import org.jf.dexlib2.analysis.InlineMethodResolver;
+import org.jf.dexlib2.writer.builder.DexBuilder;
+import org.jf.dexlib2.writer.io.FileDataStore;
+import org.jf.dexlib2.writer.io.MemoryDataStore;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.Future;
+import org.jf.smali.Smali;
+
+
+public static Object smali(File srcdir) { 
+  return smali(srcdir, null);
+}
+
+public static Object smali(File srcdir, File outdir) { 
+  return smali(srcdir, outdir, 2);
+}
+
+public static Object smali(File srcdir, File outdir, int jobs) {   
+  if (outdir == null) {
+    outdir = PosixFileInputStream.createTemporaryDirectory("smali_smali");
+  }
+  if (!outdir.exists()) { 
+    if (!outdir.mkdirs()) { 
+      throw new RuntimeException(String.format(
+       "Crration of output dir [%s] failed", outdir.getPath()
+     ));
+   }
+ }
+ 
+ org.jf.smali.SmaliOptions sopts = new org.jf.smali.SmaliOptions();
+ sopts.allowOdex = true;
+ sopts.allowOdexOpcodes = true;
+ sopts.apiLevel = 21;
+ sopts.experimental = true;
+ sopts.fieldListFilename = "fields.list";
+ sopts.jobs = jobs;
+ sopts.listFields = true;
+ sopts.listMethods = true;
+ sopts.listTypes = true;
+ sopts.methodListFilename = "methods.list";
+ sopts.outputDexFile = new File(outdir, "classes.dex").getPath();
+ sopts.printTokens = false;
+ sopts.typeListFilename = "types.list";
+ sopts.verboseErrors = true; 
+ 
+ Set smaliFiles = new HashSet(); 
+ org.jf.smali.Smali.getSmaliFilesInDir(srcdir, smaliFiles); 
+ 
+ List smaliList = new ArrayList(
+   smaliFiles.select(FunctionUtil.eval(
+     "return m -> { m.getPath(); }"
+   ))
+ );
+ 
+ /*
+ boolean ok = false;
+ try { 
+   ok = org.jf.smali.Smali.assemble(sopts, smaliList);
+ } catch (Throwable e) {
+   System.err.println(Reflector.getRootCause(e)); 
+   return Reflector.getRootCause(e);
+ }
+ return ok;
+ */
+  
+  Set<File> filesToProcessSet = new LinkedHashSet<File>(smaliList);
+  boolean errors = false;
+  DexBuilder dexBuilder = new DexBuilder(Opcodes.forApi(21));
+  ExecutorService executor = Executors.newFixedThreadPool(sopts.jobs);
+  List<Future> tasks = new ArrayList<Future>();
+  
+  CollectionUtil.getInterpreter().setu("dexBuilder", dexBuilder);
+  CollectionUtil.getInterpreter().setu("sopts", sopts);
+  
+  Map taskInfo = new IdentityHashMap();
+  try {
+     CollectionUtil.getInterpreter().setShowResults(false);
+    for (String file: filesToProcessSet) {
+      String name = file.toString();
+      try {
+        name = name.replace(srcdir.toString(),"").substring(1);
+      } catch (Throwable e) { ;; };; 
+      
+      Callable c = new Callable() {
+        public Boolean call() {
+          try {
+            System.err.printf("Processing %s ...\n", _name);
+            System.err.flush();
+          } catch (Throwable ex) {
+          };
+          Thread.currentThread().yield();
+          return org.jf.smali.Smali.assembleSmaliFile(
+            new File(_file.toString()), 
+            CollectionUtil.getInterpreter().getu("dexBuilder"),
+            CollectionUtil.getInterpreter().getu("sopts") 
+          );
+        }
+        public String toString() { 
+          return "Callable: ".concat(_file.toString());
+        }
+      };
+      
+      NameSpace ns = Reflect.getfldval(
+        Reflect.getfldval(c, "h").this$0, "namespace"
+      );
+      ns.getVariables().put("_name", new bsh.Variable(
+        Pair.of("_name", name))
+      );
+      ns.getVariables().put("_file", new bsh.Variable(
+        Pair.of("_file", file))
+      );
+      System.err.println(ns);
+      System.err.printf("Adding %s\n", c);
+      tasks.add(c);
+      taskInfo.put(c, name);
+    }
+  } finally {
+    CollectionUtil.getInterpreter().setShowResults(true);
+  }
+
+  System.err.printf("Added %d tasks\n", tasks.size());
+  Object rslt = executor.invokeAll(tasks);
+  CollectionUtil.getInterpreter().setu("rslt", rslt);
+  CollectionUtil.getInterpreter().setShowResults(true);
+  System.err.println(rslt);
+  /*
+  for (java.util.concurrent.Future task: tasks) {
+        Object info = taskInfo.get(task);
+        System.err.flush();
+        Thread.currentThread().yield();
+        try {
+          try {
+            try {
+              System.err.printf(
+                "Processing %s ...\n",
+                info.toString().replace(srcdir.toString() + "/", "")
+              );
+              System.err.flush();
+            } catch (Throwable ex) {
+              System.err.println(file);
+            }
+            if (! task.get()) {
+              errors = true;
+            }
+            System.err.flush();
+          } catch (Exception ex) {
+            System.err.println(ex);
+          }
+        } catch (InterruptedException ex) {
+          System.err.printf("interrupted\n");
+          Thread.currentThread().interrupt();
+        } catch (Throwable ex) {
+          System.err.println(ex);
+        }
+
+  }
+  */
+  CollectionUtil.getInterpreter().setShowResults(true);
+  System.err.println("Executors finished");
+    
+  executor.shutdown();
+  
+  MemoryDataStore mds = new MemoryDataStore(32768);
+  dexBuilder.writeTo(mds);
+  byte[] dexOutputBytes = mds.getData();
+  if (sopts.outputDexFile != null) {
+    try {
+      FileUtils.writeByteArrayToFile(
+        new File(sopts.outputDexFile), dexOutputBytes
+      );
+    } catch (IOException ioe) {
+      ioe.printStackTrace();
+    }
+  }
+  return Triple.of(dexBuilder, executor, dexOutputBytes);
+}
+
+/*
+dexBuilder.writeTo(new FileDataStore(new File(sopts.outputDexFile))); rs = Triple.of(Boolean.valueOf(errors, dexBuilder, executor)); 
+*/

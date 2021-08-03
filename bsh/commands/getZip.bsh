@@ -1,0 +1,41 @@
+
+
+
+
+
+
+
+
+
+public static ZipFile getZip(Object element) { if (element instanceof dalvik.system.DexPathList.Element) { if (element.zipFile == null && Pattern.compile("\\.(?:apk|jar|zip)$").matcher(element.file.getName()).find()) { System.err.printf("Initializing %s ...\n", element); element.maybeInit(); }; return element.zipFile; } else if (element instanceof URL) { return url.openConnection().getJarFile(); } else if (element instanceof byte[]) { File tempFile = File.createTempFile("tmp_zip", ".zip"); FileUtils.writeByteArrayToFile(tempFile, (byte) element); return new ZipFile(tempFile); } else if (element instanceof InputStream) { File tempFile = File.createTempFile("tmp_zip", ".zip"); InputStream is = (InputStream) element; FileOutputStream fos = new FileOutputStream(tempFile); IOUtils.copy(is, fos); fos.close(); return new ZipFile(tempFile); } else if (element instanceof ZipFile) { return (ZipFile) element; } else { File file = new File(PathInfo.getPathInfo(element).path); if (file.exists()) { ZipFile zf = new ZipFile(file); return zf; } } };
+
+
+
+
+
+
+
+
+
+
+public static ZipFile getZip(byte[] zipBytes, boolean debug) { Map zm = new TreeMap(); RandomAccessStream ras = new RandomAccessStream(zipBytes); ras.DEBUG = debug; ZipFile zf = Reflect.allocateInstance(ZipFile.class); zf.raf = ras; ras.channel = new java.nio.channels.SeekableFileByteChannelImpl(zipBytes); zf.entries = Reflect.getfld(zf.getClass(), "entries").getType().newInstance(); zf.readCentralDir(); /* for (ZipEntry ent: IteratorUtils.asIterable(zf.entries())) { if (ent.isDirectory()) continue;   is = zf.getInputStream(ent);  if (ent.compressionMethod == 8) { int len = Math.min((int) is.in.endOffset - is.in.offset, is.nativeEndBufSize);  is.inf.setInput(b, (int)is.in.offset, (int)(b.length-is.in.offset)); }; ba = IOUtils.toByteArray(is); zm.put(ent.getName(), ba); System.out.println(ent.getName()); }; */ return zf; };
+
+
+
+
+
+
+
+
+
+public static ZipFile getZip(byte[] zipBytes) { return getZip(zipBytes, false); }
+
+
+
+
+
+
+public static ZipFile getZip(ZipEntry ze) { ZipFile zf = null; Field entriesFld = ZipFile.class.getDeclaredField("entries"); int foffs = UnsafeUtil.getUnsafe().objectFieldOffset(entriesFld); int foffs = UnsafeUtil.getUnsafe().objectFieldOffset(entriesFld); Class ftype = entriesFld.getType(); long ftaddr = System.identityHashCode(ftype); SortedMap mm = getMemoryMap("/dev/ashmem/dalvik-heap(?: \\(deleted\\))?"); Range alloc = mm.floorKey(Range.closed(Long.valueOf(0xFFFFFFFFL & System.identityHashCode(ze)), Long.valueOf(0xFFFFFFFFL & System.identityHashCode(ze)))); byte[] buf = new byte[4  * 1024 * 1024]; long min = alloc.lowerEndpoint().longValue(), max = alloc.upperEndpoint().longValue(), pgsz = buf.length, index = -1; byte[] zfcaddrBytes = getBytes(System.identityHashCode(ZipFile.class)); outer: for (long addr=min; index == -1 && addr<=max-pgsz; addr+=pgsz) { MemUtil.peekByteArray((int) addr, buf, 0, pgsz); int sstart = -1; do { index = ByteUtil.indexOf(buf, zfcaddrBytes, sstart + 1); if (index == -1) break; long zfaddr = addr+index; System.out.printf("Found potential object at address 0x%08x\n", zfaddr); Range objRefMemBlock = mm.floorKey(Range.closed(Long.valueOf(zfaddr+foffs), Long.valueOf(zfaddr+foffs))); long indirectAddrVal = (objRefMemBlock != null && objRefMemBlock == alloc)? (long) UnsafeUtil.getUnsafe().getInt(null, zfaddr+foffs): 0L; Range clsRefMemBlock = (objRefMemBlock != null)? mm.floorKey(Range.closed(Long.valueOf(indirectAddrVal), Long.valueOf(indirectAddrVal))): null; ZipFile zf = (clsRefMemBlock != null && UnsafeUtil.getUnsafe().getInt(null, (long) UnsafeUtil.getUnsafe().getInt(null, zfaddr + foffs)) == ftaddr) ? new UnsafeUtil.Pointer(zfaddr).get(): null; if (zf != null && zf.getEntry(ze.getName()) == ze) { System.out.printf("result: %s\n", Debug.ToString(zf)); break outer; }; if (index == -1) break; sstart = index; } while (true); System.out.printf("searched addresses: 0x%08x - 0x%08x\n", addr, addr + pgsz); }; return zf; };
+
+
+

@@ -1,0 +1,205 @@
+
+
+{
+
+
+{ if (! bsh.Capabilities.classExists("org.eclipse.cdt.internal.core.parser.scanner.CPreprocessor")) { appendClassPathFile("/external_sd/_projects/sdk/cdt/cdt.jar");   CollectionUtil.getInterpreter().bcm.absoluteNonClasses.clear(); bsh.Capabilities.classes.clear(); XClassLoader.badClasses.clear();  }; };
+
+import org.eclipse.cdt.internal.core.parser.FileContentProviderAdapter;
+import org.eclipse.cdt.internal.core.pdom.ASTFilePathResolver;
+import org.eclipse.cdt.core.index.IIndexFileLocation;
+import org.eclipse.cdt.internal.core.dom.IIncludeFileResolutionHeuristics;
+import org.eclipse.cdt.internal.core.pdom.indexer.ProjectIndexerIncludeResolutionHeuristics;
+import org.eclipse.core.internal.dtree.DataTreeNode;
+import org.eclipse.core.internal.dtree.AbstractDataTreeNode;
+import org.eclipse.core.internal.watson.ElementTree;
+import org.eclipse.core.runtime.Path;
+
+
+  public static IIncludeFileResolutionHeuristics getHeuristics(Object proj) {
+    NameSpace ns = this.namespace;
+    
+    try {
+      astpr = CollectionUtil.getInterpreter().eval("""
+      astpr = new org.eclipse.cdt.internal.core.pdom.ASTFilePathResolver() {
+      public boolean doesIncludeFileExist(String var0) {
+        System.err.printf("doesIncludeFileExist(String var0: %s)\n", var0); 
+        return true;
+      } 
+      public String getASTPath(IIndexFileLocation var0) { 
+        System.err.printf("getASTPath(%s: %s)\n", var0, Debug.ToString(var0));  
+        return null;
+      } 
+      public long getFileSize(String var0) { 
+        System.err.printf("getFileSize(%s)\n", var0); 
+        return new File(var0).exists()? new File(var0).length(): 0;
+      }
+      public boolean isCaseInsensitiveFileSystem() {
+        System.err.printf("isCaseInsensitiveFileSystem()\n");
+        return true;
+      }
+      public boolean isSource(String var0) {
+        System.err.printf("isSource(%s)\n", var0);
+        boolean result = Pattern.compile("\\.[chi][tpxn]?[tpxc]?$").matcher(var0).find();
+        System.err.printf("isSource(%s) returning: %s\n", var0, result); 
+        return result;
+      } 
+      public IIndexFileLocation resolveASTPath(String var0) {
+        System.err.printf("resolveASTPath(%s)\n", var0); 
+        File file = new File(var0);
+        if (file.exists()) {
+          URI uri = file.toURI();
+          Object loc = new org.eclipse.cdt.internal.core.index.IndexFileLocation(
+            uri, file.getAbsolutePath()
+          );
+          return loc;
+        } else {
+          System.err.printf("resolveASTPath(%s) returning NULL!\n", var0); 
+          return null;
+        } 
+      }
+      public IIndexFileLocation resolveIncludeFile(String var0) {
+        System.err.printf("resolveIncludeFile(%s)\n", var0);
+        File file = new File(var0);
+        if (file.exists()) {
+          URI uri = file.toURI();
+          Object loc = new org.eclipse.cdt.internal.core.index.IndexFileLocation(
+            uri, file.getAbsolutePath()
+          );
+          return loc;
+        } else {
+          System.err.printf("resolveIncludeFile(%s) returning NULL!\n", var0); 
+          return null;
+        } 
+      }
+      
+    }""", CollectionUtil.getInterpreter().getNameSpace()
+    );
+    } catch (Throwable e) { 
+      c = bsh.ClassGenerator.acl.classes.filter(String.format(
+        "(%s)", Pattern.quote("getFileContentAdapter")
+      ))[-1];
+      System.err.println(c);
+      try {
+        CollectionUtil.getInterpreter().setu("astpr",
+         (astpr = Reflect.newInstance(c)));
+      } catch (Throwable e) {
+        CollectionUtil.getInterpreter().setu("astpr",
+         (astpr = Reflect.allocateInstance(c)));
+      }
+    } 
+    IIncludeFileResolutionHeuristics heur
+      = new ProjectIndexerIncludeResolutionHeuristics(proj, astpr);
+    return heur;
+  }
+  
+  public static Object getProject(String projectBasePath) {
+    Object proj = null;
+    Object ws = null;
+    
+    Object path = Reflector.invokeOrDefault(
+      DexVisitor.classForName("org.eclipse.core.runtime.Path"),
+      "fromPortableString",
+      projectBasePath
+    );
+    Object wsRoot = Reflect.allocateInstance(
+      DexVisitor.classForName("org.eclipse.core.internal.resources.WorkspaceRoot")
+    );
+    Reflect.setfldval(wsRoot, "workspaceLocation", path);
+    Object ws = Reflect.allocateInstance(
+      DexVisitor.classForName("org.eclipse.core.internal.resources.Workspace")
+    );
+    Reflect.setfldval(ws, "defaultRoot", wsRoot);
+    Object proj = Reflect.newInstance(
+      DexVisitor.classForName("org.eclipse.core.internal.resources.Project"),
+      path, ws
+    );
+    Reflect.setfldval(wsRoot, "projectTable", RealArrayMap.toMap("", proj));
+    
+    Object csrc = new DataTreeNode("name", path);
+    Object rootNode
+      = new DataTreeNode("root", true, new AbstractDataTreeNode[]{ csrc });
+    Object tree = new ElementTree(rootNode);
+    Reflect.setfldval(ws, "tree", tree);
+    proj.setReadOnly(true);
+    return proj;
+  }
+
+
+  public static org.eclipse.cdt.internal.core.parser.FileContentProviderAdapter 
+  getFileContentAdapter(String projectBasePath)
+  {
+    Object cfg = null, prov = null, cls = null, className = null;
+    org.eclipse.cdt.internal.core.dom.IIncludeFileResolutionHeuristics heur = null;
+    org.eclipse.cdt.core.parser.CodeReaderCache cache
+      = new org.eclipse.cdt.core.parser.CodeReaderCache(0); 
+    org.eclipse.cdt.internal.core.parser.CodeReaderLRUCache lruCache
+      = new org.eclipse.cdt.internal.core.parser.CodeReaderLRUCache(100);
+    Map _cache = new HashMap();
+    Reflect.setfldval(cache, "cache", lruCache);
+    Reflect.setfldval(Reflect.getfldval(cache, "listener"), "c", null);
+    String body = null;
+    org.eclipse.cdt.internal.core.dom.AbstractCodeReaderFactory f;
+    NameSpace ns = this.namespace;
+    Object proj = null;
+
+       proj = getProject(
+         projectBasePath != null
+           ? projectBasePath
+           : PosixFileInputStream.createTemporaryDirectory("tmp_project")
+               .getPath()
+       );
+       heur = getHeuristics(proj);
+       
+       f = new org.d6r.util.SourcePathCodeReaderFactory(heur);
+       CollectionUtil.dbg.put("f", f);
+      System.err.printf(
+        "Successfully constructed! f = %s\n", Debug.ToString(f)
+      );
+    
+    if (f == null) {
+      String internalName = String.format(
+        "L%s;",
+        this.interpreter.getClassManager().definingClassesBaseNames.entrySet()
+          [-1].getValue()
+      );
+      className = ClassInfo.typeToName(internalName);
+      System.err.printf("className = %s\n", className);
+      cls = InternalNames.getClass(
+        Thread.currentThread().getContextClassLoader(),
+        internalName
+      );
+      System.err.printf("cls = %s\n", cls);
+      
+      cfg = Reflect.allocateInstance(cls);  
+      
+      f = CollectionUtil.getInterpreter().eval(
+        "new org.eclipse.cdt.core.dom.ICodeReaderFactory() { " +
+        body +
+        "}",
+        ns
+      );
+      String simpleName = className.indexOf(".") != -1
+        ? StringUtils.substringAfterLast(className, ".")
+        : className;
+      System.err.printf("simpleName: %s\n", simpleName);
+      Reflect.setfldval(
+        cfg, "_bshThis" + simpleName, Reflect.getfldval(f, "h").this$0
+      );
+      Reflect.setfldval(
+        cfg, "_bshStatic" + simpleName, Reflect.getfldval(f, "h").this$0
+      );
+    } else {
+      cfg = (org.eclipse.cdt.internal.core.dom.AbstractCodeReaderFactory) f;
+    }
+    Reflect.setfldval(cfg, "fHeuristics", heur);
+    System.err.printf("cfg = %s\n", Debug.ToString(cfg));
+    prov = org.eclipse.cdt.core.parser.IncludeFileContentProvider.adapt(cfg);
+    System.err.printf("prov = %s\n", Debug.ToString(prov));
+    return prov;
+  };
+  
+  
+  
+  void;
+}

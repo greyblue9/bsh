@@ -1,0 +1,224 @@
+import java.util.Map.Entry;
+import org.at4j.archive.builder.ArchiveEntrySettingsRule;
+import org.at4j.support.lang.UnsignedInteger;
+import org.at4j.support.lang.UnsignedShort;
+import org.at4j.zip.ZipEntryCentralFileHeaderData;
+import org.at4j.zip.ZipEntryCollaborator;
+import org.at4j.zip.ZipEntryLocalFileHeaderData;
+import org.at4j.zip.ZipFileEntry;
+import org.at4j.zip.ZipVersionMadeBy;
+import org.at4j.zip.builder.ZipBuilder;
+import org.at4j.zip.builder.ZipBuilderSettings;
+import org.at4j.zip.builder.ZipEntrySettings;
+import org.at4j.zip.ef.ExtendedTimestampExtraField;
+import org.at4j.zip.ef.NewInfoZipUnixExtraField;
+import org.at4j.zip.ef.UnicodeCommentExtraField;
+import org.at4j.zip.ef.UnicodePathExtraField;
+import org.at4j.zip.ef.ZipEntryExtraField;
+import org.at4j.zip.ef.ZipEntryExtraFieldFactory;
+import org.at4j.zip.extattrs.UnixEntityType;
+import org.at4j.zip.extattrs.UnixExternalFileAttributes;
+import org.at4j.zip.extattrs.ZipExternalFileAttributes;
+import org.at4j.zip.extattrs.ZipExternalFileAttributesFactory;
+import org.entityfs.el.AbsoluteLocation;
+import org.entityfs.entityattrs.unix.UnixEntityMode;
+import org.entityfs.support.filter.Filter;
+import org.entityfs.support.filter.TrueFilter;
+import org.entityfs.util.io.ReadWritableFileAdapter;
+import org.json.JSONObject;
+
+
+public static File tarToZipFile(TarFile tarfile) {
+  File tmDir = new File("/tm");
+  if (! tmDir.exists() && ! tmDir.mkdirs()) {
+    PosixFileInputStream.pexecSync("mount", "-o", "remount,rw", "/");
+    if (! tmDir.mkdirs()) tmDir.mkdirErrno();
+  }
+  File outFile = File.createTempFile("tmp_tar2zip", ".zip", new File("/tm"));
+  return tarToZipFile(tarfile, outFile);
+}
+
+public static File tarToZipFile(TarFile tarfile, File outFile) {
+  
+  File outDir = outFile.getParentFile();
+  if (! outDir.exists() && ! outDir.mkdirs()) outDir.mkdirErrno();
+  
+  ReadWritableFileAdapter raf = new ReadWritableFileAdapter(outFile);
+  Map tem = new TreeMap();
+  Map zem = new TreeMap();
+  
+  ZipEntryCollaborator collab = new ZipEntryCollaborator(raf, zem);
+  Map extraMap = new HashMap();
+  Map externalMap = new HashMap();
+  
+  for (TarEntry e : tarfile) {
+    System.err.println(e.getName());
+    // Basic metadata
+    AbsoluteLocation absLoc = new AbsoluteLocation(String.format(
+      e.getName().startsWith("/") ? "%s" : "/%s", e.getName()
+    ));
+    Date modDt = e.lastModified();
+    UnsignedInteger uintUncompressedSize
+      = UnsignedInteger.valueOf((int) ((Long) e.get("size")).longValue());
+    boolean isDir, isReg, isLnk;
+    isDir = ((PosixUtil.S_IFDIR & (PosixUtil.S_IFMT & e.getMode())) != 0);
+    isReg = ((PosixUtil.S_IFREG & (PosixUtil.S_IFMT & e.getMode())) != 0);
+    isLnk = ((PosixUtil.S_IFLNK & (PosixUtil.S_IFMT & e.getMode())) != 0);
+    UnixEntityMode unixMode
+      = UnixEntityMode.forCode((int) (e.getMode() & 07777));
+    UnixEntityType unixType = UnixEntityType.forCode((int) (
+      ((e.getMode() & PosixUtil.S_IFMT) >> 12) != 0
+        ? ((e.getMode() & PosixUtil.S_IFMT) >> 12)
+        : (PosixUtil.S_IFREG >> 12)
+    ));
+    UnixExternalFileAttributes unixAttrs
+      = new UnixExternalFileAttributes(unixType, unixMode);
+    
+    // Set up extra field structure
+    List<ExtraField> locals   = new ArrayList<ExtraField>();
+    List<ExtraField> centrals = new ArrayList<ExtraField>();
+    
+    for (int iloc = 0; iloc < 2; ++iloc) {
+      boolean local = (iloc == 1);
+      ExtendedTimestampExtraField extra
+        = new ExtendedTimestampExtraField(local, modDt, new Date(), modDt);
+      UnicodePathExtraField extra2
+        = new UnicodePathExtraField(local, absLoc, isDir);
+      NewInfoZipUnixExtraField extra3 = new NewInfoZipUnixExtraField(
+        UnsignedShort.valueOf((int) ((Long) e.get("uid")).longValue()),
+        UnsignedShort.valueOf((int) ((Long) e.get("gid")).longValue())
+      );
+      Map info = RealArrayMap.toMap(
+        Iterables.concat(
+          Arrays.asList(
+            Arrays.asList(Pair.of("summary", e.toString())),
+            Arrays.asList(e.entrySet().toArray(new Entry[0]))
+          ).toArray(new Iterable[0])
+        ).toList()
+      );      
+      info.remove("content");
+      String json = new JSONObject(info).toString();
+      UnicodeCommentExtraField extra4
+        = new UnicodeCommentExtraField(local, json);
+      if (iloc == 1) {
+        locals.addAll(Arrays.asList(extra, extra2, extra3, extra4));
+      } else {
+        centrals.addAll(Arrays.asList(extra, extra2, extra3, extra4));
+      }
+    }
+    
+    ZipEntryLocalFileHeaderData localHeaderData
+      = new  ZipEntryLocalFileHeaderData();
+      
+    localHeaderData.setExtraFields(locals);
+    
+    ZipEntryCentralFileHeaderData centralDirData
+      = new ZipEntryCentralFileHeaderData();
+    
+    centralDirData.setExtraFields(centrals);
+    centralDirData.setLocation(absLoc);
+    centralDirData.setUncompressedSize(uintUncompressedSize);
+    centralDirData.setDirectory(isDir);
+    centralDirData.setFileComment(json);
+    centralDirData.setExternalFileAttributes(unixAttrs);
+    
+    ZipFileEntry ze
+      = new ZipFileEntry(collab, centralDirData, localHeaderData);
+    tem.put(absLoc,  e);
+    zem.put(absLoc, ze);
+    
+    Map entryMap = new HashMap();
+    entryMap.put(Boolean.TRUE, locals);
+    entryMap.put(Boolean.FALSE, centrals);
+    extraMap.put(absLoc, entryMap);
+    externalMap.put(absLoc, unixAttrs);
+  }
+  
+  List<ZipEntryExtraFieldFactory> extraFacts
+    = new ArrayList<ZipEntryExtraFieldFactory>();
+  
+  Interpreter in = CollectionUtil.getInterpreter();
+  NameSpace ns = this.namespace;
+  
+  for (int i = 0; i < locals.size(); ++i) {
+    extraFacts.add(in.eval(
+      String.format(StringUtils.join(Arrays.asList(
+        "new ZipEntryExtraFieldFactory() { ", 
+        " public ZipEntryExtraField create(", 
+        " boolean inLocalHeader, AbsoluteLocation loc, ", 
+        " UnixEntityType entityType, ", 
+        " Object entryToZip, ", 
+        " ZipEntrySettings effectiveSettings)", 
+        " {", 
+        " return extraMap.get(loc)", 
+        " .get(Boolean.valueOf(inLocalHeader)).get(%d);", 
+        " }", 
+        "}"
+      ), ""), i), 
+      ns
+    ));
+  }
+  
+  // set up external attribute supplier
+  ZipExternalFileAttributesFactory extFact = new 
+  ZipExternalFileAttributesFactory()
+  {
+    Map _externalMap = externalMap;
+    
+    public ZipVersionMadeBy getVersionMadeBy() {
+      return ZipVersionMadeBy.UNIX;
+    }
+
+    public ZipExternalFileAttributes create(UnixEntityType uet,
+    AbsoluteLocation loc, Object entToZip) 
+    {
+      System.err.printf(
+        "extFact.create(%s, %s, %s);\n",
+        Debug.ToString(uet), Debug.ToString(loc), Debug.ToString(entToZip)
+      );
+      return _externalMap.get(loc);
+    }
+  };
+  
+  // main ZipEntrySettings
+  ZipEntrySettings zes = new ZipEntrySettings();
+  zes.setExternalFileAttributesFactory(extFact);
+  
+  // create and initialize archive builder
+  ZipBuilderSettings zbs = new ZipBuilderSettings();
+  ZipBuilder zb = new ZipBuilder(raf, zbs);
+  Filter filter = new TrueFilter();
+  ArchiveEntrySettingsRule rule = new ArchiveEntrySettingsRule(zes, filter);
+  zb.addRule(rule);
+  
+  // add locations for entriea
+  for (Entry temEntry: tem.entrySet()) {
+    AbsoluteLocation entryLoc = temEntry.getKey();
+    TarEntry te = temEntry.getValue();
+    byte[] content = te.getBytes();
+    
+    System.err.printf(
+      "Adding AbsoluteLocation with data: [%s] ...\n", entryLoc      
+    );
+    /**
+    org.at4j.archive.builder.AbstractStreamAddCapableArchiveBuilder
+        <U extends org.at4j.archive.builder.AbstractArchiveBuilder<U, V>,
+         V extends org.at4j.archive.builder.ArchiveEntrySettings<V>>
+    {
+      public U add(InputStream, org.entityfs.el.AbsoluteLocation);
+      public U add(InputStream, org.entityfs.el.Absol
+      public U add(InputStream, org.entityfs.el.AbsoluteLocation);
+      public U add(InputStream, org.entityfs.el.AbsoluteLocation, V);
+      ...
+    }
+    */
+    
+    zb.add(new ByteArrayInputStream(content), entryLoc, zes);    
+  }
+  
+  zb.close();
+  return outFile;
+}
+
+
+

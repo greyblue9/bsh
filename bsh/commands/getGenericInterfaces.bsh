@@ -1,0 +1,64 @@
+
+public static 
+Map getGenericInterfaces_DexBacked(Iterable defs) { 
+
+  Map _gm = new HashMap();
+  for (org.jf.dexlib2.dexbacked.DexBackedClassDef def: defs) { String className = def.getName(); javassist.bytecode.SignatureAttribute.ClassSignature sig; String sigValue = null; org.jf.dexlib2.iface.Annotation sigAnno = null; for (org.jf.dexlib2.iface.Annotation anno: def.getAnnotations()) { if (anno.getType().equals("Ldalvik/annotation/Signature;")) { sigAnno = anno; break; } }  if (sigAnno != null) { org.jf.dexlib2.dexbacked.util.VariableSizeList pieces = sigAnno.getElements().iterator().next().getValue().getValue(); ArrayList vals = new ArrayList(); for (org.jf.dexlib2.iface.value.EncodedValue piece: pieces) { vals.add(piece.getValue()); } sigValue = StringUtils.join(vals, ""); sig = javassist.bytecode.SignatureAttribute.toClassSignature(sigValue); } String declKind = (Modifier.INTERFACE & def.getAccessFlags()) != 0? "interface": "class"; String otherMods = Modifier.toString(def.getAccessFlags() & (~Modifier.INTERFACE));   StringBuilder sb = new StringBuilder(76 * 10); { if (otherMods.length() > 0) { sb.append(dumpMembers.colorize(otherMods, "0;36")); sb.append(' '); }      sb.append(dumpMembers.colorize(declKind, "0;36")); sb.append(' '); String genName; try { sb.append(StringUtils.substringAfter(new bsh.ClassIdentifier(Class.forName(className, false, Thread.currentThread().getContextClassLoader())).toString(), ": ")); } catch (Throwable e) { sb.append(dumpMembers.colorize(className, "1;36m")); } int ifidx = -1; if (sig != null) { for (javassist.bytecode.SignatureAttribute.ClassType type: sig.getInterfaces()) { ifidx += 1; if (ifidx == 0) { sb.append(dumpMembers.colorize("\n    implements ", "0;36")); } else { sb.append(", "); } sb.append(dumpMembers.colorize(type.toString(), "1;36")); } } _gm.put(def, sb.toString()); } }
+  return _gm;
+}
+
+
+public static Serializable getGenericInterfaces(Object o) 
+{ 
+  try {
+     if (o instanceof Iterable 
+     && ((Iterable) o).iterator().next() 
+      instanceof org.jf.dexlib2.dexbacked.DexBackedClassDef)
+    { 
+      return getGenericInterfaces_DexBacked((Iterable)o);
+    }
+  } catch (Throwable e) { ;; };; 
+  Class _cls = dumpMembers.getClass(o); 
+  if (_cls == null) _cls = o.getClass(); 
+  
+  HashSet cal = new HashSet(); 
+  while (_cls != Object.class) { 
+    cal.add(_cls); 
+    Collections.addAll(cal, _cls.getGenericInterfaces()); 
+    for (Class _ic: _cls.getInterfaces()) {
+      if (_ic.getSuperclass() != null) {
+        cal.add(_ic.getSuperclass());
+      }
+      Collections.addAll(cal, _ic.getGenericInterfaces());
+    }
+    _cls = _cls.getSuperclass();     
+  } 
+  HashSet toprint = new HashSet(cal.select(evalJexl("""
+    m -> { 
+      dumpMembers.colorize(
+        m.toString().replaceAll(
+          "^(?:class |interface )", ""
+        ), 
+        "1;36"
+      );       
+    }"""
+  ))); 
+  CollectionUtil.print(toprint); 
+  
+  List ret = cal.select(evalJexl("""
+    m -> { 
+      Class.forName(
+        m.toString().replaceAll("<.*$", "").replaceAll("^.* ", "")
+      );
+    }"""
+  )); 
+  return ret;
+}
+
+
+
+      
+      
+      
+      
+      

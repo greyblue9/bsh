@@ -1,0 +1,3 @@
+
+public static Object getAstData(com.strobel.decompiler.languages.java.ast.AstNode node, Class dataClass) { List dataList = ProcyonUtil.getDataList(node); for (Object dataItem: dataList) { if (dataClass.isAssignableFrom(dataItem.getClass())) return dataItem; Method resolve = Reflect.getMember(dataItem.getClass(), "resolve"); if (resolve != null && dataClass.isAssignableFrom(resolve.getReturnType())) { Object item = resolve.invoke(dataItem, new Object[0]); if (item != null) return item; } }; return null; };
+

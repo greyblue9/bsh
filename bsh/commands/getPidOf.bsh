@@ -1,0 +1,25 @@
+
+
+public static int getPidOf(String processName) {
+  Set<Integer> eligiblePids = new LinkedHashSet<Integer>();
+  int myPid = PosixFileInputStream.getPid();
+  for (String p : PosixFileInputStream.pexecSync("pidof", ((processName != null && !processName.isEmpty()) ? processName.trim() : "java")).split(" ")) {
+    if (p.trim().isEmpty())
+      continue;
+    int pid = Integer.parseInt(p, 10);
+    boolean ours = (pid == myPid);
+    System.err.printf("Saw PID %d%s...\n", pid, ours ? " (own process)" : "");
+    if (ours)
+      continue;
+    eligiblePids.add(Integer.valueOf(pid));
+  }
+  Integer attachPid = CollectionUtil.firstOrDefault(IterableUtils.reversedIterable(eligiblePids.sort()));
+  return attachPid != null ? ((Integer) attachPid) : 0;
+}
+
+
+public static int getPidOf() {
+  return getPidOf("");
+}
+
+

@@ -1,0 +1,12 @@
+
+
+public static org.antlr.runtime.Parser newParser(Class parserCls, Class lexerCls, String input) { org.antlr.runtime.CharStream chars = new org.antlr.runtime.ANTLRStringStream(input); Object lexer = Reflect.newInstance(lexerCls, chars); org.antlr.runtime.TokenStream tokStream = new org.antlr.runtime.CommonTokenStream(lexer); org.antlr.runtime.Parser parser = Reflect.newInstance(parserCls, tokStream); return parser; } ;
+
+
+
+
+
+
+public static org.antlr.runtime.Parser newParser(Class parserCls, Class lexerCls, String input) { org.antlr.runtime.CharStream chars = new org.antlr.runtime.ANTLRStringStream(input); Object lexer = null, parser = null; try { lexer = Reflect.newInstance(lexerCls, chars); } catch (ReflectiveOperationException roe) { Map temp = getInstanceMap(); CollectionUtil.dbg.put("im", Reflect.newInstance(temp.getClass())); putInstances(Arrays.asList(chars, input, lexerCls));   lexer = tryGetInstance(lexerCls, 0, 20); } catch (Throwable e) { lexer = Reflect.allocateInstance(lexerCls); fillInObject(lexer);  } finally { CollectionUtil.dbg.put("im", temp); };   org.antlr.runtime.TokenStream tokStream = new org.antlr.runtime.CommonTokenStream(lexer);     try { parser = Reflect.newInstance(parserCls, tokStream); } catch (Throwable roe2) { Map temp2 = getInstanceMap(); CollectionUtil.dbg.put("im", Reflect.newInstance(temp2.getClass())); putInstances(Arrays.asList(parserCls, tokStream, chars, input, lexer));    parser = tryGetInstance(parserCls, 0, 13); if (parser != null) return parser; }; return parser;  };   
+
+

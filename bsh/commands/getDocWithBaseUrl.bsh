@@ -1,0 +1,52 @@
+
+
+public static Document getDocWithBaseUrl(URL url) {
+  conn = url.openConnection();
+  props = conn.getRequestProperties();
+  hdrs = conn.getHeaderFields();
+  is = conn.getInputStream();
+  byte[] content = IOUtils.toByteArray(is);
+  String encoding = conn.getContentEncoding();
+  cd = new com.ibm.icu.text.CharsetDetector().setText(content).setDeclaredEncoding(encoding);
+  com.ibm.icu.text.CharsetMatch[] charsetMatches = cd.detectAll();
+  com.ibm.icu.text.CharsetMatch best = CollectionUtil.firstOrDefault(charsetMatches);
+  String text = null;
+  for (com.ibm.icu.text.CharsetMatch match : charsetMatches) {
+    try {
+      text = IOUtils.toString(match.getReader());
+      if (text != null)
+        break;
+    } catch (java.io.IOException ioe) {
+      continue;
+    }
+  }
+  org.jsoup.parser.Parser parser = org.jsoup.parser.Parser.htmlParser();
+  treeb = new org.jsoup.parser.HtmlTreeBuilder();
+  org.jsoup.nodes.Document doc = org.jsoup.nodes.Document.createShell(url.toURI().toString());
+  Reflect.setfldval(treeb, "doc", doc);
+  org.jsoup.parser.Tag linkTag = org.jsoup.parser.Tag.valueOf("link").setSelfClosing();
+  Reflect.setfldval(linkTag, "selfClosing", true);
+  Reflect.setfldval(linkTag, "canContainBlock", false);
+  Reflect.setfldval(linkTag, "empty", true);
+  org.jsoup.nodes.Attributes attrs = new org.jsoup.nodes.Attributes();
+  attrs.put("href", url.toURI().toString());
+  attrs.put("rel", "canonical");
+  linkElem = new org.jsoup.nodes.Element(linkTag, url.toURI().toString(), attrs);
+  doc.head().appendChild(linkElem);
+  parser.setTreeBuilder(treeb);
+  treeb.trySetBaseUri(linkElem);
+  org.jsoup.parser.ParseErrorList errors = new org.jsoup.parser.ParseErrorList(64, Integer.MAX_VALUE);
+  org.jsoup.nodes.Document newDoc = treeb.parse(text, url.toURI().toString(), errors);
+  return newDoc;
+}
+
+
+
+
+public static Document getDocWithBaseUrl(String uriString) {
+  URL url = URI.create(uriString).toURL();
+  return getDocWithBaseUrl(url);
+}
+
+
+  

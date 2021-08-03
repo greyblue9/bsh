@@ -1,0 +1,3 @@
+
+public static StackTraceElement getRootCauseStackTrace(Throwable exc) { StackTraceElement ste = null; Throwable rcExc = (exc.getCause() != null && ! Pair.of(exc.getClass(), Reflect.getfldval(exc, "detailMessage")).equals(Pair.of(exc.getCause().getClass(), Reflect.getfldval(exc.getCause(), "detailMessage"))))? Reflector.getRootCause(exc): exc; StackTraceElement[] stes = rcExc.getStackTrace().filter("^((?!java\\.|libcore\\.|android|bsh\\.|dalvik\\.).)+\\.((?!asList|toArray|concat|equals|hashCode|\\.).)+\\(.*"); System.err.printf("stes = (%s) %s\n", ClassInfo.typeToName(bsh.Factory.typeof(stes).getName()), Debug.ToString(stes)); if (stes == null || stes.length == 0) stes = rcExc.getStackTrace(); StackTraceElement ste = stes[0]; return ste; };
+

@@ -1,0 +1,103 @@
+{
+
+if (!org.d6r.CollectionUtil.isJRE()) {
+  appendClassPathFile("/external_sd/_projects/sdk/ares/ares.jar");
+}
+
+
+import org.apache.commons.io.input.AutoCloseInputStream;
+import zhao.arsceditor.ResDecoder.data.ResTable;
+import zhao.arsceditor.ResDecoder.ARSCDecoder;
+import zhao.arsceditor.ResDecoder.data.ResPackage;
+import zhao.arsceditor.ResDecoder.data.ResResSpec;
+
+  public static void arscGenPublicTsv() {
+
+    boolean keepBroken = true;
+    String outPath = System.getProperty("output.path");
+    String path = System.getProperty("input.path");
+    if (path == null) {
+      path = "/proc/self/fd/0";
+    }
+    FileInputStream fis = new FileInputStream(new File(path));
+    BufferedInputStream bis = new BufferedInputStream(fis, 8000);
+    bis.mark(5);
+    byte[] magic = new byte[4];
+    bis.read(magic);
+    boolean isZip = Arrays.equals(magic, new byte[] { 0x50, 0x4b, 0x03, 0x04 });
+    bis.reset();
+    byte[] arscBytes = (isZip)
+      ? ZipUtil.toByteArray(bis, "resources.arsc")
+      : IOUtils.toByteArray(bis);
+    IOUtils.closeQuietly(bis);
+    IOUtils.closeQuietly(fis);
+    InputStream arscIn
+      = new AutoCloseInputStream(new ByteArrayInputStream(arscBytes));
+    boolean keepBroken = true;
+    ResTable resTable = new ResTable();
+    ARSCDecoder dc = new ARSCDecoder(arscIn, resTable, keepBroken);
+    ResPackage[] resPkgs = dc.readTable();
+    List<String> lines = new LinkedList<String>();
+    for (ResPackage resPkg : resPkgs) {
+      /*System.err.printf(
+        "==> Processing resource package: \"%s\" ...\n", resPkg.getName()
+      );*/
+      String resPkgName = resPkg.getName();
+      int countBefore = lines.size();
+      for (ResResSpec spec: resPkg.getConfigs().iterator().next().listResSpecs()) {
+        int id = spec.getId().id;
+        lines.add(String.format(
+          "%d\t%s.R.%s.%s", id, resPkgName, spec.getType().getName(), spec.getName()
+        ));
+        lines.add(String.format(
+          "0x%X\t%s.R.%s.%s",
+            id, resPkgName, spec.getType().getName(), spec.getName()
+        ));
+      }
+      int countAfter = lines.size();
+      int resPkgSpecCount = countAfter - countBefore;
+      /*System.err.printf(
+        "  *** total resource specs in package \"%s\": %d ***\n\n",
+        resPkgName, resPkgSpecCount
+      );*/
+    }
+    /*System.err.printf(
+      "*** Finished processing resource table; %d total resource specs " +
+      "in %d packages. ***\n\n", lines.size(), resPkgs.length
+    );*/
+    OutputStream os = null;
+    if (outPath == null || "-".equals(outPath)) {
+      os = (Reflect.getfldval(System.out, "out") != null)
+          ? Reflect.getfldval(System.out, "out")
+          : System.out;
+    } else {
+      File outFile = (outPath == null)
+          ? (new File(new File(System.getProperty("user.dir")), String.format(
+              "public.%s.generated.out.tsv",
+              Long.toString(System.currentTimeMillis(), 32)
+            )))
+          : new File(outPath);
+      /*System.err.printf("outFile = %s\n", outFile);*/
+      if (!outFile.getParentFile().exists() && !outFile.getParentFile().mkdirs()) {
+        outFile.getParentFile().mkdirErrno();
+        throw new RuntimeException("mkdirs: " + outFile.getParentFile());
+      }
+      os = new FileOutputStream(outFile);
+    }
+    IOUtils.writeLines(lines, "\n", os, java.nio.charset.StandardCharsets.UTF_8);
+    os.flush();
+    if (os instanceof FileOutputStream &&
+        (os.getFD() == FileDescriptor.out || 
+        FileDescriptor.out.equals(os.getFD())))
+    {
+      os = null;
+    } else {
+      IOUtils.closeQuietly(os);
+    }
+  }
+
+  arscGenPublicTsv();
+  
+  
+  void;
+}

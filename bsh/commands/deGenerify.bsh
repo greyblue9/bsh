@@ -1,0 +1,3 @@
+
+public static String deGenerify(Object src) { return String.valueOf(src).replaceAll("<([A-Z])( [^\n<>]*|<[^<>]*>|>,[^<]*|<)*>  *\\1\\b", "Object").replaceAll("(\\(|<)([A-Z?])(\\)|>)", "$1Object$3").replaceAll("([^A-Za-z0-9_$])<([^>]*|<[^>]*>)*>", "$1").replaceAll("(  *|)(\n?)\\b([A-Z])  *([^ (\n]+) *\\(([^\n)]*)\\) *\\{", "$2 Object $4($5) {").replaceAll("\\(([^()]*)\\.\\.\\.([^()]*)\\)", "($1[]$2)").replaceAll("([^A-Za-z])([A-Z][A-Za-z0-9_$.]*)<([^>]*|<[^>]*>)*>", "$1$2"); }
+

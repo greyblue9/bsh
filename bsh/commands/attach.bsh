@@ -1,0 +1,320 @@
+
+import com.sun.jdi.Bootstrap;
+import com.sun.jdi.VirtualMachineManager;
+import com.sun.jdi.VirtualMachine;
+import com.sun.tools.jdi.VirtualMachineManagerImpl;
+import com.sun.tools.example.debug.tty.Commands;
+import com.sun.tools.example.debug.tty.Env;
+import com.sun.tools.example.debug.tty.MessageOutput;
+import com.sun.tools.example.debug.tty.TTY;
+import java.nio.charset.StandardCharsets;
+
+
+public static VirtualMachine attach(int pid, boolean start) {
+  File procfsDir = new File(new File("/proc"), Integer.toString(pid, 10));
+  
+  String command = FileUtils.readFileToString(
+                   new File(procfsDir, "comm"),StandardCharsets.US_ASCII),
+     commandLine = FileUtils.readFileToString(
+                   new File(procfsDir, "cmdline"),StandardCharsets.US_ASCII)
+                     .split("\\u0000");
+  
+  char procType = '?';
+  if (command.indexOf("java") != -1 ||
+      command.indexOf("jre/bin") != -1 ||
+      ArrayUtils.indexOf(commandLine, "java") != -1)
+  {
+    procType = 'j';
+  } else {
+    procType = 'd';
+  }
+  
+  VirtualMachineManager mgr
+    = VirtualMachineManagerImpl.virtualMachineManager();
+  String[] srcDirs = org.apache.commons.lang3.ArrayUtils.addAll(
+    new String[]{
+      "/storage/extSdCard/_projects/sdk/bsh/trunk/src",
+      "/external_sd/_projects/sdk/android_4.4.2_r1",
+      "/external_sd/_projects/sdk/android_4.3.1",
+      "/external_sd/_projects/sdk/framework_dc/src",
+      "/external_sd/_projects/sdk/download_provider/src"
+    },
+    (String[]) (
+      Arrays.asList(org.d6r.SourceUtil.allDirs)
+        .invokeAll("getPath")
+        .toArray(new String[0])
+    )
+  );
+  
+  int ownPid = org.d6r.PosixFileInputStream.getPid();
+  
+  String spec = null;
+  switch (procType) {
+    case 'j':
+      Log.d("attach", "Own PID = %d ...", ownPid);
+      spec = String.format("com.sun.jdi.ProcessAttach:pid=%d,", pid);
+      System.err.printf("spec = %s\n", spec);
+      break;
+    
+    case 'd':
+      Log.d("attach", "using my PID=%d as port for JDWP forward ...", ownPid);
+      int port = ownPid;
+      Log.d("attach",
+      "Setting port forward via 'adb forward tcp:%d jdwp:%d'", port, pid);
+      String result = PosixFileInputStream.pexecSync(
+        "/system/xbin/busybox", "env", "-i",
+         "LD_LIBRARY_PATH=/system/lib:/system/vendor/lib",
+         "PATH=/system/bin:/system/xbin",
+         "adb", "forward",
+         String.format("tcp:%d", port), String.format("jdwp:%d", pid)
+      );
+      Log.i("attach", "Forwarded via 'adb forward tcp:%d jdwp:%d'", port, pid);
+      Log.d("attach", "Result: [%s]", result);
+      spec = String.format("com.sun.jdi.SocketAttach:port=%d,", port);
+      break;
+    default:
+      throw new AssertionError("missing procType case block");
+  }
+  
+  
+  boolean isNew = !CollectionUtil.dbg.containsKey("debug.env");
+  Env env = isNew ? new Env() : CollectionUtil.dbg.get("debug.env");
+  if (isNew) CollectionUtil.dbg.put("debug.env", env);
+  
+  if (!start) {
+    
+    env.init(
+      spec, // String connectSpec
+      true, // boolean openNow
+      0 // int flags
+    );
+    
+    Env.sourceMapper.dirs = srcDirs;
+    
+    return env.vm();
+    
+  } else {
+    TTY.main(new String[]{
+      "-connect",
+      spec,
+      "-sourcepath",
+      StringUtils.join(srcDirs, ":")
+      // System.getenv("SOURCEPATH")
+    });
+    
+    return mgr.connectedVirtualMachines().isEmpty()
+      ? null
+      : mgr.connectedVirtualMachines()[-1];
+  }
+};
+
+public static VirtualMachine attach(int pid) {
+  return attach(pid, true);
+}
+
+public static Object attach(String pkgName, boolean forceStart) {
+  String[] output = StringUtils.stripAll(StringUtils.split(
+    PosixFileInputStream.pexecSync("pidof", pkgName), " \t\n"
+  ), " \t\n");
+  if (output.length == 0 ||
+     !Pattern.compile("^[0-9]+(?: [0-9]+|)*$", Pattern.DOTALL)
+        .matcher(output[0]).matches())
+  {
+    output = ArrayUtils.addAll(
+      output,
+      StringUtils.stripAll(StringUtils.split(
+        PosixFileInputStream.pexecSync("getproc_pid", pkgName), " \t\n"
+      ), " \t\n")
+    );
+  }
+  int pid = 0;
+  for (int i=0, len=output.length; i<len; ++i) {
+    String pidStr = output[i];
+    Log.d("attach", "parsing pidof/getproc_pid output (%d/%d): \"\"",
+      (i+1), len, StringEscapeUtils.escapeJava(pidStr));
+    try {
+      pid = Integer.parseInt(pidStr, 10);
+      File file = new File(String.format("/proc/%d/status"));
+      if (!file.exists()) {
+        Log.i("attach", "process record for PID %d is gone; trying next...",
+          pid);
+      }
+      break;
+    } catch (IllegalArgumentException e) {
+      Log.e("attach", e);
+      continue;
+    }
+  }
+  if (pid == 0) {
+    if (!forceStart) {
+      Log.w("attach", 
+        "Package does not currently have a running process. " +
+        "Use attach(\"%s\", true) to attach after forcing the " +
+        "package to start.", pkgName
+      );
+      return null;
+    } else {
+      Log.d("attach","Starting package %s ...", pkgName);
+      System.err.println(PosixFileInputStream.pexecSync(
+        "start_pkg", pkgName
+      ));
+      return attach(pkgName, false);
+    };
+  };
+  Log.i("attach", "Attaching to process %s, pid %d ...", pkgName, pid);
+  try {
+    return attach(pid, true);
+  } catch (Throwable t) {
+    PosixFileInputStream.pexecSync("start_debuggerd");
+    return attach(pid, true);
+  }
+};
+
+
+public static Object attach(String pkgName) {
+  return attach(pkgName, false);
+};
+
+
+
+
+
+
+
+
+
+public static void attach() {
+  Reflect.setfldval(this.namespace, "variables", CollectionUtil.getInterpreter().getNameSpace().getVariables());
+  (a = new sun.jvm.hotspot.HotSpotAgent()).attach(pid = otherPidOf("java"));
+  tdb = db = a.getTypeDataBase();
+  vm = sun.jvm.hotspot.runtime.VM.getVM();
+  univ = vm.getUniverse();
+  name = "_java_mirror";
+  Object field = null;
+  type = vm.getTypeDataBase().lookupType("Klass");
+  flds = IteratorUtils.asIterable(type.getFields());
+  for (Object fld : flds) {
+    System.err.println(fld.getName());
+    if (name.equals(fld.getName())) {
+      field = fld;
+      break;
+    }
+  }
+  if (field != null) {
+    System.err.printf("Found %s:\n  %s\n\n", field.getClass().getName(), field);
+  }
+  vtaddr = vm.getTypeDataBase().vtblAccess.getVtblForType(type);
+  dbg = a.debugger;
+  cdbg = dbg.getCDebugger();
+  vtsym = vm.getTypeDataBase().vtblAccess.vtblSymbolForType(type);
+  cdbg.demangle(vtsym);
+  stg = vm.getUniverse().systemThreadGroup();
+  mtg = vm.getUniverse().mainThreadGroup();
+  tctx = (thd = (thds = dbg.getThreadList().sort())[0]).getContext();
+}
+
+ 
+
+public static org.apache.commons.lang3.tuple.Pair attach(String address, int port, int timeout) {
+  com.sun.jdi.connect.spi.TransportService transportService = new com.sun.tools.jdi.SocketTransportService();
+  com.sun.tools.jdi.GenericAttachingConnector connector = com.sun.tools.jdi.SocketAttachingConnector.create(transportService);
+  Map arguments = RealArrayMap.toMap("port", new com.sun.tools.jdi.ConnectorImpl.IntegerArgumentImpl(connector, "port", "port", "port", Integer.toString(port, 10), true, port, port), "hostname", new com.sun.tools.jdi.ConnectorImpl.StringArgumentImpl(connector, "hostname", "hostname", "hostname", (address != null ? address : "127.0.0.1"), true), "timeout", new com.sun.tools.jdi.ConnectorImpl.IntegerArgumentImpl(connector, "timeout", "timeout", "timeout", Integer.toString(timeout, 10), false, timeout, timeout), "address", new com.sun.tools.jdi.ConnectorImpl.StringArgumentImpl(connector, "address", "address", "address", String.format("%s:%d", (address != null ? address : "127.0.0.1"), port), true));
+  com.sun.jdi.connect.Transport transport = connector.transport();
+  return Pair.of(connector, arguments);
+}
+
+ 
+
+public static com.sun.jdi.VirtualMachine attach(org.apache.commons.lang3.tuple.Pair p) {
+  com.sun.jdi.VirtualMachine vm = p.getKey().attach(p.getValue());
+  com.sun.tools.example.debug.tty.VMConnection vmConn = new com.sun.tools.example.debug.tty.VMConnection(p.getKey(), p.getValue(), 0);
+  Reflect.setfldval(Env.class, "connection", vmConn);
+  return vm;
+}
+
+ 
+
+public static com.sun.jdi.VirtualMachine attach(org.apache.commons.lang3.tuple.Pair p) {
+  com.sun.jdi.VirtualMachine vm = p.getKey().attach(p.getValue());
+  com.sun.tools.example.debug.tty.VMConnection vmConn = new com.sun.tools.example.debug.tty.VMConnection(p.getKey(), p.getValue(), 0);
+  Reflect.setfldval(Env.class, "connection", vmConn);
+  Reflect.setfldval(vmConn, "vm", vm);
+  return vm;
+}
+
+ 
+
+public static void attach(File gcoreFile) {
+  Reflect.setfldval(this.namespace, "variables", CollectionUtil.getInterpreter().getNameSpace().getVariables());
+  String corefile = gcoreFile.getAbsolutePath();
+  String output = PosixFileInputStream.pexecSync(new String[] { "corefile_cmdline", gcoreFile.getAbsolutePath() }).trim();
+  String exePath = CollectionUtil.firstOrDefault(StringCollectionUtil.matchAll(output.split("\t")[1], "^(/[^\t\n ]*)"));
+  File exeFile = new File(exePath);
+  (a = new sun.jvm.hotspot.HotSpotAgent());
+  a.attach(exeFile.getAbsolutePath(), corefile);
+  tdb = db = a.getTypeDataBase();
+  vm = sun.jvm.hotspot.runtime.VM.getVM();
+  univ = vm.getUniverse();
+  name = "_java_mirror";
+  Object field = null;
+  type = vm.getTypeDataBase().lookupType("Klass");
+  flds = IteratorUtils.asIterable(type.getFields());
+  for (Object fld : flds) {
+    System.err.println(fld.getName());
+    if (name.equals(fld.getName())) {
+      field = fld;
+      break;
+    }
+  }
+  if (field != null) {
+    System.err.printf("Found %s:\n  %s\n\n", field.getClass().getName(), field);
+  }
+  vtaddr = vm.getTypeDataBase().vtblAccess.getVtblForType(type);
+  dbg = a.debugger;
+  cdbg = dbg.getCDebugger();
+  vtsym = vm.getTypeDataBase().vtblAccess.vtblSymbolForType(type);
+  cdbg.demangle(vtsym);
+  stg = vm.getUniverse().systemThreadGroup();
+  mtg = vm.getUniverse().mainThreadGroup();
+  tctx = (thd = (thds = dbg.getThreadList().sort())[0]).getContext();
+}
+
+ 
+
+public static void attach(File gcoreFile) {
+  CollectionUtil.getInterpreter().getNameSpace().setVariable("gcoreFile", gcoreFile, false);
+  Reflect.setfldval(this.namespace, "variables", CollectionUtil.getInterpreter().getNameSpace().getVariables());
+  String corefile = gcoreFile.getAbsolutePath();
+  String output = PosixFileInputStream.pexecSync(new String[] { "corefile_cmdline", gcoreFile.getAbsolutePath() }).trim();
+  String exePath = CollectionUtil.firstOrDefault(StringCollectionUtil.matchAll(output.split("\t")[1], "^(/[^\t\n ]*)"));
+  File exeFile = new File(exePath);
+  (a = new sun.jvm.hotspot.HotSpotAgent());
+  a.attach(exeFile.getAbsolutePath(), corefile);
+  tdb = db = a.getTypeDataBase();
+  vm = sun.jvm.hotspot.runtime.VM.getVM();
+  univ = vm.getUniverse();
+  name = "_java_mirror";
+  Object field = null;
+  type = vm.getTypeDataBase().lookupType("Klass");
+  flds = IteratorUtils.asIterable(type.getFields());
+  for (Object fld : flds) {
+    System.err.println(fld.getName());
+    if (name.equals(fld.getName())) {
+      field = fld;
+      break;
+    }
+  }
+  if (field != null) {
+    System.err.printf("Found %s:\n  %s\n\n", field.getClass().getName(), field);
+  }
+  vtaddr = vm.getTypeDataBase().vtblAccess.getVtblForType(type);
+  dbg = a.debugger;
+  cdbg = dbg.getCDebugger();
+  vtsym = vm.getTypeDataBase().vtblAccess.vtblSymbolForType(type);
+  cdbg.demangle(vtsym);
+  stg = vm.getUniverse().systemThreadGroup();
+  mtg = vm.getUniverse().mainThreadGroup();
+  tctx = (thd = (thds = dbg.getThreadList().sort())[0]).getContext();
+}
+
+ 

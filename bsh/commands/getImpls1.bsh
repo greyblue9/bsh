@@ -1,0 +1,200 @@
+import com.android.dx.util.IntSet;
+import com.android.dx.util.IntIterator;
+import com.android.dx.util.BitIntSet;
+
+import com.android.dex.Dex;
+import com.android.dex.ClassDef;
+
+
+public static Set<Class> getImpls1(Class cls) {
+  Dex dex = org.d6r.ClassInfo.getDex(cls);
+  ClassDef[] dexClassDefs = CollectionUtil.toArray(dex.classDefs());
+  
+  Class main_class = cls;
+  int main_classDefIndex = cls.getDexClassDefIndex();
+  ClassDef main_classDef = dexClassDefs[main_classDefIndex];
+  int main_typeIndex = main_classDef.getTypeIndex();
+  boolean main_isInterface
+    = (main_classDef.getAccessFlags() & Modifier.INTERFACE) != 0;
+  
+  Set<Integer> sub_typeIndexes = new TreeSet<Integer>();
+  
+  directSubClass_classDefs = Arrays.asList(dexClassDefs).select(
+    FunctionUtil.eval(
+      Arrays.asList(
+        Pair.of("main_classDefIndex", main_classDefIndex),
+        Pair.of("main_typeIndex", main_typeIndex),
+        Pair.of("main_shortTypeIndex",
+          Short.valueOf((short) main_typeIndex)),      
+        Pair.of("main_isInterface", main_isInterface)
+      ),
+      new String[]{ 
+      "return (classDef) -> { ",
+      "  if (classDef.getSupertypeIndex() == main_typeIndex) {",
+      "    return classDef; ",
+      "  } ",
+      "  return ArrayUtils.contains( ",
+      "    classDef.getInterfaces(),main_shortTypeIndex.shortValue())",
+      "      ? classDef : null; ",
+      "} "
+      }
+    )
+  );
+    
+  System.err.println(directSubClass_classDefs);
+  /*
+  for (int cdidx=0, cdlen=dexClassDefs.length; cdidx<cdlen; cdidx++) {
+    ClassDef classDef = dexClassDefs[cdidx];
+      boolean isInterface
+        = (classDef.getAccessFlags() & Modifier.INTERFACE) != 0;
+      int typeIndex = dex.typeIndexFromClassDefIndex(cdidx);
+      typeIndexQueue.offer(Integer.valueOf(typeIndex);
+      int super_typeIndex = (int) classDef.getSupertypeIndex();
+      int super_classDefIndex 
+        = dex.findClassDefIndexFromTypeIndex(super_typeIndex);
+      ClassDef super_classDef = dexClassDefs[super_classDefIndex];
+      
+      }
+    }
+  
+  Deque<ClassDef> classDefQueue = new ArrayDeque<ClassDef>();
+  Deque<Integer> typeIndexQueue = new ArrayDeque<Integer>();
+  
+  for ()
+  
+  boolean moreClassDef;
+  boolean moreTypeIndex;
+  do {
+    moreClassDef = ! classDefQueue.isEmpty();
+    moreTypeIndex = ! typeIndexQueue.isEmpty();
+    
+    while (moreClassDef) {
+      ClassDef classDef = classDefQueue.poll();
+      int typeIndex = classDef.getTypeIndex();
+      typeIndexQueue.offer(Integer.valueOf(typeIndex);
+      int super_typeIndex = (int) classDef.getSupertypeIndex();
+      int super_classDefIndex 
+        = dex.findClassDefIndexFromTypeIndex(super_typeIndex);
+      ClassDef super_classDef = dexClassDefs[super_classDefIndex];
+      
+        
+      // Enqueue ClassDef for super
+      classDefQueue.offer( 
+        dex.findClassDefIndexFromTypeIndex(superTypeIndex));
+      typeIndexQueue.offer(Integer.valueOf(superTypeIndex);
+      short[] interfaceTypeIndexes = classDef.getInterfaces();
+      for (int ii=0, len=interfaceTypeIndexes.length; ii<len; ii++) {
+        int interfaceTypeIndex = (int) interfaceTypeIndexes[ii];
+        typeIndexQueue.offer(Integer.valueOf(interfaceTypeIndex));
+      }
+    }
+    while (moreTypeIndex) (
+    )
+  allSubDefs.add(classDef);
+  IntSet cdidxs = new BitIntSet(64);
+  cdidxs.add(classDefIndex);
+  IntSet typeIdxs = new BitIntSet(64); 
+  IntIterator it = cdidxs.iterator();
+  while (it.hasNext()) {
+    cdidx = it.next();
+    System.out.printf("classDefIndex: %d\n", cdidx); 
+    ClassDef cd = dexClassDefs[cdidx];
+    int typeIdx = cd.getTypeIndex();
+    System.err.printf("  - typeIndex: %d\n", typeIdx); 
+    typeIdxs.add(typeIdx);
+  };
+  int iter = 0;
+  // CollectionUtil.getInterpreter().setu("typeIdxs", typeIdxs);
+  
+  Collection<ClassDef> subDefs
+    = new ArrayList<ClassDef>(Arrays.asList(dexClassDefs));
+  IntSet subDefTypeIdxs = new BitIntSet(64);
+  Iterator<ClassDef> it = subDefs.iterator();
+  while (it.hasNext()) { 
+    ClassDef subDef = it.next();    
+    boolean keep = false;
+    int typeIndex = (int) subDef.getTypeIndex(),
+        superIndex = (int) subDef.getSupertypeIndex();
+    short[] interfaceTypeIndexes = subDef.getInterfaces();
+    for (int ii=0, len=interfaceTypeIndexes.length; ii<len; ii++) {
+      int interfaceTypeIndex = (int) interfaceTypeIndexes[ii];
+      
+    if (typeIdxs.has((int) subDef.getSupertypeIndex())) {
+      keep=true;
+      subDefTypeIdxs.add((int)subDef.getTypeIndex());
+    }
+    Short[] ifaces = ArrayUtils.toObject(subDef.getInterfaces());
+    for (Short iface: ifaces) {
+      
+      if (typeIdxs.has((int) iface.intValue())) {
+        subDefTypeIdxs.add((int)subDef.getTypeIndex());
+        continue;
+      }
+    }
+    it.remove();
+  }  
+  allSubDefs.addAll((Collection) subDefs);
+  
+  
+  System.err.println(allSubDefs);
+  
+  String[] typeNames = CollectionUtil.toArray(dex.typeNames());  
+  Set<String> classNames = new TreeSet<String>();  
+  for (ClassDef subDef: allSubDefs) {
+    String className
+      = ClassInfo.typeToName(typeNames[(int) subDef.getTypeIndex()]);
+    System.err.println(className);
+    classNames.add(className);
+  }
+  System.err.printf(
+    "Total class count (names): %d\n", classNames.size()
+  );
+  
+  Class[] _clsImpls = CollectionUtil2.toClasses(
+    classNames.toArray(new String[0])
+  );
+  Set<Class> classImpls = new IdentityHashSet<Class>();
+  Collections.addAll(classImpls, _clsImpls);
+  
+  System.err.printf("Resolved class count: %d\n", classImpls.size());
+  /*List<Class> clsImpls = allSubDefs.select(
+    "m => "
+    + "org.d6r.Reflector#invokeOrDefault("
+    + "  java.lang.Class#forName(\"org.d6r.InternalNames\"), "
+    + "  \"getClass\", "
+    + "  new java.lang.Object[]{ "
+    + "    java.lang.Thread#currentThread().getContextClassLoader(), "
+    + "    ((com.android.dex.Dex) "
+    + "        org.d6r.Reflect#getfldval(m, \"buffer\")"
+    + "    ).typeNames().get((int) m.getTypeIndex())"
+    + "  }"
+    + ");"
+  );*/
+  
+  // "Lbsh/BshBinding; extends Ljava/lang/Object;"
+  List<String> names = 
+    directSubClass_classDefs.select(FunctionUtil.eval(""
+    + "return m -> { "
+    + "  var tostr = m.toString(); "
+    + "  var binClsName = tostr.substring(0, tostr.indexOf(';') + 1); "
+    + "  return ClassInfo.typeToName(binClsName); "
+    + "}"
+  ));
+  Set<Class> classes = new IdentityHashSet<Class>();
+  Collections.addAll(
+    classes,
+    (Class[]) CollectionUtil2.toClasses(names.toArray(new String[0]))
+  );
+  Collections.addAll(
+    classes,
+    directSubClass_classDefs.toArray()
+  );
+  return classes;
+}
+
+
+
+  
+  
+  
+  

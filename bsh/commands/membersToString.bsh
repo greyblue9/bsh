@@ -1,0 +1,104 @@
+
+import org.d6r.dumpDexClass2.ClassNameDepthComparator;
+import org.apache.commons.collections4.iterators.ObjectArrayIterator;
+
+public static String membersToString(Object mbs) {
+  
+  Iterable<Member> itb = null;
+  do {
+    Object tmp = mbs;
+    if (tmp instanceof Iterable) {
+      itb = (Iterable) tmp; break;
+    }
+    if (tmp instanceof Object[]) { // will go through second step below
+      tmp = (Iterator) new ObjectArrayIterator((Object[]) tmp);
+    } else if (tmp instanceof Enumeration) {
+      itb = (Iterable) IteratorUtils.asIterable((Enumeration) tmp);
+      break;
+    }
+    // second step for mbs :> Object[] case
+    if (tmp instanceof Iterator) {
+      itb = (Iterable)
+        IteratorUtils.asMultipleUseIterable((Iterator) tmp);
+      break;
+    }
+    if (! (itb instanceof Iterable)) throw new RuntimeException(
+      "Unsupported member collection: ".concat(tmp.getClass().getName())
+    );
+  } while (false);
+  
+  
+  StringBuilder sb = new StringBuilder(512 * 4);
+  Comparator cdcmp = new ClassNameDepthComparator();
+  CollectionUtil.getInterpreter().setu("_cdcmp", cdcmp);
+  
+  SortedSet<Member> set = new TreeSet<Member>(
+    FunctionUtil.delegate(
+      Comparator.class, 
+      "return (a, b) -> { " +
+      "  var dcna = a.getDeclaringClass().getName(); " +
+      "  var dcnb = b.getDeclaringClass().getName(); " +
+      "  var res0 = _cdcmp.compare(dcna, dcnb); " +
+      "  if (res0 != 0) { " +
+      "    return res0; " +
+      "  } else { " +
+      "    if (CollectionUtil.isJRE() || " +
+      "           Field.isInstance(a) || Field.isInstance(b)) " +
+      "    { " +
+      "      return ( " +
+      "        Constructor.isInstance(a)? \"<init>\": a.getName() " +
+      "      ).compareTo( " +
+      "        Constructor.isInstance(b)? \"<init>\": b.getName() " +
+      "      ); " +
+      "    } " +
+      "    " +
+      "    var dmi_a = (Field.isInstance(a)) " +
+      "      ? a.getDexFieldIndex() : a.getDexMethodIndex(); " +
+      "    var dmi_b = (Field.isInstance(b)) " +
+      "      ? b.getDexFieldIndex() : b.getDexMethodIndex(); " +
+      "      " +
+      "    return Integer.compare(dmi_a, dmi_b); " +
+      "  } " +
+      "}"
+    )
+  );
+  
+  Collections.addAll(set, CollectionUtil.toArray(itb));
+  Class prevcls = null;
+  
+  for (Member mb : set) {
+    Class cls = mb.getDeclaringClass();
+    if (cls != prevcls) {
+      try {
+        sb.append("--\n")
+          .append(dumpDexClass2.typeHeader(cls))
+          .append("\n");
+      } catch (Throwable ex) {
+        sb.append("--\n")
+          .append("[ ")
+          .append(Reflector.getRootCause(ex))
+          .append(" ]")
+          .append("\n")
+          .append(dumpMembers.typeToString(cls))
+          .append("\n");
+      }
+      prevcls = cls;
+    };   
+    sb.append("  ")
+      .append(dumpMembers.colorize(mb))
+      .append("\n");
+  }
+  
+  CollectionUtil.getInterpreter().getNameSpace().getVariables().remove("_cdcmp");
+  
+  return sb.toString().replace(
+      "\n--\n", 
+      "\n".concat(String.format(
+        "%c[1;30m%71s%c[0m", 0x1b, "_", 0x1b
+      ).replace(' ', '_')).concat("\n\n")
+    );
+}
+
+
+
+

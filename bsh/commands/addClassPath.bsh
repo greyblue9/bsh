@@ -1,0 +1,290 @@
+
+import dalvik.system.DexPathList;
+import dalvik.system.DexPathList.Element;
+import dalvik.system.BaseDexClassLoader;
+
+import java.io.File;
+
+
+{
+  
+  
+
+public static List<Object> addClassPath(
+Object[] _paths, ClassLoader ldr, boolean append) {
+  
+  if (ldr instanceof BaseDexClassLoader) {
+    return addClassPath(_paths, (BaseDexClassLoader) ldr, append);
+  }
+  List added = new ArrayList();
+  Set<String> ZIP_EXTS = CollectionFactory.newSet(
+    "aar", "apk", "ear", "jar", "war", "xpi", "zip");
+  String path;
+  File rawFile, file;
+  int idx = 0;
+  boolean shownStackTrace = false;
+  
+  ArrayUtils.reverse(_paths);
+  
+  for (Object _path: _paths) {
+    path = _path instanceof String
+      ? (String) _path : ((File)  _path).getPath();
+    rawFile = _path instanceof String
+      ? new File((String) _path) : (File) _path;
+    if (!rawFile.exists()) {
+      Log.w("addClassPath", "Attempt to add nonexistent file: \"%s\"", path);
+      continue;
+    }
+    file = rawFile.isAbsolute()
+      ? rawFile : rawFile.getAbsoluteFile();
+    
+    try {
+      Object url = appendClassPathFile(file.getPath(), append);
+      System.err.printf(
+        "Adding[%d / %d]: '%s' -> %s ...\n", 
+        (++idx), _paths.length, file, url
+      );
+      added.add(url);
+    } catch (Exception __ioe) {
+      System.err.printf(
+        "\u001b[1;31mTrouble adding file to classpath: " +
+        "%s\u001b[1;33m<%s>\u001b[0m\n",
+        __ioe, file
+      );
+      continue; 
+    }
+  }
+  if (CollectionUtil.isJRE()) {
+    updateLoaderPaths(ldr);
+  }
+  return added;
+}
+
+public static List<Element> addClassPath(
+Object[] _paths, BaseDexClassLoader ldr, boolean append) {
+  // Get DexPathList object from BaseDexClassLoader
+  Set<String> ZIP_EXTS = CollectionFactory.newSet(
+    "aar", "apk", "ear", "jar", "war", "xpi", "zip"
+  );
+  
+  DexPathList.Element[] newElems = new DexPathList.Element[_paths.length];
+
+  String path;
+  File rawFile, file;
+  dalvik.system.DexFile dexFile = null;
+  DexPathList.Element newElement = null;
+  boolean shownStackTrace = false;
+  
+  int idx = 0;
+  
+  for (Object _path: _paths) {
+    path = _path instanceof String
+      ? (String) _path
+      : ((File)  _path).getPath();
+     
+    rawFile = _path instanceof String
+      ? new File((String) _path)
+      :    (File) _path;
+     
+    if (!rawFile.exists()) {
+      Log.w("addClassPath", "Attempt to add nonexistent file: \"%s\"", path);
+      continue;
+    }
+    
+    file = rawFile.isAbsolute()
+      ? rawFile
+      : rawFile.getAbsoluteFile();
+    
+    String basename = file.getName();
+    int dotPos = basename.lastIndexOf('.');
+    String ext = (dotPos > 0)
+      ? basename.subSequence(dotPos+1, basename.length())
+      : "";
+    boolean isZip = ZIP_EXTS.contains(ext);
+    
+    // Prepare new (to be appended) DexPathList.Element entry 
+    // Not sure if all this is necessary
+    System.err.printf(
+      "Adding%s: %s(\"%s\") ...\n",
+      isZip ? " zip" : StringUtils.endsWith(basename, ".dex") ? " dex" : "",
+      file.getClass().getSimpleName(),
+      file.getPath()
+    );
+    
+    try {
+      dexFile = new DexFile(file);
+    } catch (Exception __ioe) {
+      System.err.printf(
+        "\u001b[1;31mDex file is null: %s\u001b[1;33m<%s>\u001b[0m\n",
+        __ioe, file
+      );
+      continue; 
+    } catch (Throwable __ioe2) { 
+      System.err.printf(
+        "\u001b[1;31mDex file is null: %s\u001b[1;33m<%s>\u001b[0m\n",
+        Reflector.getRootCause(__ioe2), file
+      );
+      continue; 
+    }
+    
+    if (dexFile  == null) {
+      System.err.printf("\u001b[1;31mDex file is null: %s\u001b[0m\n", file);
+      continue; 
+    }
+    
+    
+    // Create new DexPathList entry
+    newElement = new DexPathList.Element(
+      file, // File file
+      file.isDirectory(), // boolean isDirectory
+      (isZip) ? file : null, // File zip
+      dexFile // DexFile dexFile
+    );
+    // Add the new elements after the existing ones in new array
+    newElems[idx++] = newElement;
+    // newElems[ nextIdx++ ] = newElement;
+  }
+  
+  
+  // System.err.printf("Keeping %d dex elements...\n", idx);
+  
+  
+  return addClassPath(
+    Arrays.copyOfRange(newElems, 0, idx),
+    ldr, 
+    append
+  );
+}
+  
+public static List<Element> addClassPath(DexPathList.Element[] newElems, BaseDexClassLoader ldr, boolean append) { 
+  // Create a new array with additional room to hold the
+  // additional DexPathList.Element item 
+  // (to replace the pathList.dexElements field in loader)
+  DexPathList pathList 
+    = (DexPathList) Reflect.getfldval(ldr, "pathList");
+    
+  DexPathList.Element[] oldElems 
+    = (DexPathList.Element[])
+        Reflect.getfldval(pathList, "dexElements");
+  
+  
+  DexPathList.Element[] allElems = new DexPathList.Element[ 
+    oldElems.length + newElems.length
+  ];
+  
+  if (append) {
+  // Clone the existing elements into the new array 
+    System.arraycopy(oldElems, 0, 
+      allElems, 0, oldElems.length
+    );
+    System.arraycopy(newElems, 0, 
+      allElems, oldElems.length, newElems.length
+    );
+  } else {
+    System.arraycopy(oldElems, 0, 
+      allElems, newElems.length, oldElems.length
+    );
+    System.arraycopy(newElems, 0, 
+      allElems, 0, newElems.length
+    );
+  }
+  // Replace original DexPathList with the new (modified) one
+  Reflect.setfldval(pathList, "dexElements", allElems); 
+    
+  Reflect.setfldval(
+    this.namespace.getClassManager(),
+    "absoluteNonClasses",
+    new HashSet()
+  );
+  
+  updateLoaderPaths(ldr);
+  
+  if (ldr instanceof dalvik.system.XClassLoader) {
+    ((XClassLoader)ldr).badClasses.clear();
+  }
+  // import bsh.Capabilities;
+  Reflect.getfldval(null, bsh.Capabilities.class, "classes").clear(); 
+  
+  return Arrays.asList(newElems); 
+}
+
+
+public static List<Element> addClassPath(java.lang.String path, BaseDexClassLoader ldr, boolean append) {
+  return 
+    addClassPath(new java.lang.String[]{ path }, 
+      ldr, append);
+}
+
+public static List<Element> addClassPath(java.lang.String[] paths, boolean append) {
+  return addClassPath(paths, 
+    Thread.currentThread().getContextClassLoader(), append);
+}
+
+public static List<Element> addClassPath(java.lang.String path, boolean append) {
+  return addClassPath(new String[]{ path }, append);
+}
+
+public static List<Element> addClassPath(Iterable<Object> pathsIterable,
+ClassLoader ldr, boolean append)
+{
+  Iterator<Object> it = pathsIterable.iterator();
+  Object item;
+  List<File> files = new ArrayList<File>(32);
+  while (it.hasNext() && (item = it.next()) != null) {
+    String path;
+    if (item instanceof String) path = (String) item;
+    else if (item instanceof File) path = ((File) item).getPath();
+    else if (item instanceof URL) {
+      path = PathInfo.getPathInfo((URL) item).path;
+    } else if (item instanceof URI) {
+      path = PathInfo.getPathInfo((URI) item).path;
+    } else if (item instanceof ZipFile) {
+      path = ((ZipFile) item).getName();
+    } else if (item instanceof FileDescriptor) {
+      path = PosixFileInputStream.getPath((FileDescriptor) item);
+    } else {
+      System.err.printf(
+        "[WARN] addClassPath: unsupported item type: '%s'\n",
+       bsh.Factory.typeof(item).getName()
+      );
+      continue;
+    } 
+    File rawFile = new File(path);
+    if (! rawFile.exists()) {
+      Log.w("addClassPath", "Attempt to add nonexistent file: \"%s\"", path);
+      continue;
+    }
+    File file = rawFile.isAbsolute()
+      ? rawFile
+      : rawFile.getAbsoluteFile();
+    files.add(file);
+  }
+  if (ldr == null) {
+    ldr = Thread.currentThread().getContextClassLoader();
+  }
+  return addClassPath(files.toArray(new File[0]), ldr, append);
+}
+
+public static List<Element> addClassPath(Iterable<Object> pathsIterable,
+ClassLoader ldr)
+{
+  return addClassPath(pathsIterable, ldr, true);
+}
+
+public static List<Element> addClassPath(Iterable<Object> pathsIterable)
+{
+  return addClassPath(pathsIterable, (ClassLoader) null);
+}
+
+public static List<Element> addClassPath(Iterable<Object> pathsIterable,
+boolean append)
+{
+  return addClassPath(pathsIterable, (ClassLoader) null, append);
+}
+
+public static Object addClassPath(CharSequence path) { 
+  Iterable<Element> added = addClassPath(Arrays.asList(path));
+  return added.isEmpty()? null: added.iterator().next();
+}
+  void;
+};

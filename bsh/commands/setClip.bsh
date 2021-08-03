@@ -1,0 +1,75 @@
+import android.content.Intent;
+import android.app.ActivityThread;
+import android.app.IApplicationThread;
+
+{
+
+  public static String setClip(String text) {
+  
+    // Cross-VM compat part
+    String prevText = null;
+    try {
+      prevText = getClip();
+    } catch (Exception exc) {
+      Log.w("setClip", "Call to getClip() failed: " + exc, exc);
+    }
+    
+    // Cross-VM compat part
+    if (CollectionUtil.isJRE()) {
+      PosixFileInputStream.pexecSync(new String[]{ "setclip", text });
+      return prevText;
+    }
+    
+    if (text.length() > 1024 * 64) {
+      String label = text.subSequence(0, 128);
+      try {
+        getService("clipboard").setPrimaryClip(
+          android.content.ClipData.newPlainText(label, text), null
+        );
+        return prevText;
+      } catch (android.os.RemoteException rex) {
+        rex.printStackTrace();
+      }
+    }
+    
+    Intent in = new Intent("org.d6r.SET_CLIP") // intent
+        .putExtra("text", text).setClassName("com.farproc.clip.mem", "com.farproc.clip.mem.Receiver").setFlags(0
+          | Intent.FLAG_ACTIVITY_NEW_TASK
+          | Intent.FLAG_RECEIVER_REPLACE_PENDING
+          | Intent.FLAG_ACTIVITY_NO_USER_ACTION
+          | Intent.FLAG_DEBUG_LOG_RESOLUTION
+          | Intent.FLAG_FROM_BACKGROUND
+          | Intent.FLAG_INCLUDE_STOPPED_PACKAGES
+          | Intent.FLAG_RECEIVER_REPLACE_PENDING
+        );
+    
+    IApplicationThread appThread = (IApplicationThread) Reflect.getfldval(
+      ActivityThread.systemMain(), "mAppThread"
+    );
+    
+    // Android-only part
+    int result = getService("activity").broadcastIntent(
+      appThread, // IApplicationThread caller,
+      in, // android.content.Intent intent,
+      null, // String resolvedType,
+      null, // android.content.IIntentReceiver resultTo,
+      -1, // int resultCode,
+      null, // String resultData,
+      null, // android.os.Bundle map,
+      null, // String requiredPermission,
+      -1, // int appOp,
+      false, // boolean serialized,
+      false, // boolean sticky,
+      0 // int userId
+    );
+    
+    if (result != 0) throw new RuntimeException(String.format(
+      "setClip() failed with result: [ %d ]\nString text:\n%s\n---",
+      result, text
+    ));
+    return prevText;
+  }
+  
+  void;
+}
+

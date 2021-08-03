@@ -1,0 +1,13 @@
+import org.apache.commons.io.output.CloseShieldOutputStream;
+
+
+public static byte[] toBytecode(CtClass ct) {
+  ByteArrayOutputStream baos = new ByteArrayOutputStream();
+  OutputStream csos = new CloseShieldOutputStream(baos);
+  DataOutputStream dos = new DataOutputStream(csos);
+  ct.toBytecode(dos);
+  byte[] classBytes = baos.toByteArray();
+  return classBytes;
+}
+
+

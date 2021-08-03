@@ -1,0 +1,49 @@
+import org.jf.dexlib2.Opcodes;
+
+import org.jf.dexlib2.writer.pool.DexPool;
+import org.jf.dexlib2.writer.pool.TypePool;
+import org.jf.dexlib2.writer.pool.ProtoPool;
+import org.jf.dexlib2.writer.pool.FieldPool;
+import org.jf.dexlib2.writer.pool.ClassPool;
+import org.jf.dexlib2.writer.pool.StringPool;
+import org.jf.dexlib2.writer.pool.MethodPool;
+import org.jf.dexlib2.writer.pool.TypeListPool;
+import org.jf.dexlib2.writer.pool.AnnotationPool;
+import org.jf.dexlib2.writer.pool.AnnotationSetPool;
+
+
+public static DexPool newDexPool() {
+    
+  StringPool sp = new StringPool();
+  TypePool tp = new TypePool(sp);
+  TypeListPool tlp = new TypeListPool(tp);
+  ProtoPool pp = new ProtoPool(sp, tp, tlp);
+  FieldPool fp = new FieldPool(sp, tp);
+  MethodPool mp = new MethodPool(sp, tp, pp);
+  AnnotationPool ap = new AnnotationPool(
+    sp, // stringPool,
+    tp, // typePool, 
+    fp, // fieldPool, 
+    mp // methodPool
+  );
+  AnnotationSetPool asp = new AnnotationSetPool(ap);
+  ClassPool cp = new ClassPool(
+    sp, // stringPool
+    tp, // typePool
+    fp, // fieldPool
+    mp, // methodPool
+    asp, // annotationSetPool
+    tlp // typeListPool
+  );
+  
+  DexPool pool = new DexPool(
+    Opcodes.forApi(21), 
+    sp, tp, 
+    pp, fp, mp, cp,
+    tlp, ap, asp
+  );
+  
+  return pool;
+  
+}
+

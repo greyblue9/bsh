@@ -1,0 +1,3 @@
+
+public static String stackTraceMapToString(Map stackTraceMap) { return StringUtils.join(stackTraceMap.entrySet().evalSelect("""m => m.getKey() + ": \n\tat " + StringUtils.join((Object[]) m.getValue(), "\n\tat ");"""), "\n\n"); }
+

@@ -1,0 +1,193 @@
+
+
+public static Throwable getThrowable3(String sts) {
+  
+  Matcher hm = Pattern.compile("(([a-zA-Z0-9$_]+(\\.(?:[a-zA-Z0-9$_]+))+|)" + "\\.((?:[a-zA-Z0-9_$.]*)(Error|Exception|Throwable|ThreadDeath)))((?![a-zA-Z0-9_$]).)+", Pattern.DOTALL | Pattern.UNIX_LINES).matcher("");
+  
+  hm.reset(sts);
+  
+  List<Map> matchMaps = new ArrayList<Map>();
+  ListOrderedMap lom = ListOrderedMap.listOrderedMap(new HashMap());
+  List<String> startParts = new ArrayList();
+  String startPart = null;
+  while (hm.find()) {
+    
+    if (lom.size() > 0) {
+      matchMaps.add(lom);
+      startParts.add(startPart);
+      lom = ListOrderedMap.listOrderedMap(new HashMap());
+    }
+    
+    startPart = hm.group();
+    
+    for (int i = 0; i <= hm.groupCount(); ++i) {
+      int start = (hm.group(i) == null) ? hm.start() : hm.start(i), 
+            end = (hm.group(i) == null) ? hm.start() : hm.end(i);
+      System.out.printf(
+        "Index(i):  lom.put(%s, %s);\n", i,
+        Pair.of(i, Range.closed((Object) start, (Object) end)),
+        (hm.group(i) != null) ? hm.group(i) : ""
+      );
+      lom.put(
+        Pair.of(i, Range.closed((Object) start, (Object) end)),
+        (hm.group(i) != null) ? hm.group(i) : ""
+      );
+    }
+    
+    if (!lom.isEmpty()) {
+      matchMaps.add(lom);
+      startParts.add(startPart);
+      lom = ListOrderedMap.listOrderedMap(new HashMap());
+    }
+  };
+  /*;*/
+  int exCount = matchMaps.size();
+  
+  
+  Map exmap = matchMaps[0];
+  String startPart = startParts[0];
+  
+  org.apache.commons.collections4.OrderedMapIterator mit = exmap.mapIterator();
+  int max = Integer.MIN_VALUE;
+  
+  String exClassName = "java.lang.UnknownError";
+  Class exClass = DexVisitor.classForName(exClassName);
+  while (mit.hasNext()) {
+    Pair key = mit.next();
+    String value = exmap.get(key);
+    Integer groupNum = key.getKey();
+    int intGroupNum = groupNum.intValue();
+    Range range = key.getValue();
+    int intEndpoint = range.upperEndpoint().intValue();
+    max = Math.max(max, intEndpoint);
+    if (intGroupNum == 1) {
+      exClassName = value.trim();
+      exClass = DexVisitor.classForName(exClassName);
+      System.err.printf(
+        "exClassName: [%s] (%s)\n", exClassName,
+        (exClass != null)
+          ? (new bsh.ClassIdentifier(exClass))
+          : null
+      );
+    }
+  }
+  
+  System.err.printf("max char pos: %d\n", max);
+  String restStr = (String) sts.subSequence(max, sts.length());
+  System.err.printf("restStr = \"%s\"\n", restStr);
+  List<List> rest = restStr.matchLines(
+  "at[\t ]+((?:[a-zA-Z0-9_$]+\\.)*[a-zA-Z0-9_$]+)\\.([<>a-zA-Z0-9_$]+)\\((.*)\\) *"
+  );
+  System.err.printf("rest.size() == %d\n", rest.size());
+  
+  /** 
+     List<String> curSteStrs = [
+        org.jetbrains.java.decompiler.modules.decompiler.decompose.DominatorEngine,
+        calcIDoms,
+        DominatorEngine.java:90
+     ]
+  */
+  
+  List<StackTraceElement> stes = new ArrayList<StackTraceElement>(rest.size());
+  
+  for (List curSteStrs: rest) {
+    String sourceInfo = curSteStrs.get(curSteStrs.size() - 1);
+    String className = curSteStrs.get(0);
+    String methodName = curSteStrs.get(1);
+    
+    Matcher SI_REG_MCHR 
+      = Pattern.compile("^(.*):(([~-]*)([1-9][0-9]*|0))$").matcher("");
+    Matcher SI_NAT_MCHR = Pattern.compile("^Native Method$").matcher("");
+    Matcher SI_UNK_MCHR = Pattern.compile("^Unknown Source$").matcher("");
+    Matcher SI_OTH_MCHR 
+     =Pattern.compile("^([^0-9]*)((?:-|~|\\+|\\))*)(0*[1-9][0-9]*|00*)([^0-9]*?)$").matcher("");
+    Matcher SI_NONE_MCHR = Pattern.compile("^.*$").matcher("");
+    
+    List<Matcher> SI_MCHRS_LIST = Arrays.asList(
+      SI_REG_MCHR, SI_NAT_MCHR, SI_UNK_MCHR, SI_OTH_MCHR, SI_NONE_MCHR
+    );
+    int NATIVE_LINE_NUMBER = StackTraceElement.NATIVE_LINE_NUMBER;
+    int UNKSRC_LINE_NUMBER = -1;
+    int line = 0;
+    String fileName = SourceUtil.guessSourceFileName(className);
+    boolean found = false;
+    for (Matcher mchr: SI_MCHRS_LIST) {
+      if (! mchr.reset(sourceInfo).find()) continue;
+      if (mchr == SI_REG_MCHR) {
+        fileName = mchr.group(1);
+        line = Integer.parseInt(mchr.group(4), 10);
+        // if (mchr.group(3).indexOf('-') == mchr.group(3).length()-1) line = -line;
+        found = true;
+        break;
+      } else if (mchr == SI_NAT_MCHR) {
+        fileName = null;
+        line = NATIVE_LINE_NUMBER;
+        found = true;
+        break;
+      } else if (mchr == SI_UNK_MCHR) {
+        fileName = null;
+        line = UNKSRC_LINE_NUMBER;
+        found = true;
+        break;
+      } else {
+        List groups = new ArrayList();
+        for (int i=0; i<=mchr.groupCount(); ++i) {
+          groups.add(StringEscapeUtils.escapeJava(mchr.group(i)));
+        };
+        throw new org.benf.cfr.reader.util.ConfusedCFRWithContextException(
+          // String message
+          String.format(
+            "Not sure how to extract StackTraceElement pieces from matched Matcher"
+            + " %s; the matched pieces are: \nArrays.asList(\"%s\")",
+            (mchr == SI_OTH_MCHR)? "SI_OTH_MCHR": "SI_NONE_MCHR",
+            StringUtils.join(groups, "\", \"")
+          ),
+          // Object context
+          RealArrayMap.toMap(CollectionUtil.flatten(
+           getAllVariables().entrySet().filter("getThrowable3").select(
+            FunctionUtil.bind(
+            "return m -> { RealArrayMap.toMap(m.getValue().values()).entrySet(); }"
+            )
+           )
+          )),
+          // Object state
+          Pair.of(mchr.toMatchResult(), curSteStrs)
+        );
+        found = false;
+        break;
+      }
+    }
+    StackTraceElement ste = null;
+    if (found) {
+      ste = new StackTraceElement(className, methodName, fileName, line);
+    } else {
+      ste = new StackTraceElement(className, methodName, null, UNKSRC_LINE_NUMBER);
+    }
+    stes.add(ste);
+  }
+  
+  Throwable t = null;
+  try {
+    t = Reflect.allocateInstance(DexVisitor.classForName(exClassName));
+  } catch (Throwable e) {
+    System.err.println(Reflector.getRootCause(e));
+  };
+  
+  if (t == null) t = Reflect.allocateInstance(UnknownError.class);
+  
+  String msg
+    = startPart.replace(exClassName, "").trim().replaceAll("^: ?", "").trim();
+  String detailMessage = (msg.trim().length() == 0)? null: msg.trim();
+  Reflect.setfldval(t, "stackTrace", stes.toArray(new StackTraceElement[0]));
+  Reflect.setfldval(t, "cause", t);
+  Reflect.setfldval(t, "detailMessage", detailMessage);
+  
+  return t;
+}
+
+
+
+
+
+
+

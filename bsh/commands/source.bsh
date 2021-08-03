@@ -1,0 +1,17 @@
+{
+
+public static Object source(java.lang.String filename) {
+  // source with filename preserves file name in error messages
+  return this.interpreter.source(filename, this.caller.namespace);
+}
+
+public static Object source(URL url) {
+  return this.interpreter.eval(
+     new InputStreamReader(url.openStream()), this.caller.namespace,
+     "URL: "+url.toString()
+ );
+}
+
+void;
+}
+

@@ -1,0 +1,17 @@
+
+
+
+
+
+
+public static List<String> getDynStrings(byte[] b) { String[] strings = splitByNullByte(getElf(b).getDynamicStringTable()); String[] names = StringUtils.split(execCmdFilter(new String[]{ "c++filt" }, StringUtils.join(strings, "\n")).toString(), "\n"); return Arrays.asList(names); };
+
+
+
+
+
+
+public static List<String> getDynStrings(byte[] b) { String[] strings = splitByNullByte(getElf(b).getDynamicStringTable()); String[] names = StringUtils.split(execCmdFilter(new String[]{ "c++filt" }, StringUtils.join(strings, "\n")).toString(), "\n"); return Arrays.asList(names); };
+
+
+

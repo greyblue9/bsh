@@ -1,0 +1,72 @@
+{
+  boolean exists = bsh.Capabilities.classExists("nl.lxtreme.binutils.elf.Elf");
+  if (bsh.Capabilities.classExists("nl.lxtreme.binutils.elf.Elf")) {
+    for (String _sn: Arrays.asList("Elf", "SectionHeader", "SectionType", "DynamicEntry")) {
+      this.namespace.importClass("nl.lxtreme.binutils.elf.".concat(_sn));
+    }
+  }
+
+  if (!exists) System.err.printf(
+    "Adding to classpath: %s ...\n", 
+    appendClassPathFile("/external_sd/_projects/sdk/elf/elf.jar"));
+  System.out.println(
+    bsh.Capabilities.classExists("nl.lxtreme.binutils.elf.Elf")? "OK": "Failed");
+  if (bsh.Capabilities.classExists("nl.lxtreme.binutils.elf.Elf")) {
+    for (String _sn: Arrays.asList("Elf", "SectionHeader", "SectionType", "DynamicEntry")) {
+      this.namespace.importClass("nl.lxtreme.binutils.elf.".concat(_sn));
+    }
+  }
+
+}
+
+
+
+
+
+public static Elf getElf(byte[] binary) {
+  SeekableByteChannel ch = new SeekableByteChannelImpl(binary);
+  Elf elf = new Elf(ch);
+  return elf;
+}
+
+ java.lang.String toString(Elf elf) {
+  try {
+    java.lang.StringBuilder sb = new java.lang.StringBuilder();
+    sb.append(elf.header).append('\n');
+    sb.append("Program header:\n");
+    for (int i = 0; i < elf.programHeaders.length; ++i) {
+      sb.append('\t');
+      elf.dumpProgramHeader(sb, elf.programHeaders[i]);
+      sb.append('\n');
+    }
+    byte[] strTable = elf.getDynamicStringTable();
+    sb.append("Dynamic table:\n");
+    DynamicEntry[] dynamicTable;
+    for (int length = dynamicTable = elf.dynamicTable.length, k = 0; k < length; ++k) {
+      DynamicEntry entry = elf.dynamicTable[k];
+      sb.append('\t');
+      elf.dumpDynamicEntry(sb, entry, strTable);
+      sb.append('\n');
+    }
+    sb.append("Sections:\n");
+    for (int j = 0; j < elf.sectionHeaders.length; ++j) {
+      SectionHeader shdr = elf.sectionHeaders[j];
+      if (!SectionType.STRTAB.equals(shdr.type)) {
+        sb.append('\t');
+        elf.dumpSectionHeader(sb, elf.sectionHeaders[j]);
+        sb.append('\n');
+      }
+    }
+    return sb.toString();
+  }
+  catch (java.io.IOException exception) {
+    throw new java.lang.RuntimeException("Unable to get dynamic string table!");
+  }
+}
+
+
+
+public static Map getElf(Elf elf) { Map m = new RealArrayMap(); ByteBuffer sbuf = elf.getSection(elf.getSectionHeaderByType(SectionType.STRTAB).firstOrDefault()); byte[] sArr = sbuf.array(); for (DynamicEntry entry: elf.dynamicTable) { DynamicEntry.Tag tag = entry.getTag(); String key = getfld(DynamicEntry.Tag.class, tag).getKey(); int strtabValOffset = entry.getValue(); Object objval = null; try { objval = (strtabValOffset < sArr.length - 1 && ! StringUtils.endsWith(key, "SZ"))? elf.getZString(sArr, strtabValOffset): null; } catch (StringIndexOutOfBoundsException oobe) { System.err.println(oobe); }; if (objval == null) objval = Long.valueOf((long) strtabValOffset); m.put(key, objval);  }; return m; };
+
+
+

@@ -1,0 +1,196 @@
+
+
+
+
+import dalvik.system.DexPathList;
+import dalvik.system.DexPathList.Element;
+import bsh.classpath.AndroidClassLoader;
+
+import java.lang.reflect.*;
+import java.io.*;
+
+import bsh.classpath.AndroidClassLoader;
+
+ClassLoader ldr 
+  = Thread.currentThread().getContextClassLoader();
+  //  this.getClass().getClassLoader();
+/**
+dalvik.system.PathClassLoader[dexPath=/external_sd/_projects/sdk/bsh/trunk/bsh-mod.jar:/external_sd/_projects/sdk/bsh:/external_sd/_projects/sdk/bsh/commands,libraryPath=null]
+
+*/
+/*
+Field pathListField = null;
+(pathListField = ldr.getClass().getSuperclass().getDeclaredField("pathList")
+).setAccessible(true);
+Object pathList = pathListField.get(ldr);
+
+
+Field elemsField = null;
+(elemsField = pathList.getClass().getDeclaredField("dexElements")
+).setAccessible(true);
+Object[] elems = elemsField.get(pathList);
+*/
+
+appendClassPath(
+  new String[]{ 
+    "/external_sd/_projects/sdk/bin/javassist.jar"
+  }, 
+  ldr
+);
+
+/**
+dalvik.system.DexPathList$Element []: {
+zip file "/external_sd/_projects/sdk/bsh/trunk/bsh-mod.jar",
+directory "/external_sd/_projects/sdk/bsh",
+}
+*/
+
+
+/*
+
+Object newElement = new DexPathList.Element(
+  new java.io.File(
+   "/external_sd/_projects/sdk/bin/javassist.jar"
+  ), 
+  false, 
+  new java.io.File(
+   "/external_sd/_projects/sdk/bin/javassist.jar"
+  ), 
+  new dalvik.system.DexFile(
+   "/external_sd/_projects/sdk/bin/javassist.jar"
+  )
+);*/
+
+/**
+=== As dalvik.system.DexPathList$Element ===
+           (DexFile) dexFile = dalvik.system.DexFile@969602c0
+               (File) file = /external_sd/_projects/sdk/bin/javassist.jar
+           (ZipFile) zipFile = <null>
+                (File) zip = /external_sd/_projects/sdk/bin/javassist.jar
+        (boolean) isDirectory = false
+        (boolean) initialized = false
+*/
+
+/*
+
+Object[] newarr 
+  = new DexPathList.Element[ elems.length + 1 ];
+
+System.arraycopy(elems, 0, newarr, 0, elems.length);
+newarr[ elems.length ] = newElement;
+
+*/
+//print(newarr);
+
+/**
+dalvik.system.DexPathList$Element []: {
+zip file "/external_sd/_projects/sdk/bsh/trunk/bsh-mod.jar",
+zip file "/external_sd/_projects/sdk/bin/javassist.jar",
+}
+*/
+
+//elemsField.set(pathList, newarr);
+//print(elemsField.get(pathList));
+
+
+//print(pathList);
+/**
+DexPathList[[zip file "/external_sd/_projects/sdk/bsh/trunk/bsh-mod.jar", zip file "/external_sd/_projects/sdk/bin/javassist.jar"],nativeLibraryDirectories=[/system/vendor/lib, /system/lib, /system/usr/lib, /system/usr/lib/arm-linux-gnueabi, /system/usr/lib/binutils/armv4tl-softfloat-linux-gnueabi/2.23.1, /system/usr/lib/elfutils, /data/ramdisk/lib, /data/ramdisk/sbin/lib]]
+
+*/
+
+
+import javassist.ClassPool;
+import javassist.CtClass;
+import javassist.CtMethod;
+import javassist.CtNewMethod;
+
+/*
+try {
+  import *;
+} catch (EvalError e) {
+  import *;
+}
+*/
+
+ClassPool cp = new ClassPool();
+cp.appendClassPath("/external_sd/_projects/sdk/framework/core_dex2jar.jar");
+cp.appendClassPath("/external_sd/_projects/sdk/framework/framework_dex2jar.jar");
+cp.appendClassPath("/external_sd/_projects/sdk/rt.jar");
+
+CtClass ct = cp.makeClass("HelloWorld");
+
+
+
+this.interpreter.set("ct", ct);
+print ("ct = ...");
+dumpMembers(ct);
+
+
+String mbody = String.format(
+  "public void sayHello() { %c System.out.println(%cHello World%c); %c}%c",0x0a,0x22,0x22,0x0a,0x0a
+);
+System.out.println(mbody);
+
+CtMethod cm = CtNewMethod.make(mbody, ct);
+
+this.interpreter.set("cm", cm);
+print ("cm = ...");
+dumpMembers(cm);
+
+
+
+ct.addMethod(cm);
+dump(ct);
+ct.writeFile();
+
+
+// load and invoke new class
+
+AndroidClassLoader acl = new AndroidClassLoader(
+  Thread.currentThread().getContextClassLoader()
+);
+
+
+
+Class clazz = acl.defineClass(
+  "HelloWorld", 
+  readbytes("HelloWorld.class")
+);
+
+hw = new HelloWorld();
+this.interpreter.set("hw", hw);
+print ("hw = ...");
+dump(hw);
+
+
+
+System.out.println(
+  dumpMembers.colorize(
+   ReflectionUtil.getClassName(
+    hw.getClass()
+   ),
+   "1;36"
+  )
+);
+
+
+System.out.println(
+  prettyPrint(
+    HelloWorld.class.getDeclaredMethods()
+  )
+);
+
+
+//dumpMethods(hw);
+//dumpMembers(hw);
+
+hw.sayHello();
+
+
+
+
+
+
+
+

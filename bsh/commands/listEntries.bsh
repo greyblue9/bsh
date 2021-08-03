@@ -1,0 +1,13 @@
+
+
+{
+  
+  public static Set<JarEntry> listEntries(JarEntry je) { JarFile jf = je.parentJar; if (jf == null) throw new IllegalArgumentException(String.format("JarEntry[%s].parentJar == null", je.getName())); return listEntries(jf, je); };
+  
+  public static Set<ZipEntry> listEntries(ZipFile zf, ZipEntry ze) { return CollectionFactory.newSet(CollectionUtil2.filter(zf.entries.values(), Pattern.compile(String.format("^%s/.+", Pattern.quote(Pattern.compile("^/*((?:[^/]|)(?:.*[^/]|))/*$").matcher(ze.getName()).replaceFirst("$1")))))); };
+  
+  public static Set<ZipEntry> listEntries(ZipEntry ze) { ZipFile zf = getZip(ze); if (ze == null) throw new IllegalStateException(String.format("Could not find parent ZipFile in heap for ZipEntry[%s]", ze.getName())); return listEntries(zf, ze); };
+  
+  void;
+};
+

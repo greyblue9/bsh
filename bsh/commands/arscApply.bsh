@@ -1,0 +1,113 @@
+
+import org.apache.commons.io.input.AutoCloseInputStream;
+import zhao.arsceditor.ResDecoder.data.ResTable;
+import zhao.arsceditor.ResDecoder.ARSCDecoder;
+import zhao.arsceditor.ResDecoder.data.ResPackage;
+import zhao.arsceditor.ResDecoder.data.ResResSpec;
+import zhao.arsceditor.ResDecoder.data.ResConfig;
+import java.nio.charset.StandardCharsets;
+
+public static Map arscApply(String inPath) {
+  return arscApply(
+    new File(inPath).getAbsoluteFile()
+  );
+}
+
+
+
+public static Map arscApply(File arscOrZipFile) {
+  String TAG = "arscApply";
+  boolean keepBroken = true;
+  
+  Map map = new TreeMap();
+  boolean isZip = DexRemix.isZip(arscOrZipFile.getPath());
+  if (isZip) {
+    ZipFile zipFile = new ZipFile(arscOrZipFile);
+    ZipEntry zipEntry = zipFile.getEntry("resources.arsc");
+    if (zipEntry != null) {
+      InputStream is = zipFile.getInputStream(zipEntry);
+      arscApply(is, map, keepBroken);
+      IOUtils.closeQuietly(is);
+    }
+    zipFile.close();
+    return map;
+  } else {
+    return arscApply(
+      new AutoCloseInputStream(new FileInputStream(arscOrZipFile)),
+      map,
+      keepBroken
+    );
+  }
+}
+
+
+public static Map arscApply(InputStream arscIn) {
+  String TAG = "arscApply";
+  boolean keepBroken = true;
+  
+  Map map = new TreeMap();
+  
+  for (File frameworkFile: Arrays.asList(
+    new File("/external_sd/_projects/sdk/android-framework/1.apk"),
+    new File("/external_sd/_projects/sdk/android-framework/2.apk")))
+  {
+    if (! frameworkFile.exists()) continue;
+    ZipFile zipFile = new ZipFile(frameworkFile);
+    ZipEntry zipEntry = zipFile.getEntry("resources.arsc");
+    if (zipEntry != null) {
+      InputStream is = zipFile.getInputStream(zipEntry);
+      arscApply(is, map, keepBroken);
+      IOUtils.closeQuietly(is);
+    }
+    zipFile.close();
+  }
+  
+  arscApply(arscIn, map, keepBroken);
+  
+  return map;
+}
+
+
+
+  public static Map arscApply(InputStream arscIn, Map map, boolean keepBroken) {
+    String TAG = "arscApply";
+    ResTable resTable = new ResTable();
+    ARSCDecoder dc = new ARSCDecoder(arscIn, resTable, keepBroken);
+    ResPackage[] resPkgs = dc.readTable();
+    List<String> lines = new LinkedList<String>();
+    
+    for (ResPackage resPkg : resPkgs) {
+      String resPkgName = resPkg.getName();
+      Log.d(TAG, "processing package \"%s\"", resPkgName);
+      
+      int countBefore = map.size();
+      
+      Iterable<ResConfig> configs = resPkg.getConfigs();
+      for (ResConfig config: configs) {
+        Log.d(TAG, "processing config \"%s\"", config);
+        for (ResResSpec spec : config.listResSpecs()) {
+          int id = spec.getId().id;
+          if (spec.getName().startsWith("MISSING_")) continue;
+          if ((id & 0xFF000000) != 0x7F000000) {
+            map.put((0x7F000000 | (id & 0xFFFFFF)), String.format(
+              "%s.R.%s.%s", resPkgName, spec.getType().getName(), spec.getName()
+            ));
+          }
+          map.put(id, String.format(
+            "%s.R.%s.%s", resPkgName, spec.getType().getName(), spec.getName()
+          ));
+        };
+        break;
+      }
+      
+      int countAfter = map.size();
+      int resPkgSpecCount = countAfter - countBefore;
+      Log.d(TAG,
+        "finished processing package \"%s\" (%d specs)", 
+        resPkgName, resPkgSpecCount
+      );
+    }
+    return map;
+  }
+  
+

@@ -1,0 +1,30 @@
+
+
+
+
+
+
+
+
+
+public static String getPublicImports(String search) { return StringUtils.join(searchClassPath(null, String.format("(?:%s).*[a-z]$", search)).select(FunctionUtil.bind("return m -> { (m.getModifiers() & Modifier.PUBLIC) != 0? String.format(\"import %s;\", ClassInfo.typeToName(m.getName()).replace(\"\\$\", \"$\")): null; }")), "\n").replace("$", "."); };
+
+
+
+
+
+
+
+
+
+public static String getPublicImports(String search) { return StringUtils.join(searchClassPath(null, String.format("(?:%s).*[a-z]$", search)).select(FunctionUtil.bind("return m -> { (m.getModifiers() & Modifier.PUBLIC) != 0 && ArrayUtils.indexOf(importedClasses, m.getName()) == -1? String.format(\"import %s;\", ClassInfo.typeToName(m.getName()).replace(\"\\$\", \"$\")): null; }", "importedClasses", Reflect.getfldval(CollectionUtil.getInterpreter().getNameSpace(), "importedClasses").values().toArray(new String[0]))), "\n").replace("$", "."); };
+
+
+
+
+
+
+public static String getPublicImports(String search) { return StringUtils.join(searchClassPath(null, String.format("(?:%s).*[a-z]$", search)).select(FunctionUtil.bind("return m -> { (m.getModifiers() & Modifier.PUBLIC) != 0 && ArrayUtils.indexOf(importedClasses, m.getName()) == -1 && ArrayUtils.indexOf(importedKeys, StringUtils.substringAfterLast(m.getName().replace(\"$\", \".\"), \".\")) == -1? String.format(\"import %s;\", ClassInfo.typeToName(m.getName()).replace(\"\\$\", \"$\")): null; }", "importedClasses", Reflect.getfldval(CollectionUtil.getInterpreter().getNameSpace(), "importedClasses").values().toArray(new String[0]), "importedKeys", Reflect.getfldval(CollectionUtil.getInterpreter().getNameSpace(), "importedClasses").keySet().toArray(new String[0]))), "\n").replace("$", "."); };
+
+
+

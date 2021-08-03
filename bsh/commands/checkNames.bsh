@@ -1,0 +1,34 @@
+
+ public static List<LHS> checkNames(Throwable ex) {
+   List<SimpleNode> ambigNames = SimpleNode.DEFAULT.findChild(Reflect.get(ex, "node"), BSHAmbiguousName.class, 7);
+   CallStack cstk = new CallStack();
+   BshBinding ns = ex.callstack.top();
+   for (BshBinding csn : ex.callstack) {
+     System.err.printf("[copy %s]: pushing %s\n", cstk.getClass().getSimpleName(), csn);
+     cstk.push(csn);
+   }
+   int i = -1;
+   List badNames = new ArrayList<LHS>();
+   for (BSHAmbiguousName name : ambigNames) {
+     ++i;
+     System.err.printf("Checking %s %d/%d - \"%s\"...\n",bsh.Factory.typeof(name).getSimpleName(), i + 1, ambigNames.size(), Reflector.invokeOrDefault(name, "getText"));
+     LHS lhs = null;
+     try {
+       lhs = Reflector.invokeOrDefault(name, "toLHS", cstk, this.interpreter);
+     } catch (Throwable _e) {
+       System.err.printf(" - %s\n", _e.getClass().getSimpleName());
+       continue;
+     }
+     System.err.printf(" - resolved to: %s\n", lhs);
+     Object value = Integer.MIN_VALUE;
+     try {
+       value = Reflector.invokeOrDefault(lhs, "getValue");
+     } catch (Throwable _e2) {
+       System.err.printf(" - *** %s (%s) ***\n", _e2.getClass().getSimpleName(), _e2.detailMessage);
+       badNames.add(lhs);
+       continue;
+     }
+     System.err.printf(" - value resolved to: %s\n", value);
+   }
+   return badNames;
+ }

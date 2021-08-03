@@ -1,0 +1,64 @@
+
+public static Set<String> writeVars(List<String> varNames) {
+  Set<String> writtenVars = new TreeSet<String>();
+  File dir = new File("/external_sd/_projects/__variables__/");
+  if (!dir.exists() && !dir.mkdirs()) {
+    throw dir.mkdirErrno();
+  }
+  
+  for (String vn : varNames) {
+    Object value = CollectionUtil.getInterpreter().getu(vn);
+    
+    File file = new File(dir, String.format(
+      "%s.%s", vn, (value instanceof String) ? "txt" : "xml"
+    ));
+    
+    if (!file.exists() || file.isFile()) {
+      if (value instanceof String) {
+        
+        String text = (String) value;
+        writeFile(file, text);
+        System.err.printf("wrote var: %s (length: %d)\n", vn, text.length());
+        writtenVars.add(vn);
+        
+      } else {
+        // serialize
+        Object xs = null;
+        try {
+          xs = writeXml(file.getPath(), value);
+          if (xs != null) {
+            System.err.printf(
+              "wrote var: %1$s (object of type %3$s; length: %2$d bytes)\n",
+              vn, file.length(), ClassInfo.getSimpleName(
+                ClassInfo.typeToName(bsh.Factory.typeof(value).getName()))
+            );
+            writtenVars.add(vn);
+          } else {
+            System.err.printf(
+              "unable to write var: %s: xstream writeXml returned null\n", vn
+            );
+          }
+        } catch (Throwable ex) {
+          System.err.printf(
+            "unable to write var: %s: xstream writeXml threw exception: %s\n",
+            vn, Reflector.getRootCause(ex)
+          );
+          ex.printStackTrace();
+        }        
+      }
+    } else {
+      System.err.printf(
+        "unable to write var: %s: " +
+        "dest file \"%s\" is an existing directory or non-file\n",
+        vn, file.getAbsolutePath()
+      );
+    }
+  }
+  return writtenVars;
+}
+
+
+
+
+
+

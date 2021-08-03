@@ -1,0 +1,156 @@
+this.namespace.getVariables().remove("i");
+this.namespace.getVariables().remove("lines");
+public static List<String> reformat(String src) {
+  this.namespace.getVariables().remove("lines");
+  String[] lines = StringUtils.split(src,"\n");
+  this.namespace.getVariables().remove("i");
+
+  Map lm = new TreeMap();
+  for (int i=0; i<lines.length; ++i) {
+    lm.put(Integer.valueOf(i+1), lines[i]);
+  }
+  lines = ArrayUtils.addAll(new String[]{ "(line 0)" }, lines);
+  
+  for (Integer lno: lm.keySet().sort()) {
+    lines[((Integer) lno).intValue()] = lm.get(lno);
+  }
+  /*for (int i=0; i<lines.length; ++i) {
+    System.err.printf("%3d:%s\n", i, lines[i]);
+  }*/
+  
+  
+  Map nlmi = new TreeMap();
+  nlmi.putAll(lm);
+  
+  int indent = 0, nextindent = 0, lastindent = 0; 
+  
+  StringBuilder sb = new StringBuilder(), 
+               isb = new StringBuilder(80); 
+  
+
+  boolean SHOW_MATCHES = true;
+  int NUM_END_GROUPS = 0;
+  int NUM_FORM_GROUPS = 3;
+  
+  Matcher mchr = Pattern.compile(StringUtils.join(Arrays.asList(
+
+"", // leading sp;
+"^\\s*(?=\\w)("+
+   /*3*/        "("      // group 0; ex:|     } // end for  
+                         //             |   } while(new String[]{ });  
+                +   "\\}(?:[^{]+|\\{.*?\\})*"
+                + ")",
+                
+                     // group 1;x:|public class A {  
+                "|"  //            |  void main() {
+                     //            |    for (s: new String[]{}) {
+               
+   /*4*/         + "("
+                +   "[^}{ ]*?(?:[^{]+|\\{.*?\\})*\\{"
+                + ")",
+                
+                      // group 2;ex:|
+                "|"  //             |  } else if (new blah[]{} !=0) {
+                    //              |  
+               
+  /*5*/          + "("
+                +   "\\}(?:[^{]+|\\{[^{}]*?\\})*\\{"
+                + ")",
+                
+           ")\\s*$"
+            
+
+            
+            
+        //   __"(\\{|([^\\s{][^{]*\\{)|(\\}).size();\\s*)"
+                
+                
+          
+ ), ""), Pattern.DOTALL |
+         Pattern.UNIX_LINES
+  ).matcher("");  //.useAnchoringBounds(true);
+  
+  
+                        // G#0  G#1
+  int[] thisLineIndent = { -1,  0,  -1 };
+  int[] nextLineIndent = {  0,  1,   1 };
+  int[] lineIndents = new int[lines.length + 1];
+ 
+  for(int lno=1; lno<lines.length-1;lno++) {
+    
+    String line = lines[lno].toString();
+    String ln = line;
+   
+    //System.err.printf("\n%3d|%s\n\n",  lno, ln);
+
+    
+    
+    Object __m = (
+      (line.indexOf("/*")  != -1
+    || line.indexOf(" *")  != -1
+    || line.indexOf("*/*") != -1)
+    || (line.indexOf('}') == -1 && line.indexOf('{') == -1)
+    || line.trim().length() == 0)
+    
+         ? Boolean.FALSE
+         : mchr.reset(line.toString()).matches();
+    
+    if (__m != void && Boolean.valueOf(__m) == Boolean.TRUE) {
+      int lastFormGroupNum = mchr.groupCount();
+      int firstFormGroupNum = 2;
+      int[] formGroupNums = new int[NUM_FORM_GROUPS];
+      int NUM_START_GROUPS = firstFormGroupNum - 1;
+       
+      
+      for (int i=0, g=firstFormGroupNum; i<3; i += (++g != 0? 1:0)) {
+        String gstr = mchr.group(g);
+      //formGroupNums[i] = g;
+        
+        if (gstr == null || gstr.isEmpty()) continue;
+  
+        if (SHOW_MATCHES) {
+          sb.append(String.format(
+              "\u001b[1;36m"
+            +   "(%d)"
+            + "\u001b[1;30m"
+            +   "["
+            + "\u001b[0m"
+            +     "%s"
+            + "\u001b[1;30m" 
+            +   "]" 
+            + "\u001b[0m\n",           
+            g, gstr
+          )).append("\n").append(ln).append("\n");
+        }
+        
+        lineIndents[lno] += thisLineIndent[i];
+        //lines[lno] = "|  " + lines[lno];
+
+        lineIndents[lno+1] += nextLineIndent[i];
+        
+        
+
+      }
+    } else {
+     //lineIndents[lno] += lineIndents[lno-1];
+     //lines[lno] = "|  " + lines[lno];
+   }
+    
+    
+    StringBuilder isb = new StringBuilder();
+    //isb.delete(0, isb.length());
+    String trimmedLineText = lines[lno].replaceAll("^[\t ]*", "");
+    for(int n=-1; n<=lineIndents[lno]; ++n) { 
+      lines[lno] = (trimmedLineText = "  " + trimmedLineText);
+    }
+    lines[lno] = trimmedLineText;
+    
+    sb.append('\n').append(lines[lno]);
+    nlmi.put(lno, lines[lno]); 
+    System.err.println(lines[lno]);    
+  };
+  
+  return new ArrayList(Arrays.asList(
+    lines
+  ));
+}

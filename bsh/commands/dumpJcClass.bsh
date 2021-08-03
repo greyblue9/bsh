@@ -1,0 +1,95 @@
+
+
+public static String dumpJcClass(Object clso) { jct = getJcTree(IOUtils.toString(SourceUtil.findSource(clso)).replaceAll("<>", "<?>")); StringBuilder sb = new StringBuilder(76 * 10); 
+
+  int declIdx = -1; 
+  for (decl: jct.getTypeDecls().toArray()) {
+    declIdx += 1;
+    // class/interface name
+    //System.err.println(decl.getSimpleName());   
+    sb.append(dumpMembers.colorize(
+      StringUtils.join(
+        decl.getModifiers().getAnnotations(), "\n"
+      ), "1;35"
+    ).concat(String.format("%c[0m", 0x1b)));
+    if (decl.getModifiers().getAnnotations().size() > 0) {
+      sb.append("\n");
+    }
+    sb.append(decl.getSimpleName());
+    sb.append("\n");
+    for (mdecl: decl.getMembers()) 
+    {
+if (!(mdecl instanceof com.sun.tools.javac.tree.JCTree$JCMethodDecl)) continue; pars = mdecl.getParameters(); sb.append("  "); sb.append(dumpMembers.colorize(mdecl.getModifiers().toString(), "1;30")); sb.append(' '); sb.append(dumpMembers.colorize((mdecl.getReturnType() != null? mdecl.getReturnType().toString(): "void").toString(), "1;36")); sb.append(' '); sb.append(dumpMembers.colorize(mdecl.getName().toString(), "1;33")); sb.append('('); int pidx = -1; for (par: pars) { pidx += 1; if (pidx > 0) sb.append(", "); sb.append(dumpMembers.colorize(par.getType().toString(), "1;32")); sb.append(" "); 
+
+        sb.append(par.getName().toString());
+      }
+      sb.append(")\n");
+    } // members loop
+    sb.append("\n");
+  } // types loop
+  return sb.toString().replaceAll("(@[^\\n]*)\\n([^ ])", String.format("%c[1;35m%s%c[0m\n  %c[1;30m$2", 0x1b, "$1", 0x1b, 0x1b));
+}
+
+
+
+public static String dumpJcClass(String src) { 
+  jct = getJcTree(src);
+  StringBuilder sb = new StringBuilder(76 * 10); 
+  int declIdx = -1; 
+  for (decl: jct.getTypeDecls().toArray()) {
+    declIdx += 1;
+    // class/interface name
+    //System.err.println(decl.getSimpleName());
+    sb.append(dumpMembers.colorize(
+      StringUtils.join(
+        decl.getModifiers().getAnnotations(), "\n"
+      ), "1;35"
+    ).concat(String.format("%c[0m", 0x1b)));
+    if (decl.getModifiers().getAnnotations().size() > 0) {
+      sb.append("\n");
+    }
+    sb.append(decl.getSimpleName());
+    sb.append("\n");
+    
+    for (mdecl: decl.getMembers()) {
+      if (!(mdecl instanceof
+        com.sun.tools.javac.tree.JCTree$JCMethodDecl)) 
+      {
+        continue; 
+      }
+      pars = mdecl.getParameters(); 
+      sb.append("  "); 
+      sb.append(dumpMembers.colorize(
+        mdecl.getModifiers().toString(), "1;30"
+      )); 
+      sb.append(' ');       
+      sb.append(dumpMembers.colorize(
+        (mdecl.getReturnType() != null?
+          mdecl.getReturnType().toString():
+          "void"
+        ).toString(), "1;36"
+      )); 
+      sb.append(' ');
+      sb.append(dumpMembers.colorize(
+        mdecl.getName().toString(), "1;33"
+      )); 
+      sb.append('('); 
+      
+      int pidx = -1; 
+      for (par: pars) {
+        pidx += 1; 
+        if (pidx > 0) sb.append(", ");
+        sb.append(dumpMembers.colorize(
+          par.getType().toString(), "1;32"
+        )); 
+        sb.append(" ");
+        sb.append(par.getName().toString());
+      } 
+      sb.append(")\n");
+    } 
+    // return sb.toString();
+    sb.append("\n");
+  } // types loop
+  return sb.toString().replaceAll("(@[^\\n]*)\\n([^ ])", String.format("%c[1;35m%s%c[0m\n  %c[1;30m$2", 0x1b, "$1", 0x1b, 0x1b));
+}
+

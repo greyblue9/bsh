@@ -1,0 +1,3 @@
+
+public static Pair writeZipAndDex(Map zm) { File dir = PosixFileInputStream.createTemporaryDirectory("tmp_zipmap_fordx"), file = File.createTempFile("tmpjarfordex", ".jar", dir); ZipFile zf = writeZip(file, zm); zf.close(); String output = PosixFileInputStream.pexecSync("dxjar_remote", file.getAbsolutePath()); byte[] dexedZipBytes = FileUtils.readFileToByteArray(file); ZipFile zf; Map newMap = ZipUtil.mapBytes(zf = new ZipFile(file)); zf.close(); return Pair.of(dexedZipBytes, newMap); };
+

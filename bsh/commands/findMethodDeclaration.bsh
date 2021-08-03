@@ -1,0 +1,91 @@
+
+import com.strobel.decompiler.languages.java.ast.CompilationUnit;
+import com.strobel.decompiler.languages.java.ast.ConstructorDeclaration;
+import com.strobel.decompiler.languages.java.ast.MethodDeclaration;
+import com.strobel.decompiler.languages.java.ast.TypeDeclaration;
+
+
+
+public static EntityDeclaration findMethodDeclaration(
+  CompilationUnit ast, MethodDefinition md)
+{
+  Iterable<TypeDeclaration> tdecls = CollectionUtil2.typeFilter(
+    ast.getDescendants(),
+    TypeDeclaration.class
+  );
+  for (TypeDeclaration tdecl: tdecls) {
+    TypeDefinition td = Keys.TYPE_DEFINITION.get(tdecl);
+    if (td == null) continue;
+    String internalName = td.getInternalName();
+    if (internalName != null &&
+        internalName.equals(md.getDeclaringType().getInternalName()))
+    {
+      return findMethodDeclaration(tdecl, md);
+    }
+  }
+  
+  for (TypeDeclaration tdecl: tdecls) {
+    MethodDeclaration mdecl = findMethodDeclaration(tdecl, md);
+    if (mdecl != null) return mdecl;
+  }
+  
+  return null;
+}
+
+
+public static EntityDeclaration findMethodDeclaration(
+  TypeDeclaration tast, MethodDefinition md)
+{
+  Iterable<EntityDeclaration> edecls = CollectionUtil2.typeFilter(
+    tast.getChildrenByRole(Roles.TYPE_MEMBER),
+    (md.getName().equals("<init>"))
+      ? ConstructorDeclaration.class
+      : MethodDeclaration.class
+  );
+  for (EntityDeclaration edecl: edecls) {
+    MethodDefinition edeclMd = ProcyonUtil.METHOD_DEFINITION.get(edecl);
+    if (edeclMd == null)
+      continue;
+    if (md.equals(edeclMd))
+      return edecl;
+    if (md.getName().equals(edeclMd.getName()) &&
+        md.getErasedSignature().equals(edeclMd.getErasedSignature()) &&
+        md.getDeclaringType().getInternalName().equals(
+          edeclMd.getDeclaringType().getInternalName()))
+    {
+      return edecl;
+    }
+  }
+  return null;
+}
+
+
+public static EntityDeclaration findMethodDeclaration(
+   com.strobel.decompiler.languages.java.ast.AstBuilder astBuilder, 
+   MethodDefinition md)
+{
+  TypeDeclaration tast = astBuilder._typeDeclarations.get(
+    md.getDeclaringType().getInternalName()
+  ).get();
+  return (tast != null)
+    ? findMethodDeclaration(tast, md)
+    : null;
+}
+
+
+public static List<EntityDeclaration> findMethodDeclaration(com.strobel.decompiler.languages.java.ast.AstNode ast, String methodNameFilter) {
+  TypeDefinition td = CollectionUtil.firstOrDefault(ProcyonUtil.getDataList((ast instanceof com.strobel.decompiler.languages.java.ast.CompilationUnit) ? ast.getTypes().iterator().next() : ast.getDescendants().typeFilter(com.strobel.decompiler.languages.java.ast.TypeDeclaration.class)[0]));
+  if (td == null)
+    return null;
+  List<MethodDefinition> mds = CollectionUtil2.filter(td.getDeclaredMethods(), methodNameFilter);
+  Set matches = new IdentityHashSet();
+  for (MethodDefinition md : mds) {
+    
+    matches.addAll(CollectionUtil2.typeFilter(ast.getTypes()[0].getDescendants(), (md.isConstructor()) ? com.strobel.decompiler.languages.java.ast.ConstructorDeclaration.class : com.strobel.decompiler.languages.java.ast.MethodDeclaration.class).select(FunctionUtil.bind("return m -> { ProcyonUtil.getDataList(m)[0].equals(md)? m: null; }", "md", md)));
+  }
+  return new ArrayList(Arrays.asList(matches.toArray()));
+}
+
+ 
+ 
+ 

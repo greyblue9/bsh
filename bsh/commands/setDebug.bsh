@@ -1,0 +1,6 @@
+public boolean setDebug(boolean state) { 
+  f = getfld(this.interpreter, "DEBUG"); 
+
+  f.set(this.interpreter, state); 
+  return f.get(this.interpreter); 
+}

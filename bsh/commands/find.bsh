@@ -1,0 +1,10 @@
+
+
+public static Set find(Object rcvr, Class findcls, int maxdepth) { Class rcvrcls = rcvr.getClass(); HashSet mlist = new HashSet(); int xi = 0; ArrayDeque nextrcvrs = new ArrayDeque(); nextrcvrs.push(rcvr); while (rcvr != null && rcvrcls != null) { xi += 1; if (xi == maxdepth) break; for (Field fld: rcvrcls.getDeclaredFields()) { fld.setAccessible(true); v = fld.get(rcvr); if (v == null || v == void) continue; if (findcls.isAssignableFrom(v.getClass())) mlist.add(v); nextrcvrs.push(v); } if (rcvrcls.getSuperclass() != null) { rcvrcls = rcvrcls.getSuperclass(); } else { rcvr = nextrcvrs.pollLast(); rcvrcls = rcvr.getClass(); } } return mlist; }
+
+public static Set find(Object rcvr, Class findcls) { return find(rcvr, findcls, 12); } 
+
+public static Object findFirst(Object rcvr, Class findcls, int maxdepth) { Class rcvrcls = rcvr.getClass(); HashSet mlist = new HashSet(); int xi = 0; ArrayDeque nextrcvrs = new ArrayDeque(); nextrcvrs.push(rcvr); while (rcvr != null && rcvrcls != null) { xi += 1; if (xi == maxdepth) break; for (Field fld: rcvrcls.getDeclaredFields()) { fld.setAccessible(true); v = fld.get(rcvr); if (v == null || v == void) continue; if (findcls.isAssignableFrom(v.getClass())) return v; nextrcvrs.push(v); } if (rcvrcls.getSuperclass() != null) { rcvrcls = rcvrcls.getSuperclass(); } else { rcvr = nextrcvrs.pollLast(); rcvrcls = rcvr.getClass(); } } return null; }
+
+public static Object findFirst(Object rcvr, Class findcls) { return findFirst(rcvr, findcls, 12); } 
+

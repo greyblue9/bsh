@@ -1,0 +1,23 @@
+
+import java.io.StringReader;
+
+
+public static Object parse(String source) {
+  StringReader reader = new StringReader(source);
+  bsh.Parser parser = new bsh.Parser(reader);
+  parser.setRetainComments(true);
+  boolean hasLine = false;
+  
+  ArrayList nodes = new ArrayList();
+  
+  while (! parser.Line()) {
+    node = parser.popNode();
+    System.out.println(node);
+    nodes.add(node);
+  }
+  
+  return nodes;
+}
+
+
+

@@ -1,0 +1,106 @@
+public static java.lang.String getNamesAbbrev(java.util.Map abbrMap, Class[] classes) {
+    int MIN_ABBR_LEN = 2;
+    int MAX_ABBR_LEN = 6;
+    java.util.List pairs = new java.util.ArrayList();
+    StringBuilder sb = new StringBuilder(76 * 1000);
+    for (int i=0; i<classes.length; i++) {
+  
+      Class cls =classes[i];
+      System.out.println(cls.getName());
+      boolean clsIsPublic = java.lang.reflect.Modifier.isPublic(cls.getModifiers());
+      if (!clsIsPublic) {
+        System.err.println("I: Skipping non-public " + cls.toString());
+        continue;
+      }
+      java.lang.reflect.Method[]  mthds = cls.getDeclaredMethods();
+      for (int k=0; k<mthds.length; k++) {
+        java.lang.reflect.Method mthd = mthds[k];
+        // System.err.println(mthd.toGenericString());
+        int mods = mthd.getModifiers();
+        boolean isPublic = java.lang.reflect.Modifier.isPublic(mods);
+        if (!isPublic) {
+          continue;
+        }
+        boolean isStatic = java.lang.reflect.Modifier.isStatic(mods);
+        String name = mthd.getName();
+        String realName = name;
+        if (isStatic) {
+                    // Arrays.toString
+          realName = cls.getSimpleName() + "." + mthd.getName();
+                    // ArraysToString
+          name = cls.getSimpleName() + String.valueOf(mthd.getName().charAt(0)).toUpperCase() + mthd.getName().substring(1);
+        }
+        boolean firstIsUpper = String.valueOf(name.charAt(0)).toUpperCase().charAt(0) == name.charAt(0);
+                // "getNameSpace" -> "g__N___S____"
+        String capsMixedWithUnderscores = String.valueOf(name.charAt(0)) + name.substring(1).replaceAll("[^A-Z]", "_");
+        String regex = capsMixedWithUnderscores.replaceAll("([A-Za-z])(_*)", "(($1)($2))").replace('_', '.');
+                // `((g)(..))((N)(...))((S)(....))`
+        java.util.regex.Pattern ptrn = java.util.regex.Pattern.compile(regex);
+        java.util.regex.Matcher mchr = ptrn.matcher(name);
+        java.util.regex.MatchResult mr = mchr.find() ? mchr.toMatchResult() : null;
+                // "gNS"
+        String capsMixedCase = capsMixedWithUnderscores.replaceAll("_", "");
+                // "gns"
+        String capsLc = capsMixedCase.toLowerCase();
+        String abbrev = capsLc;
+        java.util.List byAbbr = abbrMap.get(abbrev);
+        int numExisting = byAbbr != null ? byAbbr.size() : 0;
+        int charsAdded = 0;
+        String charSupply = "";
+        if (abbrev.length() < MIN_ABBR_LEN || numExisting > 3) {
+          if (mr == null) {
+            System.err.println(String.valueOf("Skipping too-short name: `").concat(name));
+            continue;
+          }
+                    // "gns" -> add next letter to last group
+                    // ((g)(et))((N)(ame))((S)(pace))
+                    // would be "Space"
+          int lastGroupOffset = mr.groupCount() - 2;
+                    // "S"
+          int leadingCharSubGroupIdx = lastGroupOffset + 1;
+                    // "pace"
+          int restSubGroupIdx = lastGroupOffset + 2;
+          charSupply = mr.group(restSubGroupIdx).toLowerCase();
+          for (int n = 0; n < charSupply.length(); n++) {
+            abbrev += charSupply.charAt(n);
+            byAbbr = abbrMap.get(abbrev);
+            numExisting = byAbbr != null ? byAbbr.size() : 0;
+            if (abbrev.length() >= MIN_ABBR_LEN && numExisting <= 3) {
+              break;
+            }
+          }
+        }
+        if (abbrev.length() > MAX_ABBR_LEN) {
+          abbrev = abbrev.substring(0, MAX_ABBR_LEN);
+        }
+        Class[] types = mthd.getParameterTypes();
+        String suffixSyms = "";
+        if (types.length == 0) {
+          suffixSyms = "()";
+        } else if (types[0] == String.class) {
+                    // types.length > 0 here
+          suffixSyms = "(\"";
+        } else {
+          suffixSyms = "(";
+        }
+        String expandedName = String.valueOf(realName != null? realName: "[NULL]").concat(suffixSyms);
+        java.util.List entries = (java.util.List) abbrMap.get(abbrev);
+        boolean skip = false;
+        if (entries != null) {
+          for (int j=0; j<entries.size(); j++) {
+            if ( expandedName.equals( entries.get(j) != null? entries.get(j).toString(): "" )) { skip = true; break; }
+          }
+        }
+        if (skip) continue; 
+        System.out.println(
+           (abbrev != null? abbrev: "[NULL]").concat(" -> ").concat( expandedName != null? expandedName: "[NULL]" )
+         );
+        sb.append("insert into utext (title, note) values ('");
+        sb.append(abbrev != null? abbrev: "[NULL]");
+        sb.append("', '");
+        sb.append(expandedName.replaceAll("'", ""));
+        sb.append("'); \n");
+      } // methods
+    } // classes
+    return sb.toString();
+  }

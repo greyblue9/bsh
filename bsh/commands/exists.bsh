@@ -1,0 +1,81 @@
+
+public static boolean exists(URL url, boolean acceptMissingEntryExc) {
+  if (url == null) return false;
+  InputStream is = null;
+  URLConnection conn = null;
+  try {
+    URLConnection conn = url.openConnection();
+    if (conn == null) {
+      System.err.printf(
+        "[WARN] exists(URL(\"%s\")): "
+        + "%s.openConnection() returned NULL !\n",
+        url, url.getClass().getName()
+      );
+      return false;
+    }
+    conn.setUseCaches(false);
+    is = conn.getInputStream();
+    if (is == null) {
+      System.err.printf(
+        "[WARN] exists(URL(\"%s\")): "
+        + "%s.getInputStream() returned NULL !\n",
+        url, conn.getClass().getName()
+      );
+      return false;
+    }
+    byte[] buf = new byte[4];
+    if (is.markSupported()) is.mark(4);
+    int read = is.read(buf, 0, 4);
+    if (is.markSupported()) is.reset();
+    if (read > 0) {
+      return true;
+    } else {
+      System.err.printf(
+        "[WARN] exists(URL(\"%s\")): "
+        + "%s.read(new byte[4]{ %d }, 0, 4) returned %d !\n",
+        url, is.getClass().getName(), 
+        StringUtils.join(ArrayUtils.toObject(buf), ", "), read
+      );
+      return false;
+    }
+  } catch (IOException ioex) {
+    if (acceptMissingEntryExc
+    && conn instanceof JarURLConnection
+    && ((JarURLConnection) conn).getJarFile() != null
+    && ((JarURLConnection) conn).getJarEntry() == null) {
+      return true; // "Jar entry not specified"
+    }
+    return false;
+  } catch (Throwable ex) {
+    Throwable rc = Reflector.getRootCause(ex);
+    String rcmsg = Reflect.getfldval(rc, "detailMessage"),
+           typePrefix = rc.getClass().getName().concat(": ");
+    if (rcmsg == null) rcmsg = String.valueOf(rc).substring(
+      rcmsg.startsWith(typePrefix) ? typePrefix.length() : 0
+    );
+    new RuntimeException(String.format(
+      "exists(URL(\"%s\")): caught unexpected %s (caused by %s: %s) "
+      + "during test read with stream %s of type %s!",
+      url, ex.getClass().getSimpleName(),
+      rc.getClass().getSimpleName(), rcmsg,
+      is, is.getClass().getName()
+    ), ex).printStackTrace();
+    return false;
+  } finally {
+    if (is != null) IOUtils.closeQuietly(is);       
+  }
+  throw new IllegalStateException("end of exists()");
+}
+
+
+
+public static boolean exists(URL url) {
+  return exists(url, false);
+}
+  
+  
+  
+  
+  
+  
+  

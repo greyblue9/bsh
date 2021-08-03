@@ -1,0 +1,235 @@
+import org.jsoup.nodes.Document;
+import org.jsoup.nodes.Element;
+
+import java.nio.charset.CharsetDecoder;
+import libcore.icu.NativeConverter;
+import com.itextpdf.text.pdf.codec.PngImage;
+import com.itextpdf.text.Image;
+import com.itextpdf.text.Image;
+import org.json.JSONObject;
+import org.apache.commons.lang3.StringEscapeUtils;
+import org.apache.commons.lang3.time.FastDateFormat;
+import org.jsoup.nodes.TextNode;
+import org.jsoup.parser.Tag;
+import org.jsoup.nodes.Attribute;
+import org.jsoup.nodes.Attributes;
+import org.jsoup.nodes.Document;
+import org.jsoup.nodes.Element;
+import org.jsoup.select.Elements;
+import org.jsoup.parser.Parser;
+import org.jsoup.safety.Cleaner;
+import org.jsoup.safety.Whitelist;
+import org.jsoup.helper.DataUtil;
+import org.jsoup.helper.HttpConnection;
+
+{
+  int TEST_VAR = 69643;
+  
+  public static Set getAllSteps() {
+    Set<Step> steps = new HashSet<Step>(Arrays.asList(
+      "strip_script_style"
+      "bodyfix"
+    ));
+    return steps;
+  }
+  if (! CollectionUtil.dbg.containsKey("docSteps")) {
+    CollectionUtil.dbg.put("docSteps", getAllSteps());
+  }
+  void;
+}
+
+
+public static boolean APPLY(Object step) {
+  Log.d("APPLY", "Step: %s", step);
+  Object prevStep = CollectionUtil.dbg.get("curStep");
+  if (prevStep != null) {
+    Log.d("APPLY", "Step finished: %s", prevStep);
+  }
+  CollectionUtil.dbg.put("curStep", step);
+  Set<Step> steps = CollectionUtil.dbg.get("docSteps");
+  boolean enabled = steps.contains(step);
+  Log.d("APPLY", enabled? "Performing Step: %s" : "Skipping Step: %s" , step);
+  return ebabled;
+}
+
+public static int COUNT(Iterable<Object> elements) {
+  Object[] items = CollectionUtil.toArray(elements);
+  int count = items.length;
+  Class elemClass = items.getClass().getComponentType();
+  
+  String message = String.format(
+    "\u001b[1;37m%d\u001b[0m \u001b[1;32m%s\u001b[0;32m%s " + 
+    "\u001b[0;36m(of type %s\u001b[0;36m)\u001b[0m",
+    items.length, 
+    StringUtils.substringAfterLast(ClassInfo.typeToName(elemClass.getName()), "."),
+    (items.length == 1)? "": "s", 
+    new ClassIdentifier(elemClass)
+  );
+  
+  Object curStep = CollectionUtil.dbg.get("curStep");
+  Log.d(
+    "COUNT", 
+    (curStep != null)? "Step 2%$s reporting %1$s": "Reporting %1$s",
+    message, curStep
+  );
+  return count;
+}
+ 
+public static Document stripHtml_doc(Document doc) {
+  
+  String TAG = "stripHtml_doc";  
+  String baseUrl = doc.baseUri();
+  
+  if (APPLY("strip_script_style")) {
+    doc.select("script, style").remove();
+  }
+  
+  if (APPLY("bodyfix")) {
+    if (doc.baseUri().indexOf("wikipedia") == -1) {
+      if (doc.body() == null) {
+        Document newDoc = Document.createShell(doc.baseUri());
+        for (Attribute attr: doc.attributes().asList()) {
+          newDoc.attributes().put(attr);
+        }
+        for (Node el: CollectionUtil.toArray(doc.childNodes())) {
+          newDoc.body().appendChild(el);
+        }
+        doc = newDoc;
+      }
+    }
+  }
+  
+  if (APPLY("remove_svg")) {
+    Elements svgElems = doc.select("svg");
+    if (COUNT(svgElems) > 0) svgElems.remove();
+  }
+  
+  String title = doc.select("title").text().trim();
+  Log.d(TAG, "Title: [%s]", title);
+  
+  if (APPLY("remove_forum_images")) {
+    Elements fimgs = doc.select("img[src*=\"/Forum\"]");
+    Log.d(TAG, "Removing %d forum <IMG /> tags ...", fimgs.size());
+    fimgs.remove();
+  }
+  
+  if (baseUrl.indexOf("github.com") != -1) {
+    List<Element> contentDivs = doc.select("#start-of-content + *");
+    List<Element> bodyDivs = doc.select("body");
+    if (!contentDivs.isEmpty() && ! bodyDivs.isEmpty()) {
+      Element oldBody = bodyDivs[0];
+      Element contentDiv = contentDivs[0];
+      if (contentDiv.html().length() > 0) {
+        setTagName(contentDiv, "body");
+        oldBody.replaceWith(contentDiv);
+      }
+    }
+    for (Element pre: doc.select("pre")) {
+      String text = StringUtils.join(
+        pre.textNodes(true).select(FunctionUtil.bind(
+           "return m -> { m.getWholeText(); }")
+        ), ""
+      );
+      Matcher mchr = Pattern.compile(
+        "\n( *)([^\n;]{7,50})\n +").matcher(text);
+      while (mchr.find()) {
+        text = mchr.replaceAll("\n$1$2");
+        mchr.reset(text);
+      }
+      pre.html(StringEscapeUtils.escapeHtml4(text));
+    }
+  }
+  
+  for (Element elem: doc.select("svg").toArray(new Element[0])) {
+    if (elem.parent() != null && elem.parent().parent() != null) {
+      elem.parent().remove();
+    }
+  }
+  doc.select("[style]").removeAttr("style");
+  doc.select("[color]").removeAttr("color");
+  doc.select("[bgcolor]").removeAttr("color");
+  
+  doc.select("script, style, input, button, nav").remove();
+  
+  for (Element elem: doc.select("form")) {
+    Reflect.setfldval(elem, "tag", Tag.valueOf("div"));
+  }
+  
+
+  boolean usesListItembreaks = false;
+  if (baseUrl.indexOf("codemonkeyism.com") != -1) {
+    String html = doc.html();
+    html = html
+      .replaceAll("<p></p>", "").replaceAll("<textarea", "<textarea style=\"display: none\"").replaceAll(
+        "</?(table|th|tr|tbody|thead|span|div)[^>]*/?>", "").replaceAll("(^|\n)        ", "$1").replaceAll("(?<=^|\n) +[0-9]+(\n|$)", "$2").replaceAll("<td>", "<pre language=\"scala\">").replaceAll("</td>", "</pre>").replaceAll("(?<=\n) *\n", "").replaceAll(
+        "(?<=\n)[^a-zA-Z0-9_$]*[0-9]+[^a-zA-Z0-9_$]*\n", "").replaceAll("(^|\n)        ", "$1").replaceAll("(^|\n)[^a-zA-Z0-9_$]*\n", "").replaceAll("<p>", "<br/>").replaceAll("</?p>", "");
+    usesListItembreaks = html.indexOf( "</li><li>")!=-1;
+    
+    html = html
+      .replace("<code><div><ol>", "<pre language=\"scala\">").replace("</ol></div></code>", "</pre>").replaceAll("</li><li>", "\n").replace("\u00c2\u00a0", " ");
+      
+    doc.html(html);
+  }
+  
+  
+  doc.select(
+    "script, style, link, iframe, frame, object, embed, inv, ins, .sidebar,"
+    + " footer,"
+    + ".navigation"
+    + "link"
+  ).remove();
+  
+  doc.select("[style]").removeAttr("style");
+  doc.select("[color]").removeAttr("color");
+  doc.select("[bgcolor]").removeAttr("bgcolor");
+  doc.select("[width]").removeAttr("width");
+  doc.select("[height]").removeAttr("height");
+  doc.select("[class]").removeAttr("class");
+  
+  Matcher NL_INDENT_MCHR = Pattern.compile(
+    "([^ \n])(  +)([^ \n])",
+    Pattern.DOTALL | Pattern.MULTILINE | Pattern.UNIX_LINES
+  ).matcher("");
+  
+  for (Element elem: doc.select("a")) { 
+    String href = elem.attr("href");
+    if (href == null || href.trim().length() == 0) continue;
+    String hrefUrl = normalizeUri(href, doc.baseUri());
+    elem.attr("href", hrefUrl);
+  }
+  if (doc.baseUri().indexOf("wikipedia") == -1) {
+    for (Element elem: doc.select("pre, code")) { 
+      String text = elem.text(),      
+        t0 = text.replace(" ", ""),
+        t1 = t0; 
+      for (c: "<>!@#$^&*()[];:|_+-={}*.\"\'/\\%?,".toCharArray()) { 
+        t1 = t1.replace(String.format("%c", c), "");
+      }
+      float sfrac 
+        = ((float)(t0.length() - t1.length())) / ((float)t0.length()); 
+      if (sfrac <= 0.090) {
+        elem.attr("no-hljs", "true");
+        elem.attr("style", "white-space: pre;");
+        Object _elem = elem;
+        if (_elem.parent().tag.tagName.equals("pre")) {
+          _elem.parent().replaceWith(elem);
+        }
+      }
+    };
+  }
+  
+  // Images
+  Elements waybackToolbar = doc.select("div#wm-ipp");
+  if (waybackToolbar.size() != 0) {
+    Log.d(TAG, "Removing Wayback Machine toolbar...");
+    waybackToolbar.remove();
+  }
+  
+  if (title.length() < 2) {
+    title = baseUrl.replaceAll("[^a-zA-Z0-9_ -]{2,}", " - ").replaceAll("[^a-zA-Z0-9_ -]+", " ").trim();
+  }
+  List<Element> embeddedImgs = embedImages(doc);
+  
+  
+  return doc;
+}

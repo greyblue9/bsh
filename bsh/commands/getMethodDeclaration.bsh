@@ -1,0 +1,4 @@
+import com.strobel.assembler.metadata.*;
+
+public static com.strobel.decompiler.languages.java.ast.MethodDeclaration getMethodDeclaration(com.strobel.decompiler.languages.java.ast.AstNode node) { Optional<MethodDeclaration> mdecl = J8Arrays.stream(CollectionUtil.toArray(a2.getChildren()[0].getAncestors(com.strobel.decompiler.languages.java.ast.MethodDeclaration.class))).findFirst(); if (! mdecl.isPresent()) { mdecl = J8Arrays.stream(CollectionUtil.toArray(a2.getChildren()[0].getDescendants(com.strobel.decompiler.languages.java.ast.MethodDeclaration.class))).findFirst(); }; return mdecl.isPresent()? mdecl.get(): Reflector.Util.sneakyThrow(new RuntimeException(String.format("Cannot find MethodDeclaration in tree: (%s) %s"))); }
+

@@ -1,0 +1,30 @@
+
+
+
+
+
+
+
+
+
+public static String file(Object files) { return execCmdFilter(new String[]{ "busybox", "xargs", "-0", "file" }, StringUtils.join(files, "|").replaceAll("\n","").replace('|', '\u0000') + '\u0000').toString(); };
+
+
+
+
+
+
+
+
+
+public static String file(Object files) { return execCmdFilter(new String[]{ "busybox", "xargs", "-0", "file", "-npsNzF:" }, StringUtils.join(files, "|").replaceAll("\n","").replace('|', '\u0000') + '\u0000'); };
+
+
+
+
+
+
+public static Object file(Object files) { return RealArrayMap.toMap(execCmdFilter(new String[]{ "busybox", "xargs", "-0", "file", "-npsNzF:" }, StringUtils.join(files, "|").replaceAll("\n","").replace('|', '\u0000') + '\u0000').toString().matchLines("^((?:[^:]+|:[^ ])+): (.*)$")); };
+
+
+

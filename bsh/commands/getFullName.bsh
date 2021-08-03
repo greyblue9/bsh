@@ -1,0 +1,6 @@
+
+public static String getFullName(com.sun.source.tree.CompilationUnitTree cuTree) { return StringUtils.join(new String[]{ getPackageName(cuTree), getSimpleName(cuTree) }, "."); }
+
+
+public static String getFullName(com.github.javaparser.ast.CompilationUnit cu) { com.github.javaparser.ast.expr.Name name = cu.getPackageDeclaration().get().getName();  StringBuilder sb = new StringBuilder(76 * 10); String id; com.github.javaparser.ast.expr.Name qualifier; while (name != null) { id = name.getIdentifier(); qualifier = name.getQualifier().isPresent()? name.getQualifier().get(): null; if (sb.length() != 0) sb.insert(0, "."); sb.insert(0, id); name = qualifier; }; if (sb.length() != 0) sb.append("."); sb.append(cu.getTypes()[0].getName().getIdentifier()); return sb.toString(); };
+

@@ -1,0 +1,27 @@
+
+
+
+{
+  appendClassPathFile("/external_sd/_projects/sdk/bin/bytebuddy_1.4.1__with_ClassFileLocator_mod.jar");
+  
+  public static net.bytebuddy.pool.TypePool getTypePool() {
+    // URL element = appendClassPathFile("/external_sd/_projects/sdk/bin/bytebuddy_1.4.1__with_ClassFileLocator_mod.jar");
+    net.bytebuddy.dynamic.ClassFileLocator cfl = new net.bytebuddy.dynamic.ClassFileLocator.Compound(
+      new net.bytebuddy.dynamic.ClassFileLocator[] {
+        new net.bytebuddy.dynamic.ClassFileLocator.ForJarFile(new JarFile("/external_sd/_projects/sdk/bootclasspath_all_multidex.jar")),
+        net.bytebuddy.dynamic.ClassFileLocator.ForClassLoader.of(Thread.currentThread().getContextClassLoader()),
+        net.bytebuddy.dynamic.ClassFileLocator.ForClassLoader.of(ClassLoader.getSystemClassLoader().getParent()),
+        new net.bytebuddy.dynamic.ClassFileLocator.ForFolder(new File("/external_sd/_projects/sdk/lib")),
+        new net.bytebuddy.dynamic.ClassFileLocator.ForFolder(new File("/external_sd/_projects/sdk/framework"))
+      }
+    );
+    net.bytebuddy.pool.TypePool.CacheProvider cprov = new net.bytebuddy.pool.TypePool.CacheProvider.Simple();
+    net.bytebuddy.pool.TypePool pool = new net.bytebuddy.pool.TypePool.Default.ClassLoading(cprov, cfl, Thread.currentThread().getContextClassLoader());
+    net.bytebuddy.pool.TypePool lazyPool = new net.bytebuddy.pool.TypePool.LazyFacade(pool);
+    return lazyPool;
+  }
+
+};
+
+
+ 

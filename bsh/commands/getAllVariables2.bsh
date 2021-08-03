@@ -1,0 +1,26 @@
+public static Map getAllVariables2(boolean includeAll) {
+  Map map = new TreeMap();
+  bsh.NameSpace global = CollectionUtil.getInterpreter().getNameSpace();
+  Matcher NS_NAME_MCHR = Pattern.compile("(^global|/AnonymousBlock)(?:\\1)*").matcher("");
+  Iterable<BlockNameSpace> bnss = (includeAll) ? Iterables.concat(Arrays.asList(bsh.NameSpaceFactory.INSTANCE.nsMap.values(), bsh.BlockNameSpaceFactory.INSTANCE.nsMap.values()).toArray(new Iterable[0])) : bsh.BlockNameSpaceFactory.INSTANCE.nsMap.values();
+  for (bsh.NameSpace topNs : bnss) {
+    bsh.NameSpace ns = null;
+    while ((ns = (ns == null ? topNs : ns.getParent())) != global && ns != null) {
+      String simpleName = NS_NAME_MCHR.reset(topNs.getName()).replaceAll("").replace("/", "");
+      if (simpleName.isEmpty())
+        continue;
+      Map mp = map.get(simpleName);
+      if (mp == null)
+        map.put(simpleName, (mp = new bsh.NameSpace.BindingMap()));
+      mp.putAll(ns.getVariables());
+    }
+  }
+  return map;
+}
+
+
+public static Map getAllVariables2() {
+  return getAllVariables2(false);
+}
+
+

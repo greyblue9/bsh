@@ -1,0 +1,7 @@
+
+
+
+public static CharSequence dumpInstanceFields(Object obj) { try { return new NumberedLines(org.apache.commons.lang3.reflect.FieldUtils.getAllFieldsList(obj.getClass()).select(FunctionUtil.bind("return m -> { if ((m.getModifiers() & Modifier.STATIC) != 0) return null; var s = dumpMembers.colorize(m, obj); return size(s) < (76 * 19)? s: s.substring(0, (76 * 19)); }", "obj", obj)).toArray(new String[0])); } catch (Throwable e) { return ""; }; };
+
+
+

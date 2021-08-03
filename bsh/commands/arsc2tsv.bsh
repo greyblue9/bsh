@@ -1,0 +1,97 @@
+
+import org.apache.commons.io.input.AutoCloseInputStream;
+import zhao.arsceditor.ResDecoder.data.ResTable;
+import zhao.arsceditor.ResDecoder.ARSCDecoder;
+import zhao.arsceditor.ResDecoder.data.ResPackage;
+import zhao.arsceditor.ResDecoder.data.ResResSpec;
+import zhao.arsceditor.ResDecoder.data.ResConfig;
+import java.nio.charset.StandardCharsets;
+
+public static File arsc2tsv(String inPath, String outPath) {
+  return arsc2tsv(
+    new File(inPath).getAbsoluteFile(),
+    new File(outPath).getAbsoluteFile()
+  );
+}
+
+public static File arsc2tsv(File inFile, File outFile) {
+  String TAG = "arsc2tsv";
+  boolean keepBroken = true;
+  String path = (inFile != null) ? inFile.getPath() : "/proc/self/fd/0";
+  String outPath = (outFile != null) ? outFile.getPath() : null;
+  FileInputStream fis = new FileInputStream(new File(path));
+  BufferedInputStream bis = new BufferedInputStream(fis, 8000);
+  bis.mark(5);
+  byte[] magic = new byte[4];
+  bis.read(magic);
+  boolean isZip = Arrays.equals(magic, new byte[] { 0x50, 0x4b, 0x03, 0x04 });
+  bis.reset();
+  byte[] arscBytes = (isZip)
+    ? ZipUtil.toByteArray(bis, "resources.arsc")
+    : IOUtils.toByteArray(bis);
+  IOUtils.closeQuietly(bis);
+  IOUtils.closeQuietly(fis);
+  InputStream arscIn
+    = new AutoCloseInputStream(new ByteArrayInputStream(arscBytes));
+  ResTable resTable = new ResTable();
+  ARSCDecoder dc = new ARSCDecoder(arscIn, resTable, keepBroken);
+  ResPackage[] resPkgs = dc.readTable();
+  List<String> lines = new LinkedList<String>();
+  
+  for (ResPackage resPkg : resPkgs) {
+    String resPkgName = resPkg.getName();
+    Log.d(TAG, "processing package \"%s\"", resPkgName);
+    int countBefore = lines.size();
+    Iterable<ResConfig> configs = resPkg.getConfigs();
+    for (ResConfig config: configs) {
+      Log.d(TAG, "processing config \"%s\"", config);
+      for (ResResSpec spec : config.listResSpecs()) {
+        int id = spec.getId().id;
+        lines.add(String.format(
+          "%d\t%s.R.%s.%s",
+          id, resPkgName, spec.getType().getName(), spec.getName()
+        ));
+        lines.add(String.format(
+          "0x%X\t%s.R.%s.%s",
+          id, resPkgName, spec.getType().getName(), spec.getName()
+        ));
+      };
+      break;
+    }
+    int countAfter = lines.size();
+    int resPkgSpecCount = countAfter - countBefore;
+    Log.d(TAG,
+      "finished processing package \"%s\" (%d specs)", resPkgName, resPkgSpecCount);
+  }
+  Log.d(TAG, "outPath = %s", outPath);
+  if (outPath == null || "-".equals(outPath)) {
+    System.out.println(StringUtils.join(lines, "\n"));
+  } else {
+    if (outFile == null) {
+      outFile = new File(
+        new File(System.getProperty("user.dir")),
+        String.format(
+          "public.%s.generated.out.tsv", 
+          Long.toString(System.currentTimeMillis(), 32)
+        )
+      );
+    }
+    Log.d(TAG, "outFile = %s", outFile);
+  }
+  Log.d(TAG, "outFile = %s", outFile);
+  if (! StringUtils.endsWith(outFile.getPath(), ".tsv")) {
+    outFile = new File(outFile, "public .tsv");
+  }
+  Log.d(TAG, "outFile = %s", outFile);
+  if (outFile.exists()) {
+    FileUtils.forceDelete(outFile);
+  }
+  Log.d(TAG, "outFile = %s", outFile);
+  FileUtils.writeLines(outFile, "UTF-8", lines, false);
+  System.err.println(outFile.getAbsolutePath());
+  return outFile;
+}
+
+
+
+

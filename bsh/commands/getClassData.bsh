@@ -1,0 +1,7 @@
+
+public static com.android.dex.ClassData getClassData(com.android.dex.ClassDef classDef) { com.android.dex.Dex dex = Reflect.getfldval(classDef, "buffer"); com.android.dex.TableOfContents toc = dex.getTableOfContents(); int cdatOff = classDef.getClassDataOffset(); com.android.dex.Dex.Section s = dex.open(toc.classDatas.off); int skipCount = cdatOff - s.getPosition(); if (skipCount > 0) s.skip(skipCount); com.android.dex.ClassData cdat = s.readClassData(); return cdat; }
+
+public static com.android.dex.ClassData getClassData(String className, com.android.dex.Dex dex) { com.android.dex.ClassDef classDef = getClassDef(className, dex); return getClassData(classDef); }
+
+public static com.android.dex.ClassData getClassData(String className) { com.android.dex.Dex dex = getDex(className); com.android.dex.ClassDef classDef = getClassDef(className, dex); return getClassData(classDef); }
+

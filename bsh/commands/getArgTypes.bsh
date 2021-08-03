@@ -1,0 +1,16 @@
+public static List<Class> getArgTypes(String expr) {
+  Throwable[] __ts = new Throwable[1];
+  Interpreter in = CollectionUtil.getInterpreter();
+  NameSpace ns = in.getNameSpace();
+  try {
+    this.interpreter.eval(expr.matches(".*\\(.*\\).*$") ? expr : String.format("art(%s);", expr), new bsh.BlockNameSpace(in.getClassManager()));
+  } catch (Throwable __e) {
+    __ts[0] = __e;
+    Object argsNode = Array.get(Reflect.getfldval(Reflect.getfldval(__e, "node"), "children"), 1);
+    List<Class> types = Arrays.asList(bsh.Types.getTypes(Reflector.invokeOrDefault(argsNode, "getArguments", new bsh.CallStack(ns), in)));
+    return types;
+  }
+  return null;
+}
+
+ 

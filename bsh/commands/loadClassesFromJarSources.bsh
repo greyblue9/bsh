@@ -1,0 +1,44 @@
+
+
+public static bsh.ClassIdentifier loadClassesFromJarSources() {
+  
+  java.lang.Object result = null;
+ 
+  java.util.jar.JarFile jf = new java.util.jar.JarFile("/storage/extSdCard/_projects/sdk/bsh/trunk/bsh-mod.jar");
+  
+  java.util.jar.JarFile$1JarFileEnumerator en = jf.entries();
+  
+  while (en.hasMoreElements()) { 
+    java.util.jar.JarEntry entry = en.nextElement(); 
+    if (! entry.name.matches(".*.java"))
+      continue; 
+      
+    //dump(entry); 
+    java.io.InputStream is = jf.getInputStream(entry);
+    java.io.InputStreamReader br = new java.io.InputStreamReader(is); 
+    java.lang.StringBuilder sb = new java.lang.StringBuilder(1024); 
+    
+    java.lang.String str = null; 
+    while (is.available() > 0) { 
+      char[] buf = new char[is.available()]; 
+      br.read(buf); 
+      if (buf == null) break; 
+      sb.append(buf); 
+    }
+    is.close();
+    
+    print(entry.name + ": " + sb.toString().length() + " bytes");
+    try {
+      result = eval(sb.toString());
+    } catch (EvalError ex) {
+      print(ex.toString());
+    }
+  }
+  jf.close();
+
+  
+    
+  return result; 
+}
+
+

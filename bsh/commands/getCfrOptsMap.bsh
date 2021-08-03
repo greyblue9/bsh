@@ -1,0 +1,262 @@
+
+
+public static Map getCfrOptsMap() {
+
+    Map optsMap = new HashMap();
+    // Remove nested exception handlers if they don't change
+    // semantics
+    optsMap.put("aexagg", "true");
+
+    // Opcode count at which to trigger aggressive
+    // reductions
+    //optsMap.put("aggressivesizethreshold", "true");
+
+    // Allow transformations which correct errors, potentially at
+    // the cost of altering emitted code behaviour.  An example
+    // would be removing impossible (in java!) exception handling -
+    // if this has any effect, a warning will be
+    // emitted.
+    optsMap.put("allowcorrecting", "true");
+
+    // Force file to be analysed as 'jar' or 'class'
+    //optsMap.put("analyseas", "true");
+
+    // Re-sugar array based iteration.
+    optsMap.put("arrayiter", "true");
+
+    // Overwrite files when using outputpath
+    //optsMap.put("clobber", "true");
+
+    // Re-sugar collection based iteration
+    optsMap.put("collectioniter", "true");
+
+    // Replace monitors with comments - useful if we're completely
+    // confused
+    //optsMap.put("commentmonitors", "true");
+
+    // Output comments describing decompiler status, 
+    // fallback flags
+    // etc
+    optsMap.put("comments", "true");
+
+    // Re-sugar switch on enum -
+    // see http://www.benf.org/other/cfr/switch-on-enum.html
+    optsMap.put("decodeenumswitch", "true");
+
+    // Re-sugar finally statements
+    optsMap.put("decodefinally", "true");
+
+    // Re-build lambda functions
+    optsMap.put("decodelambdas", "true");
+
+    // Re-sugar switch on String -
+    // see http://www.benf.org/other/cfr/java7switchonstring.html
+    optsMap.put("decodestringswitch", "true");
+    
+    /*
+    // Dump class path for debugging purposes
+    optsMap.put("dumpclasspath", "true");
+    */
+    
+    // Enable transformations to handle eclipse code
+    // better
+    optsMap.put("eclipse", "true");
+
+    // Elide things which aren't helpful in scala output
+    // (serialVersionUID, @ScalaSignature).
+    optsMap.put("elidescala", "true");
+
+    // additional class path - classes in this classpath will be
+    // used if needed.
+    optsMap.put("extraclasspath", 
+    "/external_sd/_projects/sdk/lib/APKParser.jar:/external_sd/_projects/sdk/lib/AneLab-AndroidSendMail.jar:/external_sd/_projects/sdk/lib/LzmaAlone.jar:/external_sd/_projects/sdk/lib/Reflection.jar:/external_sd/_projects/sdk/lib/ST-4.0.7.jar:/external_sd/_projects/sdk/lib/XposedBridge.jar:/external_sd/_projects/sdk/lib/_log4j_foxes.jar:/external_sd/_projects/sdk/lib/android-support-v4-1345de9bd2500dfb0be06e77aa44b9da.jar:/external_sd/_projects/sdk/lib/android-support-v4-f859e3bc57976a9131bfa11fb37b2d14.jar:/external_sd/_projects/sdk/lib/android_support_v4.jar:/external_sd/_projects/sdk/lib/annotations-a12ff01ce331e8e16b05cf208113a0e0.jar:/external_sd/_projects/sdk/lib/annotations-signed-signed-signed.jar:/external_sd/_projects/sdk/lib/annotations-signed-signed.jar:/external_sd/_projects/sdk/lib/annotations.jar:/external_sd/_projects/sdk/lib/antlr-2.7.7-signed-signed-signed.jar:/external_sd/_projects/sdk/lib/antlr-2.7.7-signed-signed.jar:/external_sd/_projects/sdk/lib/antlr-2.7.7.jar:/external_sd/_projects/sdk/lib/antlr-3.1.1-signed-signed.jar:/external_sd/_projects/sdk/lib/antlr-3.1.1.jar:/external_sd/_projects/sdk/lib/antlr-3.1.2-1-jar-with-dependencies.jar:/external_sd/_projects/sdk/lib/antlr-jd.jar:/external_sd/_projects/sdk/lib/antlr3.1.2.1_with_dependencies.jar:/external_sd/_projects/sdk/lib/antlr4-annotations-4.3.jar:/external_sd/_projects/sdk/lib/antlr4-runtime-4.1.jar:/external_sd/_projects/sdk/lib/antlr4-runtime-4.5.jar:/external_sd/_projects/sdk/lib/antlr_3.5.jar:/external_sd/_projects/sdk/lib/antlr_4.5.3_complete__javafile.jar:/external_sd/_projects/sdk/lib/apache-ant-1.8.2.jar:/external_sd/_projects/sdk/lib/apk_parser_1.1.1.jar:/external_sd/_projects/sdk/lib/apktool_2.1.0.jar:/external_sd/_projects/sdk/lib/archives.jar:/external_sd/_projects/sdk/lib/asm-all-5.0.3.jar:/external_sd/_projects/sdk/lib/asm-all.jar:/external_sd/_projects/sdk/lib/asm-commons.jar:/external_sd/_projects/sdk/lib/asm.jar:/external_sd/_projects/sdk/lib/asm4-all.jar:/external_sd/_projects/sdk/lib/asm5.jar:/external_sd/_projects/sdk/lib/asm_x.jar:/external_sd/_projects/sdk/lib/at4j_full_1.1.2.jar:/external_sd/_projects/sdk/lib/automaton.jar:/external_sd/_projects/sdk/lib/avatar_js.jar:/external_sd/_projects/sdk/lib/awt.jar:/external_sd/_projects/sdk/lib/backport-spi-1.0.2.jar:/external_sd/_projects/sdk/lib/backport-util-concurrent-3.1-osgi.jar:/external_sd/_projects/sdk/lib/batik-all-1.7.jar:/external_sd/_projects/sdk/lib/bcel-5.2.jar:/external_sd/_projects/sdk/lib/beans.jar:/external_sd/_projects/sdk/lib/bndlib-2.1.0.jar:/external_sd/_projects/sdk/lib/brut.jar:/external_sd/_projects/sdk/lib/bsf-all-3.0.jar:/external_sd/_projects/sdk/lib/bsf-all-3.1.jar:/external_sd/_projects/sdk/lib/bsf-api-3.1.jar:/external_sd/_projects/sdk/lib/bsf-engines-3.0.jar:/external_sd/_projects/sdk/lib/bsf-utils-3.1.jar:/external_sd/_projects/sdk/lib/bsf_all_3.1.jar:/external_sd/_projects/sdk/lib/bsh-mod.jar:/external_sd/_projects/sdk/lib/bshmin.jar:/external_sd/_projects/sdk/lib/cfr_0_117.jar:/external_sd/_projects/sdk/lib/cfr_0_119.jar:/external_sd/_projects/sdk/lib/cglib-2.2.2.jar:/external_sd/_projects/sdk/lib/class-model-2.1.96.jar:/external_sd/_projects/sdk/lib/class-resource-loader-1.0.1.jar:/external_sd/_projects/sdk/lib/class-rewriter-2.426.0.jar:/external_sd/_projects/sdk/lib/classworlds.jar:/external_sd/_projects/sdk/lib/cldc-1.1-java5.0.jar:/external_sd/_projects/sdk/lib/cli-parser-1.1.jar:/external_sd/_projects/sdk/lib/clibrary.jar:/external_sd/_projects/sdk/lib/clz.jar:/external_sd/_projects/sdk/lib/collections.jar:/external_sd/_projects/sdk/lib/com-jcraft-jzlib.jar:/external_sd/_projects/sdk/lib/com.android.dx.jar:/external_sd/_projects/sdk/lib/com.goodmooddroid.gesturecontrol.jar:/external_sd/_projects/sdk/lib/com.google.guava_1.6.0.jar:/external_sd/_projects/sdk/lib/com.google.widevine.software.drm.jar:/external_sd/_projects/sdk/lib/com.googlecode.exputils.jar:/external_sd/_projects/sdk/lib/commons-beanutils-1.9.2.jar:/external_sd/_projects/sdk/lib/commons-chain-1.2.jar:/external_sd/_projects/sdk/lib/commons-cli-1.2.jar:/external_sd/_projects/sdk/lib/commons-cli-1.3.1.jar:/external_sd/_projects/sdk/lib/commons-codec-1.10.jar:/external_sd/_projects/sdk/lib/commons-codec-1.6.jar:/external_sd/_projects/sdk/lib/commons-codec-1.8.jar:/external_sd/_projects/sdk/lib/commons-collections-3.2.1.jar:/external_sd/_projects/sdk/lib/commons-collections-3.2.2.jar:/external_sd/_projects/sdk/lib/commons-collections4-4.1.jar:/external_sd/_projects/sdk/lib/commons-compress-jdk6.jar:/external_sd/_projects/sdk/lib/commons-csv-1.4.jar:/external_sd/_projects/sdk/lib/commons-daemon-1.0.15.jar:/external_sd/_projects/sdk/lib/commons-dbcp-1.3.jar:/external_sd/_projects/sdk/lib/commons-dbcp-1.4.jar:/external_sd/_projects/sdk/lib/commons-dbcp2-2.1.1.jar:/external_sd/_projects/sdk/lib/commons-dbutils-1.6.jar:/external_sd/_projects/sdk/lib/commons-digester3-3.2.jar:/external_sd/_projects/sdk/lib/commons-discovery-0.5.jar:/external_sd/_projects/sdk/lib/commons-email-1.4.jar:/external_sd/_projects/sdk/lib/commons-exec-1.3.jar:/external_sd/_projects/sdk/lib/commons-httpclient-3.1-patched.jar:/external_sd/_projects/sdk/lib/commons-imaging-1.0-20130811.122228-3.jar:/external_sd/_projects/sdk/lib/commons-io-1.4.jar:/external_sd/_projects/sdk/lib/commons-io-2.5.jar:/external_sd/_projects/sdk/lib/commons-jexl-2.1.1.jar:/external_sd/_projects/sdk/lib/commons-jexl3-3.0.jar:/external_sd/_projects/sdk/lib/commons-jxpath-1.3.jar:/external_sd/_projects/sdk/lib/commons-lang-2.6-signed.jar:/external_sd/_projects/sdk/lib/commons-lang-2.6.jar:/external_sd/_projects/sdk/lib/commons-lang3-3.4.jar:/external_sd/_projects/sdk/lib/commons-logging-1.1.3.jar:/external_sd/_projects/sdk/lib/commons-logging-1.2.jar:/external_sd/_projects/sdk/lib/commons-net-3.3.jar:/external_sd/_projects/sdk/lib/commons-net-3.5.jar:/external_sd/_projects/sdk/lib/commons-net-examples-3.5.jar:/external_sd/_projects/sdk/lib/commons-pool-1.6.jar:/external_sd/_projects/sdk/lib/commons-pool2-2.4.2.jar:/external_sd/_projects/sdk/lib/commons-scxml-0.9.jar:/external_sd/_projects/sdk/lib/commons-validator-1.4.1.jar:/external_sd/_projects/sdk/lib/commons-validator-1.5.1.jar:/external_sd/_projects/sdk/lib/commons_all-signed.jar:/external_sd/_projects/sdk/lib/commons_all.jar:/external_sd/_projects/sdk/lib/commons_all_gen-signed.jar:/external_sd/_projects/sdk/lib/commons_collections_4.4.1.jar:/external_sd/_projects/sdk/lib/d2j-all.dex.jar:/external_sd/_projects/sdk/lib/ddmlib.jar:/external_sd/_projects/sdk/lib/ddmuilib.jar:/external_sd/_projects/sdk/lib/ddx1.26_11-22-58.jar:/external_sd/_projects/sdk/lib/dedexer.jar:/external_sd/_projects/sdk/lib/demolib.dex.jar:/external_sd/_projects/sdk/lib/dex-tools-0.0.9.12.jar:/external_sd/_projects/sdk/lib/dex.ir.jar:/external_sd/_projects/sdk/lib/dex2jar-0.0.7.11-SNAPSHOT.jar:/external_sd/_projects/sdk/lib/dex_ir.jar:/external_sd/_projects/sdk/lib/dictzip.jar:/external_sd/_projects/sdk/lib/dom4j-1.6.1.jar:/external_sd/_projects/sdk/lib/drjava-r5403-mint-r15952.jar:/external_sd/_projects/sdk/lib/dumper-simple.unsigned.jar:/external_sd/_projects/sdk/lib/dx-asmdex-dexmaker.jar:/external_sd/_projects/sdk/lib/dx_1.12.jar:/external_sd/_projects/sdk/lib/dx_from_jadx.jar:/external_sd/_projects/sdk/lib/ecj_4.4.big.jar:/external_sd/_projects/sdk/lib/ehcache-1.1.jar:/external_sd/_projects/sdk/lib/excalibur-bzip2-1.0.jar:/external_sd/_projects/sdk/lib/fernflower_2015.jar:/external_sd/_projects/sdk/lib/file-cli-1.2.0.jar:/external_sd/_projects/sdk/lib/fileproc.jar:/external_sd/_projects/sdk/lib/fscontext-4.2.jar:/external_sd/_projects/sdk/lib/gentyref-1.1.0.jar:/external_sd/_projects/sdk/lib/get_interfaces.jar:/external_sd/_projects/sdk/lib/gnu-trove-1.0.2.jar:/external_sd/_projects/sdk/lib/gnu.getopt.jar:/external_sd/_projects/sdk/lib/gnucp-signed.jar:/external_sd/_projects/sdk/lib/gnujpdf.jar:/external_sd/_projects/sdk/lib/google-collections.jar:/external_sd/_projects/sdk/lib/grep4j-1.8.2.jar:/external_sd/_projects/sdk/lib/gson-2.3.jar:/external_sd/_projects/sdk/lib/guava-13.0-rc1.jar:/external_sd/_projects/sdk/lib/guava-r06.jar:/external_sd/_projects/sdk/lib/guava-r09.jar:/external_sd/_projects/sdk/lib/guava.jar:/external_sd/_projects/sdk/lib/guava_2k.jar:/external_sd/_projects/sdk/lib/guava_jdk5_14.0.1.jar:/external_sd/_projects/sdk/lib/gzip.jar:/external_sd/_projects/sdk/lib/hamcrest_all_1.3.jar:/external_sd/_projects/sdk/lib/hprof_tools.jar:/external_sd/_projects/sdk/lib/html2text.jar:/external_sd/_projects/sdk/lib/htmlcleaner.jar:/external_sd/_projects/sdk/lib/httpclient-4.3-beta1.jar:/external_sd/_projects/sdk/lib/httpmime-4.3.jar:/external_sd/_projects/sdk/lib/icepdf-core-5.1.0.jar:/external_sd/_projects/sdk/lib/io.jar:/external_sd/_projects/sdk/lib/iso_extractor.jar:/external_sd/_projects/sdk/lib/itextpdf-5.3.3-0226b2cc4142acddf11d26e5c2d54fc6d7c76bd1.jar:/external_sd/_projects/sdk/lib/itextpdf-5.3.3.jar:/external_sd/_projects/sdk/lib/jadx.jar:/external_sd/_projects/sdk/lib/jadx_guava.jar:/external_sd/_projects/sdk/lib/jai_imageio-1.1.jar:/external_sd/_projects/sdk/lib/jarchivelib_3.0.0.jar:/external_sd/_projects/sdk/lib/jarjar-1.3.jar:/external_sd/_projects/sdk/lib/java-util-1.3.1.jar:/external_sd/_projects/sdk/lib/java-util-1.9.1.jar:/external_sd/_projects/sdk/lib/java.awt.jar:/external_sd/_projects/sdk/lib/java.beans.jar:/external_sd/_projects/sdk/lib/java.lang.jar:/external_sd/_projects/sdk/lib/java.lang_resources.jar:/external_sd/_projects/sdk/lib/java1.7.jar:/external_sd/_projects/sdk/lib/java_object_diff.jar:/external_sd/_projects/sdk/lib/javac-1.0.jar:/external_sd/_projects/sdk/lib/javafile_cl.jar:/external_sd/_projects/sdk/lib/javamanager.jar:/external_sd/_projects/sdk/lib/javassist.jar:/external_sd/_projects/sdk/lib/javautil-3.1.1.jar:/external_sd/_projects/sdk/lib/javax.accessibility_privileged.jar:/external_sd/_projects/sdk/lib/javax.inject-1.jar:/external_sd/_projects/sdk/lib/javax.servlet-3.0.jar:/external_sd/_projects/sdk/lib/javax.swing_java.awt.jar:/external_sd/_projects/sdk/lib/javax_com_sun_tools.jar:/external_sd/_projects/sdk/lib/javax_script.jar:/external_sd/_projects/sdk/lib/javax_xml_sax_etc.jar:/external_sd/_projects/sdk/lib/jawk.jar:/external_sd/_projects/sdk/lib/jbzip2_0.9.1.jar:/external_sd/_projects/sdk/lib/jdex-4.8.2.jar:/external_sd/_projects/sdk/lib/jdk8.jar:/external_sd/_projects/sdk/lib/jdt_core_3.1.1.jar:/external_sd/_projects/sdk/lib/jexler-core-1.0.5.jar:/external_sd/_projects/sdk/lib/joda_time_2.3.jar:/external_sd/_projects/sdk/lib/jruby_1.1.6.jar:/external_sd/_projects/sdk/lib/jsdg-stubs-jre1.5.jar:/external_sd/_projects/sdk/lib/junit-4.4.jar:/external_sd/_projects/sdk/lib/jxse_shell_2.5.jar:/external_sd/_projects/sdk/lib/jython-standalone-2.5.4-rc1.jar:/external_sd/_projects/sdk/lib/jythonroid.jar:/external_sd/_projects/sdk/lib/log4j_slf4j.jar:/external_sd/_projects/sdk/lib/lombok-ast-0.2.3.jar:/external_sd/_projects/sdk/lib/lombok.ast-0.2.jar:/external_sd/_projects/sdk/lib/mjc-1_3_2.jar:/external_sd/_projects/sdk/lib/nashorn.jar:/external_sd/_projects/sdk/lib/netbeans.jar:/external_sd/_projects/sdk/lib/netty_all_4.1.0.Beta4.jar:/external_sd/_projects/sdk/lib/netty_codec_4.0.0.beta3.jar:/external_sd/_projects/sdk/lib/nio.jar:/external_sd/_projects/sdk/lib/nio_spi.jar:/external_sd/_projects/sdk/lib/org.apache.batik.util_1.6.0.v201011041432.jar:/external_sd/_projects/sdk/lib/org.apache.servicemix.bundles.xstream-1.4.4_2.jar:/external_sd/_projects/sdk/lib/org.eclipse.core.commands_3.6.100.v20140528-1422.jar:/external_sd/_projects/sdk/lib/org.eclipse.jdt.apt.core_3.4.0.v20150518-1201.jar:/external_sd/_projects/sdk/lib/org.eclipse.jdt.compiler.tool_1.1.0.v20150513-2007.jar:/external_sd/_projects/sdk/lib/org.eclipse.jdt.core_3.11.1.v20150902-1521.jar:/external_sd/_projects/sdk/lib/org.eclipse.jdt.core_3.11.1.v20150902-1521_13-23-23.jar:/external_sd/_projects/sdk/lib/org.eclipse.jface.jar:/external_sd/_projects/sdk/lib/org.eclipse.swt-3.1.jar:/external_sd/_projects/sdk/lib/org.jf.jar:/external_sd/_projects/sdk/lib/oro-2.0.6.jar:/external_sd/_projects/sdk/lib/oromatcher.jar:/external_sd/_projects/sdk/lib/out.jar:/external_sd/_projects/sdk/lib/pdf-transcoder.jar:/external_sd/_projects/sdk/lib/pdf2text.jar:/external_sd/_projects/sdk/lib/posix.jar:/external_sd/_projects/sdk/lib/procyon_0.5.30.jar:/external_sd/_projects/sdk/lib/protoj.jar:/external_sd/_projects/sdk/lib/pty4j.jar:/external_sd/_projects/sdk/lib/qdox-1.9.2.jar:/external_sd/_projects/sdk/lib/qdox-2.0-m1.jar:/external_sd/_projects/sdk/lib/rar.jar:/external_sd/_projects/sdk/lib/reflectasm_1.07_shaded.jar:/external_sd/_projects/sdk/lib/reflections-0.9.10.jar:/external_sd/_projects/sdk/lib/rt_zip.jar:/external_sd/_projects/sdk/lib/sand_ide.jar:/external_sd/_projects/sdk/lib/sdk_tools.jar:/external_sd/_projects/sdk/lib/sejda-icepdf-2.0.0.M5.jar:/external_sd/_projects/sdk/lib/services.jar:/external_sd/_projects/sdk/lib/showjava.jar:/external_sd/_projects/sdk/lib/sqlite.jar:/external_sd/_projects/sdk/lib/stdlib-0.7.1-signed.jar:/external_sd/_projects/sdk/lib/stdlib-0.7.1.jar:/external_sd/_projects/sdk/lib/stream-api-0.9.8.jar:/external_sd/_projects/sdk/lib/stream_api_0.9.8.jar:/external_sd/_projects/sdk/lib/sun.security.jar:/external_sd/_projects/sdk/lib/sun_security.jar:/external_sd/_projects/sdk/lib/support-v4-18.0.0-cf9588689f34839ba261eb537ba250e86619aced.jar:/external_sd/_projects/sdk/lib/terminalide.jar:/external_sd/_projects/sdk/lib/testng_6.8_bshnoconflict.jar:/external_sd/_projects/sdk/lib/text2pdf.jar:/external_sd/_projects/sdk/lib/tika_xml_etc.jar:/external_sd/_projects/sdk/lib/trove_3.0.3.jar:/external_sd/_projects/sdk/lib/truevfs_part1.jar:/external_sd/_projects/sdk/lib/truevfs_part2.jar:/external_sd/_projects/sdk/lib/truezip.jar:/external_sd/_projects/sdk/lib/tut.jar:/external_sd/_projects/sdk/lib/typesafe-config.jar:/external_sd/_projects/sdk/lib/urllauncher_out.jar:/external_sd/_projects/sdk/lib/xbean_reflect.jar:/external_sd/_projects/sdk/lib/xerces-2_6_2.jar:/external_sd/_projects/sdk/lib/xercesImpl-2.9.1.jar:/external_sd/_projects/sdk/lib/xmlParserAPIs-2.0.2.jar:/external_sd/_projects/sdk/lib/xpand-1.0.0-v20070608-1300.jar:/external_sd/_projects/sdk/lib/xstream-1.4.4.jar:/external_sd/_projects/sdk/lib/xstream_1.4.3.jar:/external_sd/_projects/sdk/lib/zip4j-1.3.1.jar:/external_sd/_projects/sdk/lib/zipdiff.jar:/external_sd/_projects/sdk/lib/zt-zip-1.8-signed.ja");
+
+    // Name of file to analyse.
+    //optsMap.put("filename", "true");
+
+    // Pull results of deterministic jumps back through some
+    // constant assignments
+    //optsMap.put("forcecondpropagate", "true");
+
+    // Try to extend and merge exceptions more aggressively
+    optsMap.put("forceexceptionprune", "true");
+
+    // Move return up to jump site
+    //optsMap.put("forcereturningifs", "true");
+
+    // Force basic block sorting.  Usually not necessary for code
+    // emitted directly from javac, but required in the case of
+    // obfuscation (or dex2jar!).  Will be enabled in
+    // recovery.
+    optsMap.put("forcetopsort", "true");
+
+    // Force extra aggressive topsort options
+    optsMap.put("forcetopsortaggress", "true");
+
+    // Allow for loops to aggresively roll mutations into update
+    // section, even if they don't appear to be involved with the
+    // predicate
+    optsMap.put("forloopaggcapture", "true");
+
+    // Show help for a given parameter
+    //optsMap.put("help", "true");
+
+    // Hide bridge methods
+    optsMap.put("hidebridgemethods", "true");
+
+    // Hide imports from java.lang.
+    optsMap.put("hidelangimports", "true");
+
+    // Hide very long strings - useful if obfuscators have placed
+    // fake code in strings
+    optsMap.put("hidelongstrings", "false");
+
+    // Hide UTF8 characters - 
+    // quote them instead of showing the raw
+    // characters
+    optsMap.put("hideutf", "true");
+
+    // Decompile innter classes
+    optsMap.put("innerclasses", "true");
+
+    // Reverse java 1.4 class object construction
+    optsMap.put("j14classobj", "true");
+
+    // Substring regex 
+    // - analyse only classes where the fqn matches
+    //   this pattern. (when analysing jar).
+    //optsMap.put("jarfilter", "true");
+
+    // Allow code to be emitted which uses labelled blocks,
+    // (handling odd forward gotos)
+    optsMap.put("labelledblocks", "true");
+
+    // Be a bit more lenient in situations where we'd normally
+    // throw an exception
+    optsMap.put("lenient", "true");
+
+    // Lift initialisation code common to all constructors into
+    // member initialisation
+    //optsMap.put("liftconstructorinit", "true");
+
+    // Name of method to analyse.
+    //optsMap.put("methodname", "true");
+
+    // Decompile to files in [directory] (outputpath + clobber)
+    // (historic compatibility)
+    //optsMap.put("outputdir", "true");
+
+    // Decompile to files in [directory]
+    //optsMap.put("outputpath", "true");
+
+    // Generate @Override annotations (if method is seen to
+    // implement interface method, or override a base class
+    // method)
+    optsMap.put("override", "true");
+
+    // Pull code into case statements agressively.
+    optsMap.put("pullcodecase", "true");
+
+    // Allow more and more aggressive options to be set if
+    // decompilation fails
+    optsMap.put("recover", "true");
+
+    // Split lifetimes where analysis caused type
+    // clash
+    optsMap.put("recovertypeclash", "true");
+
+    // Recover type hints for iterators from first
+    // pass.
+    optsMap.put("recovertypehints", "true");
+
+    // Decompile specifically with recovery options from pass #X.
+    // (really only useful for debugging)
+    //optsMap.put("recpass", "true");
+
+    // Hide generics where we've obviously got it wrong, and
+    // fallback to non-generic
+    optsMap.put("removebadgenerics", "true");
+
+    // Remove boilderplate functions - constructor boilerplate,
+    // lambda deserialisation etc
+    optsMap.put("removeboilerplate", "true");
+
+    // Remove pointless methods - default constructor
+    // etc
+    optsMap.put("removedeadmethods", "true");
+
+    // Remove (where possible) implicit outer class references in
+    // inner classes
+    optsMap.put("removeinnerclasssynthetics", "true");
+
+    // Synonym for 'renamedupmembers' + 'renameillegalidents' +
+    // 'renameenummembers'
+    optsMap.put("rename", "true");
+
+    // Rename ambiguous/duplicate fields.  Note - this WILL break
+    // reflection based access, so is not automatically
+    // enabled.
+    //optsMap.put("renamedupmembers", "true");
+
+    // Rename ENUM identifiers which do not match their 'expected'
+    // string names.  Note - this WILL break reflection based
+    // access, so is not automatically enabled.
+    //optsMap.put("renameenumidents", "true");
+
+    // Rename identifiers which are not valid java identifiers. 
+    // Note - this WILL break reflection based access, so is not
+    // automatically enabled.
+    optsMap.put("renameillegalidents", "true");
+
+    // Rename small members.  Note - this WILL break reflection
+    // based access, so is not automatically enabled.
+    //optsMap.put("renamesmallmembers", "true");
+
+    // Decorate methods with explicit types if not implied by
+    // arguments.
+    optsMap.put("showinferrable", "true");
+
+    // Show some (cryptic!) debug
+    //optsMap.put("showops", "true");
+
+    // Show CFR version used in header (handy to turn off when
+    // regression testing)
+    optsMap.put("showversion", "falset");
+
+    // Don't display state while decompiling
+    optsMap.put("silent", "false");
+
+    // Try to remove return from static init
+    optsMap.put("staticinitreturn", "true");
+
+    // Convert new Stringbuffer().add.add.add to string 
+    // + string + string - 
+    // see http://www.benf.org/other/cfr/stringbuilder-
+    //   vs-concatenation.html
+    optsMap.put("stringbuffer", "true");
+
+    // Convert new Stringbuilder().add.add.add 
+    //   to string + string +
+    // string - see http://www.benf.org/other/cfr/
+    //   stringbuilder-vs-concatenation.html
+    optsMap.put("stringbuilder", "true");
+
+    // Re-sugar assert calls
+    optsMap.put("sugarasserts", "true");
+
+    // Where possible, remove pointless boxing wrappers
+    optsMap.put("sugarboxing", "true");
+
+    // Re-sugar enums - 
+    // see http://www.benf.org/other/cfr/
+    //   how-are-enums-implemented.html
+    optsMap.put("sugarenums", "true");
+
+    // Remove support code for monitors - eg catch blocks just to
+    // exit a monitor
+    optsMap.put("tidymonitors", "true");
+    return optsMap;
+}
+
+
+

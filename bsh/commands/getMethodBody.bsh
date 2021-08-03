@@ -1,0 +1,23 @@
+public static com.strobel.decompiler.languages.java.ast.BlockStatement getMethodBody(MethodDefinition md) {
+  Object mbb = getMethodBodyBuilder(md);
+  Collection nodes = com.strobel.decompiler.ast.AstBuilder.build(md.getBody(), true, ProcyonUtil.getDecompilerContext());
+  List astparams = new ArrayList();
+  Collection params = md.getParameters();
+  for (ParameterDefinition param : params) {
+    String name = param.getName();
+    TypeReference type = param.getParameterType();
+    com.strobel.decompiler.languages.java.ast.AstType asttype = new com.strobel.decompiler.languages.java.ast.SimpleType(type.getName());
+    asttype._dataStore.putUserDataIfAbsent(ProcyonUtil.TYPE_REFERENCE, type);
+    if ((td = type.resolve()) != null) {
+      asttype._dataStore.putUserDataIfAbsent(ProcyonUtil.TYPE_DEFINITION, td);
+    }
+    ;
+    com.strobel.decompiler.languages.java.ast.ParameterDeclaration astparam = new com.strobel.decompiler.languages.java.ast.ParameterDeclaration(name, asttype);
+    astparams.add(astparam);
+  }
+  ;
+  com.strobel.decompiler.languages.java.ast.BlockStatement mbody = mbb.createMethodBody(mbb._astBuilder, mbb._method, mbb._context, astparams);
+  return mbody;
+}
+
+;

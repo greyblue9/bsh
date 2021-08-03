@@ -1,0 +1,3 @@
+
+public static Map readUtextData(int limit) { import javassist.*; ClassPool cp = getClassPool(); cp.appendClassPath("/storage/extSdCard/_projects/sdk/lib/sqlite.jar"); String __src = FileUtils.readFileToString(new File("/data/media/0/bsh/commands/__readUtextData.bsh")); Object o = genClass(__src); return o.readUtextData(100000); }
+

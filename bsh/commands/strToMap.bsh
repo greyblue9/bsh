@@ -1,0 +1,8 @@
+/**
+Example:
+  String mapstr = """{0=root, 1=bin, 2=daemon, 3=adm, 4=lp, 5=sync, 6=shutdown, 7=halt, 8=mail, 10=uucp, 11=operator, 12=games, 13=gopher, 14=ftp, 29=rpcuser, 32=rpc, 38=ntp, 74=sshd, 81=dbus, 99=nobody, 170=avahi-autoipd, 500=guest}""";
+  Map map = strToMap(mapstr);
+*/
+
+public static Map strToMap(String mapstr) { List listEnts = StringCollectionUtil.matchLines(mapstr.replaceAll("(, |\\{)([^ ]+)=", "\n$2=").replaceAll("\\}\\s*$", ""), "^([^ =]+)=(.*)$"); return RealArrayMap.toMap(listEnts, 0, 1); }
+

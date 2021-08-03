@@ -1,0 +1,12 @@
+public static File removeSourceDir(String className) {
+  String classNameAsPath = ClassInfo.classNameToPath(className, "java");
+  String path = SourceUtil.findSource(className).getPath();
+  String basedir = StringUtils.stripEnd(path.subSequence(0, path.length() - classNameAsPath.length()), "/");
+  File baseFile = new File(basedir);
+  int index = ArrayUtils.indexOf(SourceUtil.allDirs, baseFile);
+  if (index != -1) {
+    SourceUtil.allDirs = ArrayUtils.remove(SourceUtil.allDirs, index);
+    return baseFile;
+  }
+  return null;
+}

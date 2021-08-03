@@ -1,0 +1,7 @@
+
+
+
+public static String[] getClassNameList(String dexPath) { Object dexElement = ClassPathUtil2.findDexElement(Thread.currentThread().getContextClassLoader(), new File(dexPath)); dalvik.system.DexFile dexFile = dexElement != null? Reflect.getfldval(dexElement, "dexFile"): null; if (dexFile != null) { return DexFile.getClassNameList(((Integer)Reflect.getfldval(dexFile, "mCookie")).intValue()); }; return new DexUtil(new File(dexPath)).getClassNames(); };
+
+
+

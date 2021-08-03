@@ -1,0 +1,17 @@
+public static List<String> importAll(String src) {
+  List<String> impts = src.matchAll("(?<=^|\n)import ([^;]+);");
+  for (String impt : impts) {
+    if (StringUtils.endsWith(impt, "*")) {
+      String pkg = impt.substring(0, impt.length() - 2);
+      System.err.printf("importing package: %s ...\n", pkg);
+      CollectionUtil.getInterpreter().getNameSpace().importPackage(pkg);
+    } else {
+      String className = impt;
+      System.err.printf("importing class: %s ...\n", className);
+      CollectionUtil.getInterpreter().getNameSpace().importClass(className);
+    }
+  }
+  return impts;
+}
+
+ 

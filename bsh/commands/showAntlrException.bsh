@@ -1,0 +1,42 @@
+
+
+
+public static CharSequence showAntlrException(org.antlr.v4.runtime.NoViableAltException ex) {
+  StringBuilder sb = new StringBuilder();
+  org.antlr.v4.runtime.CommonToken offTok = ex.offendingToken;
+  int offIndex = offTok.getStartIndex();
+  Object lex = offTok.getTokenSource();
+  Object in = lex.getInputStream();
+  in.reset();
+  lex.reset();
+  in.seek(Math.max(offIndex-250, 0)); 
+  
+  for (int i=0; (tok = lex.nextToken()).getStartIndex() < offIndex+250; ++i) {
+    
+    String suffix = (tok.getText().indexOf('\n') != -1)
+      ? String.format("\u001b[0;36m%d\u001b[1;34m|\u001b[0m ", tok.getLine())
+      : null;
+    
+    if (tok.getStartIndex() == offTok.getStartIndex()) {
+      sb.append(dumpMembers.colorize(tok.getText(), "1;31"));
+      
+    } else if (tok.getStartIndex() >= offTok.getStartIndex() - 80
+            && tok.getStopIndex() <= offTok.getStopIndex())
+    {
+      sb.append(dumpMembers.colorize(tok.getText(), "1;33"));
+      
+    } else {
+      sb.append(tok.getText()); 
+    }
+    
+    if (suffix != null) sb.append(suffix);
+  };
+  return sb;  
+};
+
+public static CharSequence showAntlrException(org.antlr.v4.runtime.misc.ParseCancellationException ex) {
+  return showAntlrException(
+    (org.antlr.v4.runtime.NoViableAltException) ex.getCause()
+  );
+};
+

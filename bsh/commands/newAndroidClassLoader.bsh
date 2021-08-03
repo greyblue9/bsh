@@ -1,0 +1,7 @@
+
+
+
+public static AndroidClassLoader newAndroidClassLoader() { if (Thread.currentThread().getContextClassLoader().getClass().getName().equals("dalvik.system.XClassLoader")) { AndroidClassLoader acl = new AndroidClassLoader(new File("/data/local/tmp_clazzes"), Thread.currentThread().getContextClassLoader().originalLibraryPath, Thread.currentThread().getContextClassLoader(), Thread.currentThread().getContextClassLoader().asURLClassLoader().toURL()); return acl; }; return null; };
+
+
+

@@ -1,0 +1,44 @@
+import android.sec.clipboard.data.file.WrapFileClipData;
+import android.sec.clipboard.data.ClipboardData;
+import android.sec.clipboard.data.list.ClipboardDataBitmap;
+
+
+public static Triple[] getRawClips(boolean includePics) {
+  ObjectInput ois = new ObjectInputStream(
+    MarkableFileInputStream.from(
+      "/data/clipboard/clips.info_temp"
+    )
+  ); 
+  List<WrapFileClipData> wcl = (List) ois.readObject();
+  
+  Triple[] entries = new Triple[wcl.size()];
+  Iterator it = wcl.iterator();
+  int cidx = -1;
+  while (it.hasNext()) {
+    cidx += 1;
+    WrapFileClipData wfcd = it.next();
+    ClipboardData cdat = wfcd.getClipData();
+    Object data;
+    if (cdat instanceof ClipboardDataBitmap) {
+      if (! includePics) {
+        cidx -= 1;
+        System.err.printf("Skipping bitmap: %s\n", cdat);
+        continue; 
+      }
+      data = cdat;
+    } else {
+      data = cdat.GetText();
+    }
+    entries[cidx] = Triple.of(
+      wfcd, cdat, data
+    );
+  }
+  return Arrays.copyOfRange(entries, 0, cidx + 1);
+}
+
+
+public static Triple[] getRawClips() {
+  return getRawClips(false);
+}
+
+

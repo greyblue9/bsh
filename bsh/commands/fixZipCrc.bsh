@@ -1,0 +1,36 @@
+public static boolean fixZipCrc(String shouldBeHex32, String badCrcHex32, byte[] zipBytes) {
+  int embeddedCrc = (int) (Long.parseLong(shouldBeHex32, 16) & 0xFFFFFFFFL);
+  byte[] bytesEmbCrc = new java.math.BigInteger(Integer.toString(Integer.reverseBytes(embeddedCrc), 16), 16).toByteArray();
+  if (bytesEmbCrc.length > 4)
+    bytesEmbCrc = Arrays.copyOfRange(bytesEmbCrc, bytesEmbCrc.length - 4, bytesEmbCrc.length);
+  /*"should be"*/
+  int actualCrc = (int) (Long.parseLong(badCrcHex32, 16) & 0xFFFFFFFFL);
+  byte[] bytesActCrc = new java.math.BigInteger(Integer.toString(Integer.reverseBytes(actualCrc), 16), 16).toByteArray();
+  if (bytesActCrc.length > 4)
+    bytesActCrc = Arrays.copyOfRange(bytesActCrc, bytesActCrc.length - 4, bytesActCrc.length);
+  /*"bad crc"*/
+  int crcOffset = ByteUtil.indexOf(zipBytes, bytesEmbCrc);
+  if (crcOffset == -1) {
+    throw new RuntimeException(String.format("CRC value \"%s\" not found; ensure length is 8 (2 hex digits per byte) as returned by unzip -oXVK command.", shouldBeHex32));
+  }
+  int startOfLocalHdr = crcOffset - 14;
+  System.err.println(HexDump.dump(zipBytes, startOfLocalHdr, 255));
+  boolean validHeader = ((char) zipBytes[startOfLocalHdr] == 'P' && (char) zipBytes[startOfLocalHdr + 1] == 'K');
+  if (validHeader) {
+    String hdrTypeStr = String.format("%04X", (zipBytes[startOfLocalHdr + 2] << 8) | zipBytes[startOfLocalHdr + 3]);
+    String kind = "0304".equals(hdrTypeStr) ? "local file header" : ("0506".equals(hdrTypeStr) ? "end of central directory" : String.format("unrecognized header: PK%s", hdrTypeStr));
+    boolean isLocal = "0304".equals(hdrTypeStr);
+    if (isLocal) {
+      System.err.printf("Valid start of %s found at offset %d\n", kind, startOfLocalHdr);
+      System.arraycopy(bytesActCrc, 0, zipBytes, crcOffset, 4);
+      return true;
+    } else {
+      throw new RuntimeException(String.format("Found bytes %s, but they appear to be part of the EOCD record (%s), not local file header (%s): %s", shouldBeHex32, "0506", "0304", hdrTypeStr));
+    }
+  } else {
+    throw new RuntimeException(String.format("Found bytes %s, but they do not appear to be part of a zip record structure.", shouldBeHex32));
+  }
+  return false;
+}
+
+ 

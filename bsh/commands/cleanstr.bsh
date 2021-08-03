@@ -1,0 +1,3 @@
+
+public static String cleanstr(CharSequence orig) { if (orig.indexOf('\n') == -1) orig = orig.concat("\n"); Map nl = new NumberedLines(TextUtil.catv(TextUtil.colorrm(orig))).getLineMap(); int[] badLineNos = ArrayUtils.toPrimitive(RealArrayMap.toMap(nl.entrySet().filter("\\^|M-")).keySet().toArray(Integer.class)); Map lm2 = null; (lm2 = new NumberedLines(orig).getLineMap()).size(); SortedMap lm2w = new TreeMap(); lm2w.putAll(lm2); for (int j=0, jlen=badLineNos.length; j<jlen; ++j) { int badLineNo = badLineNos[j]; Boolean didRemove = Boolean.valueOf(lm2w.remove(Integer.valueOf(badLineNo)) != null); System.err.printf("removing line %d ... %s\n", badLineNo, didRemove); }; return StringUtils.join(lm2w.values(),"\n"); };
+

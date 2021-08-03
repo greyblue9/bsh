@@ -1,0 +1,51 @@
+public static Map<String__bytearr> parseTombstone(String path) {
+  String s = new String(java.nio.file.Files.readAllBytes(Paths.get("/data/media/0/stk.txt")), java.nio.charset.StandardCharsets.UTF_8);
+  Matcher mchr = Pattern.compile("((?:^|\n)( *[a-zA-Z0-9_$ ]* (?:near|around) [^:]*:)|    ([0-9a-f]{8} ((?:([0-9a-f]{8}) ?)*))) *(?=$|\n)", Pattern.DOTALL).matcher("");
+  List<List> lineMatches = s.matchLines(mchr.pattern().pattern()).indexed().select(FunctionUtil.bind("return m -> { m.getValue()[1] != null? m.getValue()[1]: m.getValue()[3]; }"));
+  List<Pair> stackPairs = new ArrayList();
+  List curBlock = new ArrayList();
+  String curLabel = null;
+  List workList = lineMatches.clone();
+  workList.add("end:");
+  for (String pt : lineMatches) {
+    if (pt.indexOf(':') != -1) {
+      if (curBlock.size() != 0) {
+        stackPairs.add(Pair.of(StringUtils.substringBeforeLast(curLabel, ":"), new java.math.BigInteger(StringUtils.join(curBlock, "").replace(" ", ""), 16).toByteArray()));
+        curBlock.clear();
+      }
+      curLabel = pt;
+      continue;
+    }
+    curBlock.add(pt);
+  }
+  Map labelledMemory = RealArrayMap.toMap(stackPairs);
+  return labelledMemory;
+}
+
+ 
+
+public static Map<String__bytearr> parseTombstone(String path) {
+  String s = new String(java.nio.file.Files.readAllBytes(Paths.get(path)), java.nio.charset.StandardCharsets.UTF_8);
+  Matcher mchr = Pattern.compile("((?:^|\n)( *[a-zA-Z0-9_$ ]* (?:near|around) [^:]*:)|    ([0-9a-f]{8} ((?:([0-9a-f]{8}) ?)*))) *(?=$|\n)", Pattern.DOTALL).matcher("");
+  List<List> lineMatches = s.matchLines(mchr.pattern().pattern()).indexed().select(FunctionUtil.bind("return m -> { m.getValue()[1] != null? m.getValue()[1]: m.getValue()[3]; }"));
+  List<Pair> stackPairs = new ArrayList();
+  List curBlock = new ArrayList();
+  String curLabel = null;
+  List workList = lineMatches.clone();
+  workList.add("end:");
+  for (String pt : lineMatches) {
+    if (pt.indexOf(':') != -1) {
+      if (curBlock.size() != 0) {
+        stackPairs.add(Pair.of(StringUtils.substringBeforeLast(curLabel, ":"), new java.math.BigInteger(StringUtils.join(curBlock, "").replace(" ", ""), 16).toByteArray()));
+        curBlock.clear();
+      }
+      curLabel = pt;
+      continue;
+    }
+    curBlock.add(pt);
+  }
+  Map labelledMemory = RealArrayMap.toMap(stackPairs);
+  return labelledMemory;
+}
+
+ 

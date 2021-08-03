@@ -1,0 +1,41 @@
+import java.util.Map.Entry;
+public static void mapClassPathJre2() {
+  Map urlToPossibleLoaderMap = mapClassPathJre();
+  if (ClassPathUtil.classpathMap == null) {
+    ClassPathUtil.mapClassPath();
+  }
+  for (Entry ent : urlToPossibleLoaderMap.entrySet()) {
+    URL url = ent.getKey();
+    String path = PathInfo.getPathInfo(url).path;
+    if (ClassPathUtil.classpathMap.containsKey(path))
+      continue;
+    Object loader = ent.getValue();
+    if (loader != null && (loader.getClass().getName().equals("sun.misc.URLClassPath$JarLoader") || loader.getClass().getName().equals("sun.misc.URLClassPath$Loader"))) {
+      boolean isJarLoader = (loader.getClass().getName().equals("sun.misc.URLClassPath$JarLoader"));
+      ZipFile jf = (isJarLoader) ? Reflector.invokeOrDefault(loader, "getJarFile", new Object[0]) : Reflect.getfldval(loader, "jarfile");
+      if (jf == null) {
+        URLConnection conn = url.openConnection();
+        if (!(conn instanceof JarURLConnection)) {
+          ClassPathUtil.classpathMap.put(PathInfo.getPathInfo(url).path, new String[0]);
+          continue;
+        }
+        jf = conn.getJarFile();
+        Reflect.setfldval(loader, "jarfile", jf);
+        if (isJarLoader) {
+          Field fld = loader.getClass().getSuperclass().getDeclaredField("jarfile");
+          fld.setAccessible(true);
+          Reflect.setfldval(fld, "modifiers", Integer.valueOf(((Integer) Reflect.getfldval(fld, "modifiers")).intValue() & (~Modifier.FINAL)));
+          fld.set(loader, jf);
+        }
+      }
+      if (jf == null)
+        continue;
+      String path = PathInfo.getPathInfo(url).path;
+      String[] classNames = ClassInfo.getClassNamesFromEntries(jf).toArray(new String[0]);
+      Log.d("mapClassPathJRE", "Read %d classes from [%s]", classNames.length, path);
+      ClassPathUtil.classpathMap.put(path, classNames);
+    }
+  }
+}
+
+ 

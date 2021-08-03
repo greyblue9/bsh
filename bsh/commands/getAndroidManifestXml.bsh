@@ -1,0 +1,80 @@
+import jadx.core.dex.nodes.RootNode;
+import jadx.core.xmlgen.BinaryXMLParser;
+import jadx.core.xmlgen.ParserStream;
+import jadx.core.utils.files.InputFile;
+import jadx.core.xmlgen.entry.ValuesParser;
+import jadx.core.codegen.CodeWriter;
+import jadx.api.ResourceType;
+import jadx.api.ResourceFile;
+import jadx.api.JadxDecompiler;
+import libcore.io.IoUtils;
+import org.jf.dexlib2.writer.pool.DexPool;
+import org.jf.dexlib2.dexbacked.DexBackedDexFile;
+import org.jf.dexlib2.iface.ClassDef;
+import org.jf.dexlib2.writer.io.FileDataStore;
+
+
+
+public static String getAndroidManifestXml(String apkPath) {
+  byte[] manifestBytes = ZipUtil.toByteArray(apkPath, "AndroidManifest.xml");
+  String xmlstr = execCmdFilter(
+    new String[]{ "AxmlPrinter", "-" },
+    manifestBytes
+  ).toString().replace(" >", "");
+  return xmlstr;
+};
+
+
+public static String getAndroidManifestXml(Map parts) {
+  Collection<ClassDef> rClassDefs = parts.get("ClassDefs");
+  //byte[] dexBytes = parts.get("classes.dex");
+  byte[] mfBytes = parts.get("AndroidManifest.xml");
+  /*byte[] arscBytes = parts.get("resources.arsc");
+  File tmpApkFile = parts.get("File");
+  ZipFile zf = parts.get("ZipFile");
+  
+  File tmpDir = PosixFileInputStream.createTemporaryDirectory(".tmpjadx_out");
+  
+  JadxArgs args = new JadxArgs(tmpDir);
+  if (tmpApkFile != null && tmpApkFile instanceof File
+   && tmpApkFile.exists())
+  {
+    System.err.printf("tmpApkFile = %s and exists()\n", tmpApkFile);
+    InputFile infile = new InputFile(tmpApkFile);
+    RootNode root = new RootNode(args);
+    JadxDecompiler dc = new JadxDecompiler(args);
+    dc.loadFile(tmpApkFile);
+    root.load(Arrays.asList(infile));
+    
+    ResourceFile resfile
+      = new ResourceFile(dc, "AndroidManifest.xml", ResourceType.XML);  
+    BinaryXMLParser xmlp = new BinaryXMLParser(root);
+    ParserStream pstream = new ParserStream(new ByteArrayInputStream(mfBytes));
+    xmlp.is = pstream;
+    
+    Map resIdMap = new TreeMap();
+    resIdMap.putAll(xmlp.styleMap);
+    resIdMap.putAll(xmlp.localStyleMap);
+    resIdMap.putAll(xmlp.resNames);  
+    ValuesParser valp = new ValuesParser(new String[8000], resIdMap);
+    xmlp.valuesParser = valp;
+    
+    if (CodeWriter.INDENT_CACHE[1].length() == 4) {
+      CodeWriter.INDENT = "  ";
+      CodeWriter.INDENT_CACHE =
+      CodeWriter.INDENT_CACHE.select(FunctionUtil.bind(
+        "return m -> { StringUtils.repeat(\"  \", m.length() / 4); }"
+      ));
+    }
+    
+    CodeWriter cw = xmlp.parse(new ByteArrayInputStream(mfBytes));
+    String axmlOut = cw.getCodeStr();
+    return axmlOut;
+  }
+  */
+  
+  return getApkManifestXml(mfBytes);
+}
+
+
+

@@ -1,0 +1,23 @@
+public static Set<Class> getCommonSuperclasses(List<Class> types) { 
+
+  List ifaces = new ArrayList(); 
+  Set commonIfaces = new HashSet(); 
+  int i = -1; 
+  for (Object item: types) { 
+    ++i; 
+    ifaces.add(ClassInfo.getInterfaces((Class) (item instanceof Class? (Class) item: item.getClass()))); 
+    if (i == 0) { 
+      commonIfaces.addAll(ClassInfo.getInterfaces(item instanceof Class? (Class) item: item.getClass())); 
+
+      continue;
+    };
+    clsIfaces = ifaces.get(ifaces.size() - 1); 
+    Iterator it = commonIfaces.iterator(); 
+    while (it.hasNext()) { 
+      if (clsIfaces.contains(_iface = it.next())) { continue; }; 
+      it.remove();
+    }
+  };
+  return commonIfaces;
+}
+

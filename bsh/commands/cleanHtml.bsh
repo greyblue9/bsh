@@ -1,0 +1,128 @@
+
+import org.jsoup.nodes.*;
+
+public static Element cleanHtml(Element doc) {
+  return doc;
+  Element[] iTags = doc.select("i").toArray(new Element[0]);
+  Log.d("cleanHtml", "%d <i> tags in document", iTags.length);
+  
+  for (Element iTag: iTags) {
+    List<Node> childNodes = iTag.childNodes();
+    Node firstChild = CollectionUtil.firstOrDefault(childNodes);
+    if (firstChild == null) {
+      iTag.remove();
+    } else if (childNodes.size() == 1) {
+      iTag.parent().replaceChild(iTag, firstChild);
+    } else {
+    }
+  }
+  
+  int pidx = -1;
+  Matcher mchr = Pattern.compile("^( ?(?:>|&gt;) ?)+", Pattern.DOTALL)
+    .matcher("");
+  Matcher codeMchr = Pattern.compile(
+    "\n *@ |@@|\\$\\(|\\$\\{|\\$(?:r[0-9]|pc|lr), " +
+    "|#(?:ifn?def|define)|insertions\\(\\+\\)| \\|\\| "+
+    "| \\&\\& |\\([^;]*\\);|void [a-zA-Z0-9_]+ ?\\(|if ?\\(| = [^\n;]*;",
+    Pattern.DOTALL
+  ).matcher("");
+  Matcher olMchr = Pattern.compile(
+    "((<li >((?!</li>).)*</li>)(?:[\t\r\n ]|<br ?/?>)*)",
+    Pattern.DOTALL
+  ).matcher("");
+  Matcher linkMchr = Pattern.compile(
+    "(https?://[^\\[\\]()\"\u0039\\s<>][^\\[\\]()\"\u0039\\s<>]*)",
+    Pattern.DOTALL
+  ).matcher("");
+  
+  for (Element pre: doc.select("pre").toArray(new Element[0])) {
+    
+    ++pidx;
+    /*
+    Iterable<TextNode> texts = pre.childNodes().typeFilter(TextNode.class);
+    Log.d("cleanHtml", "%d text nodes in <pre> #%d", texts.size(), pidx+1);
+    String text = texts.invokeAll("getWholeText").join("").toString();
+    */
+    
+    String text = pre.text();
+    text = text.replaceAll(
+      "\n[\t> ]*---(?: cut here ---| CUT HERE ---| Cut Here ---)?([^\n<]*)",
+      "\n\n\n$1"
+    ) .replaceAll(
+      "( [A-Z]?(?:[A-Z]+|a-z]+)[?.:]| [Ww]rote:) *(\n\n* *[A-Z]|\\s*On )",
+      "$1\n\n\n$2"
+    );
+    
+    List<String> lines = new ArrayList(Arrays.asList(
+      text.split("\n")
+    ));
+    List<Pair> pairs = lines.select(FunctionUtil.bind(
+      "return m -> { " +
+      "  Pair.of(" +
+      "    size(" +
+      "      StringUtils.splitByWholeSeparatorPreserveAllTokens(m, \"> \")" +
+      "    )," +
+      "    mchr.reset(m).replaceAll(\"\")" +
+      "  );" +
+      "}",
+      "mchr", mchr,
+      Math.class, StringUtils.class, Pair.class
+    ));
+    
+    StringBuilder sb = new StringBuilder();
+    List<Pair> paras = new ArrayList();
+    List<String> curpara = new ArrayList();
+    Pair p = null;
+    for (int i = 0, len = pairs.size(); i <= len; ++i) {
+      if (i < len) p = pairs.get(i);
+      String line = p.getValue();
+      int lvl = p.getKey();
+      int last = (i > 0) ? pairs.get(i - 1).getKey() : 0;
+      if (last != lvl) {
+        paras.add(Pair.of(last, curpara.join("\n").toString()));
+        
+        sb.append(
+          StringEscapeUtils.escapeHtml4(
+            curpara.join("\n").toString())
+          )
+          ;
+        curpara.clear();
+      }
+      curpara.add(line);
+    }
+    /*paras.removeAll(
+      paras.filter(
+        Pattern.compile("^[^a-zA-Z]*$", Pattern.DOTALL)
+      )
+    );*/
+    String html = linkMchr.reset(
+    olMchr.reset(
+      sb.toString()/*
+      paras.select(FunctionUtil.bind(
+      "return m -> { " +
+      "  String.format(" +
+      "    \"%1$s<%4$s>%2$s</%4$s>%3$s\\n\\n\", " +
+      "    StringUtils.repeat(\"<ul>\", m.getKey())," +
+      "    StringEscapeUtils.escapeHtml4(m.getValue()), " +
+      "    StringUtils.repeat(\"</ul>\", m.getKey()), " +
+      "    codeMchr.reset(m.getValue()).find() ? \"pre\": \"p\"  " +
+      "  );" +
+      "}",
+      "codeMchr", codeMchr,
+      String.class, StringUtils.class, StringEscapeUtils.class
+    ))*/
+    .join("\n\n").toString()
+      .replace("\\n", "\n")
+      .replaceAll("\\b([A-Z_][A-Z_0-9]*_[A-Z_0-9]*|[a-zA-Z_][a-zA-Z0-9_$]*\\(\\))\\b", "<var class=\"hljs java\"><span class=\"hljs-constant\">$1</span></var>")
+      .replaceAll("\\b(?<=[^<>])(_*[a-z][a-zA-Z_0-9]*(?:_[a-zA-Z0-9_$]*|\\(\\)))\\b", "<tt>$1</tt>")
+      .replaceAll("\n( *)([0-9]\\. )([^\n]*)", "\n$1<li >$3</li>"))
+     .replaceAll("<ol>$1</ol>\n$3")
+    
+      .replaceAll("</ol>(.{0,125})<ol>", "$1")
+    ).replaceAll("<a href=\"$1\">$1</a>");
+    pre.tagName("section");
+    pre.html(html);
+  }
+  return doc;
+}
+

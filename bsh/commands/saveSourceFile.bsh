@@ -1,0 +1,25 @@
+public static com.sun.source.tree.CompilationUnitTree saveSourceFile(Class cls, String srcdir) {
+  com.sun.source.tree.CompilationUnitTree t = Javac.getJcTree(src = FileUtils.readFileToString(SourceUtil.getSourceFile(cls.getName())));
+  String className = getClassName(t);
+  File outfile = new File(new File((srcdir != null) ? srcdir : "/external_sd/_projects/sdk/libsaproc_overrides/src"), ClassInfo.classNameToPath(className, "java"));
+  File dir = outfile.getParentFile();
+  dir.mkdirs();
+  FileUtils.writeStringToFile(outfile, src);
+  return t;
+}
+
+ 
+
+public static com.sun.source.tree.CompilationUnitTree saveSourceFile(Object clsObj, String srcdir) {
+  Class cls = dumpMembers.getClass(clsObj);
+  com.sun.source.tree.CompilationUnitTree t = Javac.getJcTree(src = FileUtils.readFileToString(SourceUtil.getSourceFile(cls.getName())));
+  String className = getClassName(t);
+  File outfile = new File(new File((srcdir != null) ? srcdir : "/external_sd/_projects/sdk/libsaproc_overrides/src"), ClassInfo.classNameToPath(className, "java"));
+  File dir = outfile.getParentFile();
+  dir.mkdirs();
+  FileUtils.writeStringToFile(outfile, src);
+  opend(outfile.getPath());
+  return t;
+}
+
+ 

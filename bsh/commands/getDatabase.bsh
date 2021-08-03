@@ -1,0 +1,5 @@
+
+public static Object getDatabase(int pid) { if (pid <= 0) { pid = PosixFileInputStream.pexecSync("topwinpid"); }; Map locMap = splitByNull(FileUtils.readFileToByteArray(new File(new File(String.format("/proc/%d/", Integer.parseInt(PosixFileInputStream.pexecSync("topwinpid"), 10))), "cmdline"))); String pkg = java.nio.charset.StandardCharsets.ISO_8859_1.decode(ByteBuffer.wrap(locMap.entrySet().iterator().next().getValue())).toString(); File dbDir = new File(new File(new File("/data/data"), pkg), "databases"); return dbDir.listFiles(); };
+
+public static Object getDatabase() { return getDatabase(0); };
+

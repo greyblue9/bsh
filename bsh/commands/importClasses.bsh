@@ -1,0 +1,7 @@
+
+
+
+public static String[] importClasses(String query) { String[] names = ClassPathUtil.searchClassPath(Pattern.compile(String.format("(?:%s)[^$]*\\.[^$.]{2,}$", Pattern.quote(query)))); return names.select(FunctionUtil.bind("return m -> { ns.importClass(m); return m; }", "ns", CollectionUtil.getInterpreter().getNameSpace())); }
+
+
+

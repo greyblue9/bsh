@@ -1,0 +1,53 @@
+
+
+public static File pubxmlToTsv(String pubxmlPath) {
+  org.jsoup.nodes.Element doc = Jsoup.parseBodyFragment(
+    FileUtils.readFileToString(
+      new File(pubxmlPath), java.nio.charset.StandardCharsets.UTF_8
+    )
+  );
+  org.jsoup.nodes.Element body = doc.body();
+  Iterable<Element> bodyChildElements = body.children();
+  org.jsoup.nodes.Element root
+    = (bodyChildElements.size() == 1)
+        ? bodyChildElements.iterator().next()
+        : body;
+  Iterable<Element> specs = root.select("public");
+  List<String> lines = new ArrayList<String>();
+  StringBuilder sb = new StringBuilder(1024);
+  int i = 0;
+  for (org.jsoup.nodes.Element spec : specs) {
+    String name = spec.attr("name").replace('.', '_');
+    String type = spec.attr("type");
+    String idHex = spec.attr("id");
+    int id = (idHex.startsWith("0x"))
+      ? Integer.parseInt((String) idHex.subSequence(2, idHex.length()), 16)
+      : Integer.parseInt(idHex, 10);
+    String identifier = String.format("android.R.%s.%s", type, name);
+    lines.add(String.format("0x%1$X\t%2$s", id, identifier));
+    lines.add(String.format("%1$d\t%2$s",   id, identifier));
+    sb.append(identifier).append('\n');
+    if ((++i) % 30 == 0) {
+      System.err.println(sb);
+      sb.setLength(0);
+    }
+  }
+  String tsvOutput = StringUtils.join(lines, "\n");
+  File outFile = new File(
+    new File(pubxmlPath).getCanonicalFile().getAbsoluteFile().getParentFile(),
+    String.format(
+      "%s.tsv",
+      org.apache.commons.io.FilenameUtils.removeExtension(
+        new File(pubxmlPath).getName())
+    )
+  );
+  writeFile(outFile.getPath(), tsvOutput);
+  System.err.printf(
+    "Wrote \"%s\" (%d bytes)\n", outFile.getPath(), outFile.length()
+  );
+  return outFile;
+}
+
+
+
+

@@ -1,0 +1,147 @@
+
+import java.util.regex.*;
+import java.util.*;
+
+public static String[] findRelatedClasses(String name) { 
+
+  String regex = name.replaceAll(
+    "^(.+)\\.[^.]+$", "^$1[\\$.].*$"
+  );
+  Pattern ptrn = Pattern.compile(regex);
+  System.err.println(ptrn.toString());
+  
+  HashSet<String> all = new HashSet<String>(); 
+  String[] sourcePaths 
+    = ClassPathUtil.findClassSource(name).toArray(new String[0]);     
+  Map cpm = ClassPathUtil.mapClassPath();
+  
+  for (String sourcePath: sourcePaths) {
+    String[] matches = StringCollectionUtil.toStringFilter(
+      cpm.get(sourcePath), new Pattern[]{ ptrn }
+    ); 
+    Collections.addAll(all, matches);
+  } 
+  ArrayList<String> allSorted = new ArrayList<String>(all); 
+  Collections.sort(allSorted);
+  
+  return allSorted.toArray(new String[0]);
+}
+
+/*
+public static void findRelatedClasses(Object o) { 
+  
+  findRelatedClasses(o, false);
+}
+*/
+
+public static void findRelatedClasses(Object o) { 
+  
+  java.lang.Class cls = null;
+  java.lang.String name = null;
+  
+  if (o instanceof bsh.ClassIdentifier) {
+    cls = ((bsh.ClassIdentifier) o).getTargetClass(); 
+    name = cls.getName();
+  } else if (o instanceof java.lang.Class) {
+    name = cls.getName();
+  } else if (o instanceof java.lang.Object[]) {
+    for (java.lang.Object item: (java.lang.Object[]) o) {
+      findRelatedClasses(item);
+    }
+  } else if (o instanceof java.util.Collection) {
+    for (java.lang.Object item: (java.util.Collection) o) {
+      findRelatedClasses(item);
+    }
+  } else if (o != null) {
+    cls = o.getClass();
+    name = cls.getName();
+  } else {
+    System.err.printf(
+      "[ERROR] findRelatedClasses: Unhandled input: %s\n",
+      o != null? String.valueOf(o): "<null>"
+    );
+    return Void.TYPE;
+  }
+  
+}
+
+public static findRelatedClasses(Object o, boolean asList) { 
+
+  java.util.ArrayList list;
+  if (asList) list = new java.util.ArrayList(); 
+  
+  Class cls = null;
+  if (o instanceof bsh.ClassIdentifier) {
+    cls = ((bsh.ClassIdentifier) o).getTargetClass(); 
+  } else if (o == null) {
+    if (asList) return list;
+    else return;
+  } else if (!(o instanceof java.lang.Class)) {
+    cls = o.getClass(); 
+  }
+  
+  
+  com.android.dex.Dex dex = org.d6r.ClassInfo.getDex(cls);
+  
+  java.lang.String clsname = cls.getName(); 
+  java.lang.String clsnname 
+    = java.lang.String.format("L%s", clsname.replace('.', '/')); 
+  java.lang.String pkgnname = clsnname.substring(
+    0, clsnname.lastIndexOf('/')); 
+  
+  for (java.lang.String name: dex.typeNames()) { 
+    
+    if (name.indexOf(pkgnname) == -1) continue; 
+    java.lang.String mname = name.replace('/', '.').substring(1, name.length() - 1); 
+    
+    if (! asList) System.out.println(mname); 
+    if   (asList) list.add(mname);
+  } 
+  
+  if (asList) return list;
+}
+
+
+
+
+public static String[] findRelatedClasses(Class ciCls, boolean includeInner) 
+{
+  com.android.dex.Dex ciDex = org.d6r.ClassInfo.getDex(ciCls); 
+  if (ciDex == null) {
+    System.err.printf("[WARN] findRelatedClasses: Returning empty class name list because %s.org.d6r.ClassInfo.getDex(class) returned null\n", ciCls.getName()); 
+    return new String[0];     
+  }
+  DexUtil du = new DexUtil(ciDex);
+  String[] ciNames = du.getClassNames();
+  
+  return includeInner
+    ? ciNames.sort()
+    : StringCollectionUtil.toStringFilter(
+        ciNames, "^[^$]*$"
+      ).sort();
+}
+
+
+public static String[] findRelatedClasses(Class ciCls) {
+  return findRelatedClasses((Class) ciCls, false); 
+}
+
+public static String[] findRelatedClasses(bsh.ClassIdentifier ci, boolean includeInner) {
+  Class ciCls 
+    = (Class) ((bsh.ClassIdentifier) ci).getTargetClass(); 
+  return findRelatedClasses((Class) ciCls, includeInner);
+}
+
+public static String[] findRelatedClasses(bsh.ClassIdentifier ci) {
+  Class ciCls 
+    = (Class) ((bsh.ClassIdentifier) ci).getTargetClass(); 
+  return findRelatedClasses((Class) ciCls);
+}
+
+
+
+
+
+
+public static Set<String> findRelatedClasses(String name) { Deque q = new ArrayDeque(); Set<String> visited = new TreeSet(); String className = name.replace('.', '/'); q.offer(className); Set<String> dest = new org.apache.commons.collections4.set.ListOrderedSet<String>(); while (! q.isEmpty()) { className = q.poll(); if (visited.contains(className)) continue; visited.add(className); org.netbeans.modules.classfile.ClassFile nbcf = new org.netbeans.modules.classfile.ClassFile(org.cojen.classfile.TypeLoaderClassFileDataLoader.getDefault().getClassData(className), false); dest.add(nbcf.getName().getInternalName().replace('/', '.')); for (org.netbeans.modules.classfile.ClassName ifaceCn: Iterables.concat(nbcf.getInnerClasses().select(FunctionUtil.eval("""return m -> { m.getName(); }""")), nbcf.getInterfaces(), Arrays.asList(nbcf.getSuperClass()))) { if (ifaceCn == null) continue; if (! q.contains(ifaceCn.getInternalName())) q.offer(ifaceCn.getInternalName());  dest.add(ifaceCn.getInternalName().replace('/', '.')); }; System.out.println(className); }; return dest; }
+

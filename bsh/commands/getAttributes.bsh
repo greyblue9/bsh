@@ -1,0 +1,85 @@
+import java.util.Map.Entry;
+
+public static Map getAttributes(TypeReference enclosingTypeRef) {
+
+  Map attrInfosMap = new TreeMap();
+  
+  TypeDefinition enclosingTypeDef 
+    = (enclosingTypeRef instanceof TypeDefinition)
+        ? (TypeDefinition) enclosingTypeRef
+        : (TypeDefinition) enclosingTypeRef.resolve();
+  
+  // Map<String, MethodDefinition>
+  Map typeNameToEnclosingMethodDefMap
+    = getEnclosingMethods(enclosingTypeDef);
+  
+  Map attributeMap = getEnclosingMethods(typeNameToEnclosingMethodDefMap);
+  
+  for (Entry attributeEntry: attributeMap.entrySet()) {
+    
+    String enclosedTypeName = attributeEntry.getKey();
+    
+    CtClass enclosingCtClass
+      = attributeEntry.getValue().getKey().getKey();
+    ClassFile enclosingClassFile
+      = enclosingCtClass.getClassFile();
+    MethodInfo enclosingMethodInfo
+      = attributeEntry.getValue().getKey().getValue();
+    
+    CtClass enclosedCtClass = attributeEntry.getValue().getValue().getKey();
+    ClassFile enclosedClassFile = enclosedCtClass.getClassFile(); 
+    
+    
+    List<EnclosingMethodAttribute> existingEmAttrs =
+      enclosedClassFile.getAttributes().typeFilter(
+        EnclosingMethodAttribute.class
+      );
+    Iterator<EnclosingMethodAttribute> it = existingEmAttrs.iterator();
+    EnclosingMethodAttribute existingEmAttr = (it.hasNext())
+      ? it.next()
+      : null;
+    
+    EnclosingMethodAttribute newEmAttr
+      = attributeEntry.getValue().getValue().getValue();
+    
+    List<Pair> titleAndAttrPairs = new ArrayList<Pair>();
+    if (existingEmAttr != null) {
+      titleAndAttrPairs.add(Pair.of("existing", existingEmAttr));
+    }
+    titleAndAttrPairs.add(Pair.of("new", newEmAttr));
+    
+    
+    List<Map> attrInfos = new ArrayList<Map>();
+    attrInfosMap.put(enclosedTypeName, attrInfos);
+    
+    for (Entry attrEntry: titleAndAttrPairs) {
+      String attrTitle = attrEntry.getKey();
+      EnclosingMethodAttribute attr = attrEntry.getValue();
+      System.out.printf(
+        "\n\n\u001b[1;35m%s\u001b[0m\n\u001b[1;32m%s\u001b[0m: %s\n\n", 
+        enclosedTypeName, attrTitle, attr
+      );
+      System.out.println(Debug.ToString(attr));
+      int methodIndex = attr.methodIndex();
+      Map attrInfo = RealArrayMap.toMap(
+        "kind", attrTitle,
+        "enclosed", enclosedCtClass,
+        "enclosingMethodInfo", enclosingMethodInfo,
+        "attr", attr,
+        "constPool", attr.constPool,
+        "class", Pair.of(attr.classIndex(), attr.className()),
+        "method", Triple.of(
+          methodIndex,
+          (methodIndex != 0)? attr.methodName(): "",
+          (methodIndex != 0)? attr.methodDescriptor(): ""
+        )
+      );
+      attrInfos.add(attrInfo);
+      printMap(attrInfo);
+    };
+  };
+  return attrInfosMap;
+}
+
+
+

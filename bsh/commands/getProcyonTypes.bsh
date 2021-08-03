@@ -1,0 +1,2 @@
+public static Collection getProcyonTypes() { return CollectionUtil.flatten(CollectionUtil.flatten(com.strobel.decompiler.DecompilerContext.allContexts.select(FunctionUtil.eval("""return m -> { new(HashSet, m.allBodyBuilders.values()); }"""))).uniq().select(FunctionUtil.eval("""return m -> { m._astBuilder._typeDeclarations.keySet(); }"""))).uniq().select(FunctionUtil.eval("""return m -> { m.replace('/', '.'); }""")); }
+

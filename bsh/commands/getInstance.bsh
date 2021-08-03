@@ -1,0 +1,14 @@
+import java.util.Map.Entry;
+
+public static Object getInstance(Class c) { 
+  Map im = CollectionUtil.dbg.get("im");
+  if (im == null) CollectionUtil.dbg.put("im", (im = new HashMap()));
+  
+  for (Entry e: im.entrySet()) { 
+    if (e.getValue() == null) continue;
+    if (c.isAssignableFrom(e.getValue().getClass())) return e.getValue();
+  };
+  return null;
+}
+
+

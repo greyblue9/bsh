@@ -1,0 +1,497 @@
+
+
+import com.strobel.decompiler.languages.java.ast.EntityDeclaration;
+import com.strobel.assembler.metadata.MethodDefinition;
+import com.strobel.assembler.ir.attributes.LineNumberTableAttribute;
+import com.strobel.decompiler.languages.java.LineNumberTableConverter;
+import com.strobel.decompiler.languages.java.ast.Expression;
+import com.strobel.decompiler.languages.java.ast.Statement;
+import com.strobel.decompiler.languages.java.ast.EntityDeclaration;
+import com.strobel.decompiler.languages.java.ast.AstNode;
+import com.strobel.assembler.metadata.MethodReference;
+import com.strobel.decompiler.languages.java.ast.JavaModifierToken;
+import com.strobel.decompiler.languages.java.ast.ParameterDeclaration;
+import com.strobel.decompiler.languages.java.JavaOutputVisitor;
+import com.strobel.decompiler.ITextOutput;
+import com.strobel.decompiler.DecompilerSettings;
+import com.strobel.decompiler.languages.LineNumberPosition;
+import java8.util.Optional;
+
+public static Pair getAccess(Iterable<JavaModifierToken> modifierTokens) { 
+  Map accMap = ConstUtil.constantMap(
+    com.sun.tools.classfile.AccessFlags.class, "ACC_", -1
+  ).inverse(); 
+  int accValue = 0; 
+  StringBuilder sb = new StringBuilder(36).append("ACC_");
+  List<String> accStrs = new ArrayList<String>();
+  for (JavaModifierToken modifierToken: modifierTokens) {
+    String name = modifierToken.getModifier().toString(), 
+      key = sb.delete(4, sb.length()).append(name.toUpperCase()).toString(); 
+    int value = accMap.containsKey(key)
+      ? accMap.get(key).intValue()
+      : 0; 
+    accStrs.add(name);
+    accValue |= value;
+  }; 
+  String accStr = (accValue != 0)
+    ? sb.delete(0, sb.length()).append(StringUtils.join(accStrs, ' ')).append(' ').toString()
+    : " ";
+  return Pair.of(accStr, accValue);
+}
+
+
+public static List<ParameterDeclaration> 
+getBareParams(Collection<ParameterDeclaration> paramsCollection)
+{
+  List params = new ArrayList(); 
+  for (ParameterDeclaration pdecl: paramsCollection) { 
+    ParameterDeclaration copy
+      = CollectionUtil.clone(pdecl, new IdentityHashSet(), 0, 1); 
+    copy.getModifiers().clear();
+    params.add(copy);    
+  };
+  return params;
+}
+
+
+public static MethodDefinition getMethodDefinition(AstNode ast) {
+  Map dataMap = ProcyonUtil.getDataMap(ast);
+  MethodDefinition md = dataMap.get(ProcyonUtil.METHOD_DEFINITION);
+  if (md != null) return md;
+  
+  MemberReference mRef = dataMap.get(ProcyonUtil.MEMBER_REFERENCE);
+  String onFailReason;
+  if (mRef != null) {
+    md = (MethodDefinition) ProcyonUtil.getResolver(mRef).resolve(mRef);
+    onFailReason = String.format(
+      "The MethodDefinition could not be resolved from the %s [%s]",
+      mRef.getClass().getSimpleName(), mRef
+    );
+  } else {
+    onFailReason = String.format(
+      "At least one is required to link the AST to the class metadata, but "
+      + "both were absent or null. The dataMap was: %s", dataMap
+    );
+  }
+  if (md != null) return md;
+  
+  String memberHeader = String.format(
+    "%s%s%s(%s)", 
+    getAccess(ast.getModifiers()).getKey(),
+    (ast instanceof EntityDeclaration)? ast.getReturnType().concat(" "): "", 
+    ast.getName(),
+    StringUtils.join(getBareParams(ast.getParameters()), ", ")
+  );
+  throw new RuntimeException(String.format(
+    "Cannot obtain MethodDefinition from %s DataStore for member: %s; "
+    + "The keySet contains neither %s nor %s (Cause: %s).",
+    ast.getClass().getSimpleName(), memberHeader, 
+    ProcyonUtil.METHOD_DEFINITION, ProcyonUtil.MEMBER_REFERENCE,
+    onFailReason
+  ));
+}
+
+
+
+
+
+
+public static Object decompileMethodLines(Throwable exc, boolean transform) {
+  StackTraceElement ste = getRootCauseStackTrace(exc);
+  return decompileMethodLines(ste, transform);
+}
+
+public static Object decompileMethodLines(Throwable exc) {
+  return decompileMethodLines(exc, false);
+}
+
+
+public static Object decompileMethodLines(StackTraceElement ste,
+boolean transform) 
+{
+  Member mtd = getRootCauseMethod(ste);
+  int exLno = ste.getLineNumber();
+  return decompileMethodLines(mtd, exLno, transform);
+}
+
+public static Object decompileMethodLines(StackTraceElement ste) {
+  return decompileMethodLines(ste, false);
+}
+
+
+public static Object decompileMethodLines(Member mtd, int exLno, 
+boolean transform) 
+{ 
+  MethodDefinition md = ProcyonUtil.getMethodDefinition(mtd);
+  return decompileMethodLines(md, exLno, transform);
+}
+
+public static Object decompileMethodLines(Member mtd, boolean transform) { 
+  return decompileMethodLines(mtd, 0, transform);
+}
+
+public static Object decompileMethodLines(Member mtd, int exLno) {
+  return decompileMethodLines(mtd, exLno, false);
+}
+
+public static Object decompileMethodLines(Member mtd) {
+  return decompileMethodLines(mtd, false);
+}
+
+
+public static Object decompileMethodLines(MethodDefinition md, int exLno,
+boolean transform) 
+{
+  EntityDeclaration ast = ProcyonUtil.decompileToAst(md);
+  return decompileMethodLines(ast, exLno, transform);
+}
+
+public static Object decompileMethodLines(MethodDefinition md,
+boolean transform) {
+  return decompileMethodLines(md, 0, transform);
+}
+
+public static Object decompileMethodLines(MethodDefinition md, int exLno) {
+  return decompileMethodLines(md, exLno, false);
+}
+
+public static Object decompileMethodLines(MethodDefinition md) {
+  return decompileMethodLines(md, false);
+}
+
+
+
+public static Object decompileMethodLines(EntityDeclaration ast,
+boolean transform) 
+{
+  return decompileMethodLines(ast, 0, transform);
+}
+
+public static Object decompileMethodLines(EntityDeclaration ast, int exLno) {
+  return decompileMethodLines(ast, exLno, false);
+}
+
+public static Object decompileMethodLines(EntityDeclaration ast) {
+  return decompileMethodLines(ast, false);
+}
+
+public static Object decompileMethodLines(EntityDeclaration ast, int exLno, boolean transform) 
+{
+  return decompileMethodLines(ast, exLno, transform, Optional.empty());
+}
+
+public static decompileMethodLines(EntityDeclaration ast,Optional<Integer> extraLvl)
+{
+  return decompileMethodLines(ast, 0, false, extraLvl);
+}
+
+ 
+public static Object decompileMethodLines(EntityDeclaration ast, int exLno, boolean transform, Optional<Integer> extraLevel) 
+{
+  int lvlExtraDetail = extraLevel.isPresent()? extraLevel.get().intValue(): 0;
+  
+  EntityDeclaration origAst = ast;
+  if (transform) {
+    System.err.println("Cloning ...");
+    ast = CollectionUtil.clone(ast, new IdentityHashSet(), 0, 14);
+    System.err.println("Transforming clone ...");    
+    ast = ProcyonUtil.transform(ast);
+  }
+  
+  MethodDefinition md = getMethodDefinition(ast);
+  
+  if (exLno != 0) System.err.printf("exc line -> %d\n", exLno);
+  
+  ITextOutput to = ProcyonUtil.newPlainTextOutput();
+  DecompilerSettings ds = ProcyonUtil.getDecompilerSettings();
+  JavaOutputVisitor v = new JavaOutputVisitor(to, ds);
+  
+  ast.acceptVisitor(v, null);
+  NumberedLines nl = new NumberedLines(to.toString());
+  SortedMap lm = new TreeMap();
+  lm.putAll(nl.getLineMap());
+  
+  List lnops = new ArrayList(Arrays.asList(CollectionUtil.toArray(
+    v.getLineNumberPositions()
+  )));
+  
+  Set done = new TreeSet();
+  List inserts = new ArrayList();
+  int lastend = 0;
+  String[] lns = nl.getLines();
+  int[] lens = nl.getLengths();
+  int[] lstarts = new int[lens.length];
+  
+  int total = 0;
+  for (int i=0; i<lns.length; ++i) {
+    lstarts[i] = total;
+    total += lens[i] + 1;
+  }
+  
+  
+  
+  if (! lnops.isEmpty()) {
+    for (LineNumberPosition lnop: lnops) {
+      int astLno = lnop.getEmittedLine();
+      // if (done.contains(astLno)) continue;
+      done.add(astLno);
+      String etext = lns[astLno-1];
+      int lno = lnop.getOriginalLine();
+      int col = lnop.getEmittedColumn();
+      int start = lstarts[astLno-1] + (col-1);
+      int end = lstarts[astLno-1] + lens[astLno-1];
+      
+      if (lvlExtraDetail >= 5) System.err.printf(
+          "@ line %d, col %d  [%d - %d]:\n%s\n" +
+          "  lno = %s; exLno = %s; (%s)\n",
+          astLno, col,start, end, etext, lno, exLno,
+          (lno instanceof Integer && exLno instanceof Integer &&
+            ((Integer) lno).equals(exLno))? " -  ": " <=="
+      );
+      
+      inserts.add(Triple.of(
+        start,
+        start,
+        String.format(
+          (lno == exLno)
+            ? "\u001b[1;41;37m%d \u001b[0;31m(\u001b[1;31m"
+            : "\u001b[1;36m%d \u001b[0;36m(\u001b[0m",
+          lno
+        )
+      ));
+      
+      inserts.add(Triple.of(
+        end,
+        end,
+        (lno == exLno)
+          ? "\u001b[0;31m)\u001b[0m"
+          : "\u001b[0;36m)\u001b[0m"
+      ));
+  
+      lastend = end;
+      
+      if (lvlExtraDetail >= 1) lm.put(
+        lnop.getEmittedLine(),
+        String.format("\u001b[1;36m%4d\u001b[0m  %s", lno, etext)
+      );
+    };
+    
+    String text = to.toString();
+    
+    Collections.sort(inserts, FunctionUtil.delegate(
+      Comparator.class, 
+        "return (a, b) -> { "
+      + "  Integer.compare(a.getLeft(), b.getLeft());"
+      + "}"
+    ));
+    
+    StringBuilder sb = new StringBuilder(text.length() * 2);
+    int lastend = 0;
+    
+    for (Triple p: inserts) {
+      int start = p.getLeft();
+      int end = p.getMiddle();
+      String str = p.getRight();
+      
+      if (start > lastend) {
+        sb.append(text.subSequence(lastend, start));
+      }
+      sb.append(str).append(text.subSequence(start, end));
+        
+      lastend = end;
+    }
+    sb.append(text.subSequence(lastend, text.length()));
+    
+    if (lvlExtraDetail < 2) return sb.toString(); /*.replaceAll(
+      String.format("%c", 0x0d), ""
+    ); //.replace("    ", "  ");*/
+  }
+  
+  
+  
+  
+  
+  
+  LineNumberTableConverter conv // = ProcyonUtil.getLineNumberConverter(md);
+    = getLineNumberConverter(md);
+  
+  System.err.printf("AST = %s ...\n", ast);
+  
+  
+  Collection<SE> stmts = new LinkedHashSet<SE>();
+  
+
+  AstNode[] nodes = CollectionUtil.toArray(ast.getBody().getDescendants());
+  Collections.addAll(stmts, nodes.typeFilter(Expression.class));  
+  Collections.addAll(stmts, nodes.typeFilter(Statement.class));
+  
+
+    AstNode[] nodes2 = CollectionUtil.toArray(
+      origAst.getBody().getDescendants()
+    );
+    Collections.addAll(stmts, nodes2.typeFilter(Expression.class));  
+    Collections.addAll(stmts, nodes2.typeFilter(Statement.class));
+
+  
+  ast = (transform)? ast: origAst;
+  
+  if (lvlExtraDetail >= 4) System.err.printf(
+    "  - Total descendants: %d\n" +
+    "  - Usable Nodes: %d\n",
+    nodes.length, stmts.size()
+  );
+  
+  Function selectFn = FunctionUtil.delegate(
+    Function.class,
+    Arrays.asList(
+      Pair.of("_conv", conv),
+      Pair.of("_NEWLINE", "\n")
+    ),
+    new String[]{ 
+      "return (m) -> { "
+      + "  var offs = m.getOffset();"
+      + "  if (offs == -37) return null;"
+      + "  return Triple.of("
+      + "    StringUtils.substringBefore("
+      + "      m.getText().trim(),"
+      + "      _NEWLINE"
+      + "    ).replaceAll(\"^final \", \"\"),"
+      + "    m,"
+      + "    _conv.getLineForOffset(offs)"
+      + "  ); "
+      + "}"
+    }
+  );
+  SelectTransformer//<AstNode, Triple<String, AstNode, Integer>>
+    selector = new SelectTransformer.Default(selectFn);
+  System.err.printf("\nselectFn = %s\n", selectFn);
+  
+  List<Triple> stmtLines = selector.select(stmts);
+  
+  String text = ast.getText();
+  
+  Collections.sort(stmtLines, FunctionUtil.delegate(
+    Comparator.class, 
+      "return (a, b) -> { "
+    + "  return Integer.compare("
+    + "    b.getRight(), a.getRight()"
+//  + "    b.getLeft().length(), b.getRight().length()"
+    + "  );"
+    + "}"
+  ));
+  
+  boolean foundExLine = false;
+  List<Triple> inserts = new ArrayList<Triple>(stmtLines.size() * 2);
+  List<Pair> unmatched = new ArrayList<Pair>();
+  int lastend = 0;
+  
+  // unset("mchr");
+  Set seen = new TreeSet();
+  
+  outer:
+  for (Triple e: stmtLines) {
+    // Interpreter.DEBUG = Interpreter.TRACE = false; 
+    // System.err.println("TOP");
+    String etext = StringUtils.substringBeforeLast(e.getLeft(), ";");
+    AstNode stmt = e.getMiddle();    
+    int lno = ((Integer) e.getRight()).intValue();
+    
+    
+    Matcher mchr = TextUtil.indexMatcher(text, etext, 0);
+    
+    if (mchr == null || ! mchr.matchFound) {
+      unmatched.add(Pair.of(etext, lno));
+      if (lvlExtraDetail >= 5) System.err.printf(
+        "*** UNUSABLE line %d (mchr == %s): [%s]\n", mchr, lno, etext
+      );
+      continue outer;
+    }
+    try {
+      if (mchr.matchFound == false) continue outer;
+      boolean found;
+      do {
+        found = mchr.matchFound;
+        if (!found) found = mchr.find();
+        if (!found) {
+          continue outer;
+        }
+        if (seen.contains(Pair.of(mchr.start(0), mchr.end(0)))) {
+          if (lvlExtraDetail >= 5) System.err.printf(
+            "skipping already seen: %s\n", etext
+          );
+          
+          if (! (found = mchr.find())) { 
+            if (lvlExtraDetail >= 5) System.err.printf(
+              "*** UNUSABLE line %d: [%s]\n", lno, etext
+            );
+            continue outer;
+          }
+        } else {
+          break outer;
+        }
+      } while (found);
+    } catch (IllegalStateException ise) {
+      unmatched.add(mchr);
+      System.err.println(ise);
+      continue outer;
+    }
+    
+    if (Reflect.getfldval(mchr, "matchFound") == false)  continue;
+    int start = mchr.start(0);
+    int end = mchr.end(0);
+    seen.add(Pair.of(start, end));
+    
+    inserts.add(Triple.of(
+      start,
+      start,
+      String.format(
+        (lno == exLno)
+          ? "\u001b[1;41;37m%d \u001b[0;31m(\u001b[1;31m"
+          : "\u001b[1;36m%d \u001b[0;36m(\u001b[0m",
+        lno
+      )
+    ));
+    
+    inserts.add(Triple.of(
+      end,
+      end,
+      (lno == exLno)
+        ? "\u001b[0;31m)\u001b[0m"
+        : "\u001b[0;36m)\u001b[0m"
+    ));
+    
+    if (lvlExtraDetail >= 4) System.err.printf("etext = [%s]\n", mchr.group(0));
+    lastend = end;
+  }
+  
+  Collections.sort(inserts, FunctionUtil.delegate(
+    Comparator.class, 
+      "return (a, b) -> { "
+    + "  Integer.compare(a.getLeft(), b.getLeft());"
+    + "}"
+  ));
+  
+  StringBuilder sb = new StringBuilder(text.length() * 2);
+  int lastend = 0;
+  
+  for (Triple p: inserts) {
+    int start = p.getLeft();
+    int end = p.getMiddle();
+    String str = p.getRight();
+    
+    if (start > lastend) {
+      sb.append(text.subSequence(lastend, start));
+    }
+    sb.append(str).append(text.subSequence(start, end));
+      
+    lastend = end;
+  }
+  sb.append(text.subSequence(lastend, text.length()));
+  
+  return sb.toString().replaceAll(
+    String.format("%c", 0x0d), ""
+  ).replace("    ", "  ");
+  
+}
+
+

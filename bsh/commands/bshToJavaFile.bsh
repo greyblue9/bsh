@@ -1,0 +1,18 @@
+public static JavaFile bshToJavaFile(String path) { 
+
+  String str = "";
+  if ((new File(path)).exists()) {
+    str = readstring(path);
+  } else {
+    str = path;
+  }
+
+  int importsEnd = str.indexOf(";", str.lastIndexOf("import ") + 1) + 1; imports = str.substring(0, importsEnd); methods = str.substring(importsEnd); this.interpreter.setShowResults(true); 
+  
+  imports += "\nimport dalvik.system.*;\nimport java.io.*;\nimport java.util.*;\nimport java.lang.reflect.*;\nimport bsh.*;\nimport bsh.classpath.*;\nimport java.net.*;\n";
+  
+  mtchr = java.util.regex.Pattern.compile("import ([^;]*)\\.\\*;").matcher(imports); this.interpreter.setShowResults(false); for (int start = 0; mtchr.find(start); start = mtchr.end()) { m = mtchr.group(1); String[] fqnames = ClassPathUtil.searchClassPath(String.format("^%s[\\.$].*$", m)); for (String  fqname: fqnames) { int lastdot = fqname.lastIndexOf('.'); if (lastdot == -1) continue;  String shortName = fqname.substring(lastdot+1); methods = methods.replaceAll(String.format("([^A-Za-z\\.$])%s([^A-Za-z\\.$])", shortName), String.format("$1%s$2", fqname));    } }  String classSrc = String.format("\n\npublic class TempClass1 {\n\n  %s\n  \n}\n", methods.replaceAll("\n", "\n  ").replaceAll("^[\r\n\t ]+", "")); writeFile("/data/media/0/TempClass1.java", classSrc);  System.out.println(classSrc); JavaFile jf = new JavaFile("/data/media/0/TempClass1.java"); javafile.api.visitor.DumpVisitor dv = new javafile.api.visitor.DumpVisitor(); jf.cu.accept(dv, Void); String code = getfldval(dv, "printer").toString(); System.out.println(code);
+
+  return jf;
+
+}

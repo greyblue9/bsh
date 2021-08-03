@@ -1,0 +1,30 @@
+
+
+
+
+
+
+
+
+
+public static Map parseStackDumpThreadInfo(String stackDumpStringValue) { String patStr = "d:sysTid=([0-9]+)\\b d:nice=(-?[0-9]+)\\b s:sched=([0-9/]+)\\b s:cgrp=([^ ]*)\\b d:handle=(-?-[0-9]+)\\b s:state=([^ ]+)\\b s:schedstat=\\( ([0-9]+) ([0-9]+) ([0-9]+) ([0-9]+) \\)\\b d:utm=([0-9]+)\\b d:stm=([0-9]+)\\b d:core=([0-9]+)"; String[] patParts = patStr.split("\\\\b "); Map tInfo = new TreeMap(); for (String patPart: patParts) { String datatype = StringUtils.substringBefore(patPart, ":"); patPart = patPart.substring(datatype.length() + ":".length()); String keyName = StringUtils.substringBefore(patPart, "="); Pattern kvPtrn = Pattern.compile(new StringBuilder(patPart).insert(0, "\\b").append("\\b").toString(), Pattern.DOTALL); Matcher kvMchr = kvPtrn.matcher(stackDumpStringValue); if (!kvMchr.find()) continue; String rawVal = kvMchr.group(1); Object objVal = null; if ("d".equals(datatype)) objVal = Long.parseLong(rawVal, 10); else if ("x".equals(datatype)) objVal = Long.parseLong(rawVal, 16); else if ("s".equals(datatype)) objVal = (String) rawVal; else objVal = rawVal; tInfo.put(keyName, objVal); }; return tInfo; };
+
+
+
+
+
+
+
+
+
+public static Map parseStackDumpThreadInfo(String stackDumpStringValue) { String patStr = "d:sysTid=([0-9]+)\\b d:nice=(-?[0-9]+)\\b s:sched=([0-9/]+)\\b s:cgrp=([^ ]*)\\b d:handle=(-?-[0-9]+)\\b s:state=([^ ]+)\\b s:schedstat=\\( ([0-9]+) ([0-9]+) ([0-9]+) ([0-9]+) \\)\\b d:utm=([0-9]+)\\b d:stm=([0-9]+)\\b d:core=([0-9]+)"; String[] patParts = patStr.split("\\\\b "); Map tInfo = new TreeMap(); for (String patPart: patParts) { String datatype = StringUtils.substringBefore(patPart, ":"); patPart = patPart.substring(datatype.length() + ":".length()); String keyName = StringUtils.substringBefore(patPart, "="); Pattern kvPtrn = Pattern.compile(new StringBuilder(patPart).insert(0, "\\b").append("\\b").toString(), Pattern.DOTALL); Matcher kvMchr = kvPtrn.matcher(stackDumpStringValue); if (!kvMchr.find()) continue; String rawVal = kvMchr.group(1); Object objVal = null; if ("d".equals(datatype)) objVal = Long.parseLong(rawVal, 10); else if ("x".equals(datatype)) objVal = Long.parseLong(rawVal, 16); else if ("s".equals(datatype)) objVal = (String) rawVal; else objVal = rawVal; tInfo.put(keyName, objVal); }; return tInfo; };
+
+
+
+
+
+
+public static Map parseStackDumpThreadInfo(String stackDumpStringValue) { Map lkup = CollectionUtil.dbg.get("PROCESS_STATE_LOOKUP"); if (lkup == null) CollectionUtil.dbg.put("PROCESS_STATE_LOOKUP", (lkup = RealArrayMap.toMap(Pair.of('<', "high-priority process"), Pair.of('D', "uninterruptible sleep"), Pair.of('L', "has pages locked into memory"), Pair.of('N', "low-priority task"), Pair.of('R', "runnable"), Pair.of('S', "sleeping"), Pair.of('T', "traced or stopped"), Pair.of('W', "has no resident pages"), Pair.of('Z', "zombie")))); String patStr = "d:sysTid=([0-9]+)\\b d:nice=(-?[0-9]+)\\b s:sched=([0-9/]+)\\b s:cgrp=([^ ]*)\\b d:handle=(-?-[0-9]+)\\b s:state=([^ ]+)\\b s:schedstat=\\( ([0-9]+) ([0-9]+) ([0-9]+) ([0-9]+) \\)\\b d:utm=([0-9]+)\\b d:stm=([0-9]+)\\b d:core=([0-9]+)"; String[] patParts = patStr.split("\\\\b "); Map tInfo = new TreeMap(); for (String patPart: patParts) { String datatype = StringUtils.substringBefore(patPart, ":"); patPart = patPart.substring(datatype.length() + ":".length()); String keyName = StringUtils.substringBefore(patPart, "="); Pattern kvPtrn = Pattern.compile(new StringBuilder(patPart).insert(0, "\\b").append("\\b").toString(), Pattern.DOTALL); Matcher kvMchr = kvPtrn.matcher(stackDumpStringValue); if (!kvMchr.find()) continue; String rawVal = kvMchr.group(1); Object objVal = null; if ("d".equals(datatype)) objVal = Long.parseLong(rawVal, 10); else if ("x".equals(datatype)) objVal = Long.parseLong(rawVal, 16); else if ("s".equals(datatype)) objVal = (String) rawVal; else objVal = rawVal; tInfo.put(keyName, objVal); }; return tInfo; };
+
+
+

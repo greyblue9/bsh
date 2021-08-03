@@ -1,0 +1,214 @@
+import java.util.Map.Entry;
+import org.jf.util.ClassFileNameHandler;
+import org.jf.baksmali.BaksmaliOptions;
+import org.jf.baksmali.Baksmali;
+import org.jf.dexlib2.dexbacked.DexBackedOdexFile;
+import org.jf.dexlib2.Opcodes;
+import org.jf.dexlib2.analysis.ClassProvider;
+import org.jf.dexlib2.iface.ClassDef;
+import com.android.dex.Dex;
+import org.jf.dexlib2.dexbacked.DexBackedDexFile;
+import org.jf.dexlib2.analysis.ClassPath;
+import libcore.io.IoUtils;
+import org.jf.dexlib2.util.SyntheticAccessorResolver;
+import org.jf.dexlib2.analysis.InlineMethodResolver;
+
+public static Object deodex(File odexInputFile, File apkFile) {
+  
+  File outdir = PosixFileInputStream.createTemporaryDirectory(String.format(
+    "baksmali_%010x", 
+    ((long) (System.currentTimeMillis() << 37)) 
+    ^ (long) (
+      (new Random().nextLong() 
+        ^ System.currentTimeMillis() * new Random().nextLong())
+    ) >> 1
+  ));
+  
+  if (!outdir.exists()) outdir.mkdirs(); 
+  System.err.println("outdir = " + outdir.getPath());
+  
+  Opcodes opcodes = Opcodes.forApi(21);
+  
+  ClassFileNameHandler cfnh = new ClassFileNameHandler(
+    new File(odexInputFile.getParent()), "odex"
+  );
+  
+  Map cache = new HashMap();
+  
+  ClassProvider cp = new ClassProvider() {
+    public ClassDef getClassDef(String className) {
+      System.err.printf("getClassDef: [%s]\n", className);
+      ClassDef classDef;
+      if (bsh.Capabilities.classExists(className)) {
+        try {
+          Class cls = Class.forName(
+            className, false, Thread.currentThread().getContextClassLoader()
+          );
+          Dex dex = org.d6r.ClassInfo.getDex(cls);
+          DexBackedDexFile df;
+          if (cache.containsKey(dex)) {
+            df = cache.get(dex);
+          } else { 
+            df = new DexBackedDexFile(opcodes, dex.getBytes());
+            cache.put(dex, df);
+          }
+          System.err.printf(
+            "  - class [%s] loaded from dex: %s\n", className, dex
+          );
+          Collection<ClassDef> classDefs = df.getClasses();
+          System.err.printf("     - df.getClasses() -> %s\n", classDefs);
+          Collection<ClassDef> filtClassDefs = classDefs.filter(
+            filtStr = className.replaceAll("[./$]", ".") + "$"
+          );
+          //System.err.printf("     - filtStr = [%s]\n", filtStr);
+          if (! filtClassDefs.isEmpty()) {
+            classDef = filtClassDefs.iterator().next();
+            System.err.printf("  --> returning (%s) %s\n",
+              classDef.getClass().getName(), classDef);          
+            return classDef;
+          }
+          System.err.printf("      - filtered [%s] to empty collection\n",
+            filtStr);
+        } catch (Throwable e) { System.err.println(e); }
+      }
+      
+      ByteArrayInputStream data 
+        = (ByteArrayInputStream)
+            org.cojen.classfile.TypeLoaderClassFileDataLoader
+              .getDefault().getClassData(className);
+      System.err.printf(
+        "  + ClassFileDataLoader returned: %s\n", data
+      );
+      byte[] clsBytes = IOUtils.toByteArray(data);
+      System.err.printf(
+        "class [%s] loaded from ClassFileDataLoader\n", className
+      );
+      System.err.printf("    - byte[] clsBytes -> length = %d\n",
+        clsBytes.length);
+      byte[] dexBytes = AndroidClassLoader.dexBytes(
+        className, clsBytes, false
+      ).getKey();        
+      System.err.printf("      - byte[] dexBytes -> length = %d\n",
+        dexBytes.length);
+      DexBackedDexFile df = new DexBackedDexFile(
+        Opcodes.forApi(21), dexBytes
+      );
+      Collection<ClassDef> classDefs = df.getClasses();
+      System.err.printf("df.getClasses() -> %s\n", classDefs);
+      Collection<ClassDef> filtClassDefs = CollectionUtil2.filter(
+        classDefs, 
+        Pattern.compile(
+          filtStr = "^" + className.replaceAll("[./$]", ".") + "$"
+        ).matcher("")
+      );
+      if (! filtClassDefs.isEmpty()) {
+        classDef = filtClassDefs.iterator().next();
+        System.err.printf("  --> returning (%s) %s\n",
+          classDef.getClass().getName(), classDef);          
+        return classDef;
+      }
+      System.err.printf("      - filtered [%s] to empty collection\n",
+        filtStr);
+      return null;
+    }
+  };
+  
+  ClassPath classpath = new ClassPath(Arrays.asList(cp), false, 0);
+  BaksmaliOptions bopts = new BaksmaliOptions();
+  
+  Reflect.setfldval(bopts, "ignoreErrors", Boolean.TRUE);
+  Reflect.setfldval(bopts, "outputDebugInfo", Boolean.TRUE);
+  bopts.debugInfo = true;
+  Reflect.setfldval(bopts, "useLocalsDirective", Boolean.TRUE);
+  bopts.localsDirective = true;
+  Reflect.setfldval(bopts, "useSequentialLabels", Boolean.TRUE);
+  bopts.sequentialLabels = true;
+  bopts.deodex = true;
+  bopts.apiLevel = 21;
+  bopts.allowOdex = true;
+  Reflect.setfldval(bopts, "experimental", Boolean.TRUE);
+  Reflect.setfldval(bopts, "checkPackagePrivateAccess", Boolean.FALSE);
+  Reflect.setfldval(bopts, "outputDirectory", outdir.getPath());
+  bopts.classPath = classpath;
+  int jobs = 4;
+  Reflect.setfldval(bopts, "jobs", jobs);
+  /*
+  bopts.bootClassPathDirs = Arrays.asList("/system/framework"); 
+  bopts.bootClassPathEntries = Arrays.asList(
+    new File("/system/framework").list().select(
+      FunctionUtil.eval("return m -> { '/system/framework/' + m; }")
+    ).filter("^((?!\\.apk).)*\\.jar$")
+  );
+  */
+
+  
+  DexBackedOdexFile odex = DexBackedOdexFile.fromInputStream(
+    opcodes, new ByteArrayInputStream(FileUtils.readFileToByteArray(
+      odexInputFile
+    ))
+  );
+  
+  Iterable<ClassDef> classDefs = odex.getClasses();
+  CollectionUtil.getInterpreter().setu("odex", odex);
+  System.err.printf(
+    "odex file: %s [%d classes]\n",
+    odex, CollectionUtil.toArray(classDefs).length
+  );
+
+  SyntheticAccessorResolver sar = new SyntheticAccessorResolver(
+    opcodes, classDefs
+  );
+  bopts.syntheticAccessorResolver = sar;
+  
+  int odexVersion = 36;
+  InlineMethodResolver imr
+    = InlineMethodResolver.createInlineMethodResolver(odexVersion);
+  bopts.inlineResolver = imr;
+  
+  Map/*<Integer, String>*/ resourceIds = new HashMap();
+  if (apkFile != null) {
+    resourceIds = apkToResMap(apkFile.getPath());
+  }
+  bopts.resourceIds = resourceIds;
+  
+  
+  Baksmali.disassembleDexFile(
+    odex,
+    outdir,
+    jobs,
+    bopts
+  );
+  
+  return gatherOutputFiles(outdir, "smali");
+}
+
+public static Triple/*<File, File[], Entry[]>*/
+gatherOutputFiles(File outdir, String extension)
+{
+  Matcher ESCAPE_MCHR = Pattern.compile("([$^?\\(\\)\\[\\]])").matcher("");
+  
+  String escPath
+    = ESCAPE_MCHR.reset(outdir.getPath()).replaceAll("\\\\$1");
+  String escExt
+    = ESCAPE_MCHR.reset(extension).replaceAll("\\\\$1");
+  String regex = String.format("^%s.+\\.%s$", escPath, escExt);
+  
+  File[] smaliFiles 
+    = findFiles.iterate(outdir, 10, regex).toArray(new File[0]);
+  
+  Pair[] pairs = smaliFiles.select(FunctionUtil.eval(StringUtils.join(
+    Arrays.asList(
+      "return m -> { ",
+      "  org.apache.commons.lang3.tuple.Pair#of( ",
+      "    StringUtils.substringAfter( ",
+      "      m.getPath(), outdir.getPath().concat(\"/\")",
+      "    ), ",
+      "    FileUtils.readFileToByteArray(m) ",
+      "  ); ",      
+      "}"
+    ), "\n"
+  )));
+  Entry[] entries
+    = Arrays.copyOf(pairs, pairs.length, Entry[].class);
+  return Triple.of(outdir, smaliFiles, entries);
+}

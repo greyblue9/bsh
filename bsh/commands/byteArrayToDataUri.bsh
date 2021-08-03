@@ -1,0 +1,29 @@
+
+
+public static String byteArrayToDataUri(byte[] data) {
+  Charset CS = Charset.forName("US-ASCII");
+  
+  String type = (ByteUtil.indexOf(data, "JFIF".getBytes(CS)) != -1)
+    ? "image/jpeg"
+    : (ByteUtil.indexOf(data, "IHDR".getBytes(CS)) != -1)
+        ? "image/png"
+        : "image/gif";
+  
+  System.err.printf(
+    "byteArrayToDataUri(data: byte[%d]): type -> %s\n", data.length, type
+  );
+   
+  StringBuilder sb = new StringBuilder((int) (data.length * 1.667))
+    .append("data:")      
+    .append(type)
+    .append(";base64,")
+    .append(Base64.encode(data));
+  
+  System.err.printf(
+    "byteArrayToDataUri(data: byte[%d]): result: %s (%d chars)\n",
+     data.length, sb.subSequence(0, Math.min(sb.length(), 48)), sb.length()
+  );
+  
+  return sb.toString();
+}
+

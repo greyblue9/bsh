@@ -1,0 +1,81 @@
+import jadx.core.dex.nodes.RootNode;
+import jadx.core.xmlgen.BinaryXMLParser;
+import jadx.core.xmlgen.ParserStream;
+import jadx.core.utils.files.InputFile;
+import jadx.core.xmlgen.entry.ValuesParser;
+import jadx.core.codegen.CodeWriter;
+import jadx.api.ResourceType;
+import jadx.api.ResourceFile;
+import jadx.api.JadxDecompiler;
+import libcore.io.IoUtils;
+import org.jf.dexlib2.writer.pool.DexPool;
+import org.jf.dexlib2.dexbacked.DexBackedDexFile;
+import org.jf.dexlib2.iface.ClassDef;
+import org.jf.dexlib2.writer.io.FileDataStore;
+
+
+
+public static Map getApkParts(byte[] apkBytes) {
+  return getApkParts(apkBytes, "resources.arsc");
+}
+
+public static Map getApkParts(byte[] apkBytes, String arscName) {
+  return getApkParts(apkBytes, arscName, "AndroidManifest.xml");
+}
+
+public static Map getApkParts(byte[] apkBytes, String arscName,
+String mfName) {
+  return getApkParts(apkBytes, arscName, mfName, true);
+}
+
+public static Map getApkParts(byte[] apkBytes, String arscName, String mfName, boolean multiDex)
+{
+  File tmpDir = PosixFileInputStream.createTemporaryDirectory(".tmp_apkparts");
+  DexPool pool = DexRemix.newDexPool(); 
+  
+  Collection<ClassDef> rClassDefs = new ArrayList<ClassDef>();
+  
+  Matcher classDefMchr = Pattern.compile("/R(\\$.+)?;$").matcher("");
+  for (int cdIdx = 1; cdIdx < (multiDex? 10: 2); ++cdIdx) {
+    String dexEntryName = (cdIdx == 1)
+      ? "classes.dex"
+      : String.format("classes%d.dex", cdIdx);
+    byte[] altDexBytes = ZipUtil.toByteArray(apkBytes, dexEntryName);
+    if (altDexBytes == null) break;
+    System.err.printf("Reading classes from: '%s' ...\n", dexEntryName);
+    DexBackedDexFile dbdf
+      = DexRemix.getDexBackedDexFile(new ByteArrayInputStream(altDexBytes));
+    Collection<ClassDef> filterDefs = dbdf.getClasses().filter(classDefMchr);
+    rClassDefs.addAll(filterDefs);
+    System.err.println(StringUtils.join(filterDefs, "\n"));
+  }
+  for (ClassDef classDef: rClassDefs) {
+    System.err.printf("Interning: '%s' ...\n", classDef.getType());
+    pool.classSection.intern(classDef);
+  }
+  
+  File tmpDexOut = new File(tmpDir, "classes.dex");
+  FileDataStore fds = new FileDataStore(tmpDexOut);
+  pool.writeTo(fds);
+  fds.close();
+  byte[] dexBytes = FileUtils.readFileToByteArray(tmpDexOut);
+  byte[] mfBytes = ZipUtil.toByteArray(apkBytes, mfName);
+  byte[] arscBytes = ZipUtil.toByteArray(apkBytes, arscName);
+  
+  File tmpApkFile = new File(tmpDir, "tmpApkFile.apk");
+  /*ZipFile zf = writeZip(tmpApkFile, RealArrayMap.toMap(
+    "classes.dex", dexBytes,
+    "AndroidManifest.xml", mfBytes,
+    "resources.arsc", arscBytes
+  ));*/
+  return RealArrayMap.toMap(Arrays.asList(
+    Pair.of("classes.dex", dexBytes),
+    Pair.of("AndroidManifest.xml", mfBytes),
+    Pair.of("resources.arsc", arscBytes),
+    Pair.of("ZipFile", new byte[0]),
+    Pair.of( "File", tmpApkFile),
+    Pair.of( "ClassDefs", rClassDefs)
+  ));
+}
+
+

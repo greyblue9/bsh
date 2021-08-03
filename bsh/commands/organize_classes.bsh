@@ -1,0 +1,74 @@
+{
+  public static Map organize_classes(String dirPath, String outZipPath) {
+    dirPath = (dirPath != null) ? PosixFileInputStream.resolve(dirPath) : PosixFileInputStream.cwd();
+    outZipPath = (outZipPath != null) ? (PosixFileInputStream.resolve(outZipPath) != null ? PosixFileInputStream.resolve(outZipPath) : outZipPath) : new File(dirPath, "org_classes.zip").getAbsolutePath();
+    List<File> cfs = findFiles.iterate("./", 12, ".*\\.class");
+    Map zm = RealArrayMap.toMap(cfs.select(FunctionUtil.eval("return m -> { var b = FileUtils.readFileToByteArray(m); return size(b) > 10? Pair.of(ClassInfo.classNameToPath(ClassInfo.getClassName(b), \"class\"), b): null; }")));
+    writeFile(outZipPath, ZipUtil.writeZip(zm));
+    Map ret = new bsh.NameSpace.BindingMap();
+    ret.putAll(zm);
+    return ret;
+  }
+  
+  String TAG = "organize_classes";
+  public static void script_main() {
+    String text = System.getProperty("text");
+    if (text == null) {
+      BufferedReader br = new BufferedReader(
+        new InputStreamReader(System.in, StandardCharsets.ISO_8859_1)
+      );
+      while (br.ready()) {
+        String line = br.readLine();
+        text = line.trim();
+        break;
+      }
+    }
+    
+    String[] args = StringUtils.split(text, " ");
+    
+    Log.d(
+      TAG, 
+      "args = String[]{ %s }", 
+      StringUtils.join(
+        args.select(FunctionUtil.bind("return m -> { TextUtil.str(m); }")),
+        ", "
+      )
+    );
+    for (String arg: args) {
+      if (arg.length() > 0) {
+        if (new File(arg).isDirectory()) {
+          System.setProperty("input.dir", arg);
+          Log.d(TAG, "Input dir: %s", TextUtil.str(arg));
+        } else if (System.getProperty("output.file") == null) {
+          System.setProperty("output.file", arg);
+          Log.d(TAG, "Output file: %s", TextUtil.str(arg));
+        } else {
+          Log.e(
+            TAG, "Unrecognized argument: %s",
+            TextUtil.str(arg)
+          );
+          System.exit(10);
+        }
+      }
+    }
+    organize_classes(
+      System.getProperty("input.dir"),
+      System.getProperty("output.file")
+    );
+  }
+  
+  
+  Object invtype = getBshInvocationTypeId();
+  Log.d(TAG, "invtype_id = [%s]\n", invtype.getValue());
+    // if inside "main" script, like ` if __NAME__ == "main": ` in python
+  if (invtype == INVTYPE_SCRIPT) {
+    Log.INSTANCE.enabledLevels = Integer.parseInt(
+      System.getProperty("log.level", "254")
+    );
+    script_main();
+  }
+  
+  void;
+}
+
+

@@ -1,0 +1,3 @@
+
+public static com.sun.tools.javac.tree.JCTree$JCMethodInvocation rewrite(com.sun.tools.javac.tree.JCTree$JCMethodInvocation minv) { Object tgt = minv.meth.selected; minv.meth.selected = new com.sun.tools.javac.tree.JCTree$JCIdent(nm.get("StreamSupport"), null); minv.meth.name = nm.get("stream"); minv.args = com.sun.tools.javac.util.List.of(tgt); return minv; }
+

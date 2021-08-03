@@ -1,0 +1,7 @@
+
+
+
+public static String getCanonicalPath(String path) { java.nio.file.Path ppath = Paths.get(path); sun.nio.fs.UnixFileSystemProvider pr = Files.provider(Paths.get("/")); sun.nio.fs.UnixFileStore st = pr.getFileStore(ppath); sun.nio.fs.UnixMountEntry ment = st.findMountEntry(); String node = ment.name(), mpt = ment.directory(), nodeRelPath = path.startsWith(mpt)? path.substring(mpt.length()+1): path; List ents =new ArrayList(); for (Object entry: pr.getFileSystem(new java.net.URI("file:/")).getMountEntries()) { if (entry.name().equals(node)) { ents.add(entry); }; }; Object normEnt = ents.sort().uniq().iterator().next(); String normMpt = normEnt.directory(); String normPath = String.format("%s/%s", normMpt, nodeRelPath); return normPath; };
+
+
+

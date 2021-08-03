@@ -1,0 +1,28 @@
+public static String head(String path, int maxLen) {
+  FileDescriptor fd = PosixUtil.open(path, PosixUtil.O_RDONLY, 0);
+  byte[] data = null;
+  libcore.io.StructStat stat = PosixUtil.fstat(fd);
+  long size = stat.st_size;
+  InputStream fis = null;
+  if (size > 0) {
+    fis = new FileInputStream(fd);
+    data = new byte[(int) Math.min(size, maxLen)];
+    IOUtils.readFully(fis, data, 0, data.length);
+    PosixUtil.close(fd);
+    fis.close();
+    String strVal = new String(data, java.nio.charset.StandardCharsets.ISO_8859_1);
+    if (Pattern.compile("^[\\u0009\\u000a\\u0020-\\u007e]*$").matcher(strVal).matches()) {
+      return strVal;
+    } else {
+      return HexDump.dump(data);
+    }
+  }
+  return null;
+}
+
+
+public static String head(String path) {
+  return head(path, 768);
+}
+
+

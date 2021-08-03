@@ -1,0 +1,147 @@
+{
+  boolean exists = bsh.Capabilities.classExists("pxb.android.axml.AxmlReader");
+  if (exists) {
+    for (String _sn: Arrays.asList("AxmlReader")) {
+      this.namespace.importClass("pxb.android.axml.".concat(_sn));
+    }
+  }
+
+  if (!exists) System.err.printf(
+      "Adding to classpath: %s ...\n", appendClassPathFile(
+      "/external_sd/_projects/sdk/android_toolkit/android_toolkit.jar"
+  ));
+  System.out.println(
+    bsh.Capabilities.classExists("pxb.android.axml.AxmlReader")? "OK": "Failed");
+  if (bsh.Capabilities.classExists("pxb.android.axml.AxmlReader")) {
+    for (String _sn: Arrays.asList("AxmlReader")) {
+      this.namespace.importClass("pxb.android.axml.".concat(_sn));
+    }
+  };
+  
+  void;
+}
+
+
+
+
+
+
+public static Object makeDebuggable_old(String apkPath) {
+  Object r = new pxb.android.axml.AxmlReader(
+    ZipUtil.toByteArray(apkPath, "AndroidManifest.xml")
+  );
+  r.accept(axml = new pxb.android.axml.Axml());
+  appNode = axml.firsts[0].children.select(FunctionUtil.bind(
+    "return m -> { m.name == \"application\"? m: null; }"
+  ))[0];
+  attrs = appNode.attrs;
+  attr = new pxb.android.axml.Axml$Node$Attr();
+  attr.name = "debuggable";
+  attr.ns = "http://schemas.android.com/apk/res/android";
+  attr.resourceId = 16842767;
+  attr.type = 18;
+  attr.value = Boolean.TRUE;
+  boolean found = false;
+  for (Object a : attrs) {
+    System.out.printf(
+      "(type %s / %s)  %s:%s [@%08x] = %s\n", 
+      a.type, 
+      ClassInfo.getSimpleName(bsh.Factory.typeof(a.value).getName()),
+      a.ns != null && a.ns.indexOf('/') != -1
+        ? StringUtils.substringAfterLast(a.ns, "/") 
+        : a.ns,
+      a.name, a.resourceId, a.value
+    );
+    if (a.name.equals("debuggable")) {
+      a.value = Boolean.TRUE;
+      found = true;
+      System.err.printf("Found debuggable attribute! %s\n", Debug.ToString(a));
+    }
+  }
+  if (!found) {
+    System.err.printf("Adding attribute: %s ...\n", Debug.ToString(attr));
+    attrs.add(attr);
+  }
+  w = new pxb.android.axml.AxmlWriter();
+  axml.accept(w);
+  w.end();
+  b = w.toByteArray();
+  writeFile("/data/media/0/AndroidManifest.xml", b);
+  File newManifFile = new File("/data/media/0/AndroidManifest.xml");
+  String doit = System.getProperty("doit");
+  if ("true".equals(doit) || System.getenv().get("DOIT") != null) {
+    
+    return actuallyBuildAndInstall(apkPath, newManifFile);
+  }
+  return newManifFile;
+}
+
+
+
+
+
+public static Object makeDebuggable_old() {
+  String apkPath = System.getProperty("input.file");
+  if (apkPath == null) {
+    apkPath = PosixFileInputStream.pexecSync("topwinapk");
+  }
+  return makeDebuggable_old(apkPath);
+}
+
+
+
+public static File actuallyBuildAndInstall(String apkPath, File newManifFile) {
+  File apkFile = new File(apkPath);
+  ZipFile apkZipFile = new ZipFile(apkFile);
+  Map/*<String, byte[]>*/ zm = ZipUtil.mapBytes(apkZipFile);
+  
+  byte[] manifestBytes = FileUtils.readFileToByteArray(newManifFile);
+  zm.put("AndroidManifest.xml", manifestBytes);
+  
+  File apkOutFile = new File(new File("/tm/tmp"), apkFile.getName());
+  File apkOutDir = apkOutFile.getParentFile();
+  if (! apkOutDir.exists() && ! apkOutDir.mkdirs()) throw apkOutDir.mkdirErrno();
+  Object apkOutZipFile = writeZip(apkOutFile, zm);
+  
+  // Sign the intermediate zip file to make final output file (apk)
+  File apkFinalOutFile = new File(
+    new File("/data/media/0/.tmp"),
+    String.format(
+      "%s_s.%s",
+      StringUtils.substringBeforeLast(apkOutFile.getName(), "."),
+      StringUtils.substringAfterLast(apkOutFile.getName(), ".")
+    )
+  );
+  
+  System.err.printf(
+    "Signing the output file '%s' ...\n",
+    apkOutFile.getAbsolutePath()
+  );
+  System.err.printf(
+    "Result: %s\n\n",
+    PosixFileInputStream.pexecSync(
+      "zipsigner",
+      apkOutFile.getAbsolutePath(), apkFinalOutFile.getAbsolutePath()
+    )
+  );
+  
+  System.err.printf(
+    "Installing the output file '%s' ...\n",
+    apkFinalOutFile.getAbsolutePath()
+  );
+  System.err.printf(
+    "Result: %s\n\n",
+    PosixFileInputStream.pexecSync(
+      "installinteractive",
+      apkFinalOutFile.getAbsolutePath()
+    )
+  );
+  return apkFinalOutFile;
+};
+
+
+
+
+
+
+

@@ -1,0 +1,82 @@
+import java.util.Map.Entry;
+{
+  
+import com.strobel.assembler.metadata.ITypeLoader;
+import com.strobel.assembler.metadata.ArrayTypeLoader;
+import com.strobel.assembler.metadata.ClasspathTypeLoader;
+import com.strobel.assembler.metadata.CompositeTypeLoader;
+import com.strobel.assembler.metadata.MetadataSystem;
+  
+  public static void importApkOrDexClasspathEntries() { //;
+    String TAG = "importApkOrDexClasspathEntries";
+    ITypeLoader root = ProcyonUtil.getTypeLoader();
+    ITypeLoader[] typeLoaders = Reflect.getfldval(root, "_typeLoaders");
+    Reflect.setfldval(ProcyonUtil.getMetadataResolver(), "_typeLoader", root);
+    
+    try {
+      List<File> apkFiles = Arrays.asList(CollectionUtil2.filter(
+        ClassInfo.getClassPath().split(":"),
+        Pattern.compile("\\.apk$|\\.dex$")
+      ).to(File));
+      
+      for (File apkFile: apkFiles) {
+        Log.d(TAG, "Importing classpath dex/apk: [%s]", apkFile);
+        Log.d(TAG, "# of ITypeLoaders: %d", typeLoaders.length);
+        byte[] fileBytes = FileUtils.readFileToByteArray(apkFile);
+        byte[] dexBytes = ClassInfo.unwrapDexBytesIfInsideZip(fileBytes);
+        byte[] jarBytes = Dex2Java2.dex2jar(dexBytes);
+        // "jar" zip-map
+        Map map = ZipUtil.mapZip(jarBytes);
+        for (Entry ent : map.entrySet()) {
+          String classNameAsPath = ent.getKey();
+          byte[] classBytes = ent.getValue();
+          String className = ClassInfo.typeToName(
+            StringUtils.substringBeforeLast(classNameAsPath, ".class")
+          );
+          Log.d(TAG, "Inject ArrayTypeLoader for class: \"%s\" ...\n", className);
+          int indexOfClasspathTypeLoader = ArrayUtils.indexOf(
+            typeLoaders,
+            CollectionUtil2.typeFilter(typeLoaders, ClasspathTypeLoader.class)[0]
+          );
+          
+          ITypeLoader[] newTypeLoaders = ArrayUtils.addAll(
+            // Existing high-priority type loaders (e.g. frameworkk JarTypeLoader,
+            // existing ArrayTypeLoaders, etc.)
+            Arrays.copyOfRange(typeLoaders, 0, indexOfClasspathTypeLoader),
+            
+            ArrayUtils.addAll(
+              // Slot for new ArrayTypeLoader
+              new ITypeLoader[] { new ArrayTypeLoader(classBytes) },
+              // First existing ClasspathTypeLoader (and any ITypeLoaders after it)
+              // stay at the end of the array (lower precedence)
+              Arrays.copyOfRange(
+                typeLoaders, indexOfClasspathTypeLoader, typeLoaders.length
+              )
+            )
+          ); // compute newTypeLoaders array
+          // update typeLoaders array (local-var-only change)
+          typeLoaders = newTypeLoaders;
+        }
+        // update 'root' (CompositeTypeLoader).'_typeLoaders' to match 'typeLoaders'
+        Reflect.setfldval(root, "_typeLoaders", typeLoaders);
+      } // for File apkFile: apkFiles
+    } finally {
+      Log.d(TAG, "Checking that _typeLoader._typeLoaders is correctly set...");
+      if (MetadataSystem.instance()._typeLoader._typeLoaders == root._typeLoaders) {
+        ProcyonUtil.getMetadataResolver()._typeLoader._typeLoaders
+          = MetadataSystem.instance()._typeLoader._typeLoaders;
+      } else {
+        throw new AssertionError(String.format(
+          "MetadataSystem.instance()._typeLoader._typeLoaders (%s) !=  " +
+          "root._typeLoaders (%s)!",
+          MetadataSystem.instance()._typeLoader._typeLoaders,
+          root._typeLoaders
+        ));
+      }
+    }
+  };
+  
+  
+  void;
+};
+

@@ -1,0 +1,326 @@
+import com.android.dex.ClassDef;
+import com.android.dex.Code;
+import com.android.dex.Dex;
+import com.android.dex.MethodId;
+import com.android.dex.Dex.Section;
+import com.android.dex.TableOfContents;
+
+
+public static String[] getDexStrings(Dex dex) {
+  Map dex_string_cache = CollectionUtil.dbg.get("dex_string_cache");
+  if (dex_string_cache == null) CollectionUtil.dbg.put(
+    "dex_string_cache", (dex_string_cache = new IdentityHashMap())
+  );
+  String[] dexStrings = dex_string_cache.get(dex);
+  if (dexStrings == null) dex_string_cache.put(
+    dex, (dexStrings = dex.strings().toArray(new String[0]))
+  );
+  return dexStrings;
+}
+
+public String[] readStrings(Dex dex) {
+  TableOfContents toc = dex.tableOfContents;
+  TableOfContents.Section tocsec = toc.stringIds;
+  int off = tocsec.off, size = tocsec.size, count = size;
+  Section s = dex.open(off);
+  ByteBuffer buf = s.data;
+  String[] strings = new String[count];
+  int i = -1;
+  while (++i < count) strings[i] = readString(buf);
+  return strings;
+}
+
+
+public static String readString(ByteBuffer buf) {
+  
+  int charDataOffset = buf.getInt();
+  //System.err.printf("  - charDataOffset: %d\n", charDataOffset);
+  int position = buf.position();
+  //System.err.printf("  - old position: %d\n", position);
+  int limit = buf.limit();
+  //System.err.printf("  - old limit: %d\n", limit);
+  buf.position(charDataOffset);
+  //System.err.printf("  - moved to position: %d\n", buf.position());
+  buf.limit(buf.capacity());
+  //System.err.printf("  - updated limit to: %d\n", buf.limit());
+  
+  int length = readUleb128(buf);
+  char[] chars = new char[length];
+  String decoded = decodeMutf8(buf, chars, length);
+  buf.position(position);
+  buf.limit(limit);
+  return decoded;
+}
+
+public static int readUleb128(ByteBuffer buf) {
+  int n = 0, byteCount = 0, n3;
+  boolean hasMore;
+  do {
+    n3 = (0xFF & ((int) buf.get()));
+    n |= ((n3 & 0x7F) << (byteCount * 7));
+    ++byteCount;
+  } while ((n3 & 0x80) == 0x80 && byteCount < 5);
+  if ((n3 & 0x80) != 0x80) return n;
+  
+  throw new RuntimeException(
+    "invalid LEB128 sequence - (hasMore && byteCount == 4)"
+  );
+}
+
+/*
+public int readUleb128(ByteBuffer buf) {
+   return Leb128.readUnsignedLeb128(buf);
+}
+public int readUleb128p1(ByteBuffer buf) {
+   return Leb128.readUnsignedLeb128(buf) - 1;
+}
+public int readSleb128(ByteBuffer buf) {
+   return Leb128.readSignedLeb128(buf);
+}
+*/
+
+public static String decodeMutf8(ByteBuffer buf, char[] chars, int declaredLength) 
+{
+  /*
+  System.err.printf(
+    "  - decodeMutf8( \n" +
+    "      - buf: %s, \n" +
+    "      - chars: %s {.length = %d}, \n" +
+    "      - declaredLength: %d, \n" +
+    "    ) \n",
+    buf, ClassInfo.typeToName(chars.getClass().getName()),
+    chars.length, declaredLength
+  );
+  */
+  int start = buf.position();
+  int charCount = 0;
+  char c;
+  while ((c = (char)(0xFF & buf.get())) != '\0') {
+    if (c < '\u0080') {
+      chars[charCount++] = c;
+    } else if ((c & '\u00e0') == '\u00c0') {
+      int n = 0xFF & buf.get();
+      if ((n & 0xC0) == 0x80) {
+        chars[charCount++] = (char)((c & '\u001f') << 6 | (n & 0x3F));
+      } else chars[charCount++] = '?'; // bad second byte
+    } else {
+      if ((c & '\u00f0') == '\u00e0') {
+        int n2 = 0xFF & buf.get();
+        int n3 = 0xFF & buf.get();
+        if ((n2 & 0xC0) == 0x80) {
+          if ((n3 & 0xC0) == 0x80) {
+            chars[charCount++] = (char)(
+              ((c & '\u000f') << 12) | ((n2 & 0x3F) << 6) | (n3 & 0x3F));
+          } else chars[charCount++] = '?'; // bad third byte
+        } else chars[charCount++] = '?'; // bad second byte
+      } else chars[charCount++] = '?'; // bad first byte
+    }
+  };
+  return new String(0, declaredLength<charCount? declaredLength: charCount, chars);
+}
+
+public static void parseDebugInfo(Method mtd) {
+  NameSpace ns = this.namespace;
+  Class cls = mtd.getDeclaringClass();
+  Dex dex = DebugReader.getDex(cls);
+  MethodId mid = DebugReader.getMethodId(dex, mtd.getDexMethodIndex());
+  ClassDef classDef = SourceUtil.getClassDef(dex, mid.getDeclaringClassIndex());
+  Code code = DebugReader.getCode(mtd);
+  
+  int acc = mtd.getModifiers();
+  boolean is_static = ((acc & Modifier.STATIC) != 0);
+  int debugInfoOffset = code.getDebugInfoOffset();
+  Section s = dex.open(debugInfoOffset);
+  String[] strings = getDexStrings(dex);
+  
+  // parse debug_info_item header
+  int line_start = s.readUleb128();
+  int parameters_size = s.readUleb128();
+  int[] parameter_names = new int[parameters_size];
+  String[] names = new String[parameters_size];
+  for (int i = 0; i < parameters_size; ++i) {
+    parameter_names[i] = s.readUleb128p1();
+    String name = strings[parameter_names[i]];
+    names[i] = name;
+    System.err.printf("parameter[%d] name: \"%s\"\n", i, name);
+  }
+  // DWARF-3 state machine "registers"
+  int address = 0;
+  int last_address;
+  int line = line_start;
+  int last_line;
+  int source_file = classDef.getSourceFileIndex();
+  boolean prologue_end = false;
+  boolean epilogue_begin = false;
+  // "last active variable name+type index" per register
+  int[] last_var_name_idx = new int[255];
+  int[] last_var_type_idx = new int[255];
+  int[] last_var_sig_idx  = new int[255];
+  boolean[] in_scope = new boolean[255];
+  
+  String source_file_name = strings[source_file];
+  System.err.printf(
+    "START(\n" +
+    "  address: %d\n" +
+    "  line: %d\n" +
+    "  source_file: %d \"%s\"\n" +
+    "  is_static: %s\n" +
+    ")\n",
+    address, line, source_file, source_file_name, Boolean.valueOf(is_static)
+  );
+  
+  int op = 0;
+  int count = 0;
+  do {
+    last_address = address;
+    last_line = line;
+    op = ((int) s.readByte()) & 0x000000FF;
+    if (op == 0) {
+      System.err.printf(
+        "DBG_END_SEQUENCE\n"
+      );
+    } else if (op == 1) {
+      int addr_diff = s.readUleb128();
+      address += addr_diff;
+      System.err.printf(
+        "DBG_ADVANCE_PC: address += %d --> %d\n", addr_diff, address
+      );
+    } else if (op == 2) {
+      int line_diff = s.readUleb128();
+      line += line_diff;
+      System.err.printf(
+        "DBG_ADVANCE_LINE: line += %d --> %d\n", line_diff, line
+      );
+    } else if (op == 3) {
+      int register_num = s.readUleb128();
+      int name_idx = s.readUleb128p1();
+      int type_idx = s.readUleb128p1();
+      last_var_name_idx[register_num] = name_idx;
+      last_var_type_idx[register_num] = type_idx;
+      last_var_sig_idx [register_num] = 0;
+      in_scope[register_num] = true;
+      String name = strings[name_idx];
+      String type = strings[dex.descriptorIndexFromTypeIndex(type_idx)];
+      System.err.printf(
+        "DBG_START_LOCAL: r%d := (" +
+          "register_num: %d, name_idx: %d \"%s\", type_idx: %d \"%s\"" +
+        ")\n",
+        register_num, register_num, name_idx, name, type_idx, type
+      );
+    } else if (op == 4) {
+      int register_num = s.readUleb128();
+      int name_idx = s.readUleb128p1();
+      int type_idx = s.readUleb128p1();
+      int sig_idx = s.readUleb128p1();
+      last_var_name_idx[register_num] = name_idx;
+      last_var_type_idx[register_num] = type_idx;
+      last_var_sig_idx [register_num] = sig_idx;
+      in_scope[register_num] = true;
+      String name = strings[name_idx];
+      String type = strings[dex.descriptorIndexFromTypeIndex(type_idx)];
+      String sig = strings[sig_idx];
+      System.err.printf(
+        "DBG_START_LOCAL_EXTENDED: r%d := (" +
+          "register_num: %d, name_idx: %d \"%s\", type_idx: %d \"%s\", " +
+          "sig_idx: %d \"%s\", in_scope: %s" +
+        ")\n",
+        register_num, register_num, name_idx, name, type_idx, type, sig_idx, sig,
+        Boolean.valueOf(in_scope[register_num])
+      );
+    } else if (op == 5) {
+/**   
+0x05: DBG_END_LOCAL {
+  * uleb128 register_num; // register that contained local             
+  marks a currently-live local variable as out of scope at the current address
+}
+*/
+      int register_num = s.readUleb128();
+      in_scope[register_num] = false;
+      int name_idx = last_var_name_idx[register_num];
+      int type_idx = last_var_type_idx[register_num];
+      int sig_idx  = last_var_sig_idx [register_num];
+      String name = strings[name_idx];
+      String type = strings[dex.descriptorIndexFromTypeIndex(type_idx)];
+      String sig = strings[sig_idx];
+      System.err.printf(
+        "DBG_END_LOCAL: r%d := (" +
+          "register_num: %d, name_idx: %d \"%s\", type_idx: %d \"%s\", " +
+          "sig_idx: %d \"%s\", in_scope: %s" +
+        ")\n",
+        register_num, register_num, name_idx, name, type_idx, type, sig_idx, sig,
+        Boolean.valueOf(in_scope[register_num])
+      );
+    } else if (op == 6) {
+/**  0x06: DBG_RESTART_LOCAL {
+  * uleb128 register_num; // register to restart
+  re-introduces a local variable at the current address. The name and type
+  are the same as the last local that was live in the specified register.
+} */
+      int register_num = s.readUleb128();
+      in_scope[register_num] = true;
+      int name_idx = last_var_name_idx[register_num];
+      int type_idx = last_var_type_idx[register_num];
+      int sig_idx  = last_var_sig_idx [register_num];
+      String name = strings[name_idx];
+      String type = strings[dex.descriptorIndexFromTypeIndex(type_idx)];
+      String sig = strings[sig_idx];
+      System.err.printf(
+        "DBG_RESTART_LOCAL: r%d := (" +
+          "register_num: %d, name_idx: %d \"%s\", type_idx: %d \"%s\", " +
+          "sig_idx: %d \"%s\", in_scope: %s" +
+        ")\n",
+        register_num, register_num, name_idx, name, type_idx, type, sig_idx, sig,
+        Boolean.valueOf(in_scope[register_num])
+      );
+    } else if (op == 7) {
+/** 0x07: DBG_SET_PROLOGUE_END {
+  sets the prologue_end state machine register, indicating that the next position
+  entry that is added should be considered the end of a method prologue (an
+  appropriate place for a method breakpoint). The prologue_end register is cleared
+  by any special (>= 0x0a) opcode.
+} */
+      prologue_end = true;
+      System.err.printf(
+        "DBG_SET_PROLOGUE_END: prologue_end --> %s\n",
+        Boolean.valueOf(prologue_end)
+      );
+    } else if (op == 8) {
+/** 0x08: DBG_SET_EPILOGUE_BEGIN {
+  sets the epilogue_begin state machine register, indicating that the next position
+  entry that is added should be considered the beginning of a method epilogue (an
+  appropriate place to suspend execution before method exit). The epilogue_begin
+  register is cleared by any special (>= 0x0a) opcode.
+} */
+      epilogue_begin = true;
+      System.err.printf(
+        "DBG_SET_EPILOGUE_BEGIN: epilogue_begin --> %s\n",
+        Boolean.valueOf(epilogue_begin)
+      );
+    } else if (op == 9) {
+/** 0x09: DBG_SET_FILE {
+  * uleb128p1 name_idx; // string index of source file name
+  NO_INDEX if indicates that all subsequent line number entries make reference to
+  this source file name, instead of the default name specified in code_item unknown
+} */
+      int name_idx = s.readUleb128p1();
+      source_file = name_idx;
+      source_file_name = strings[source_file];
+      System.err.printf(
+        "DBG_SET_FILE: source_file := %d \"%s\"\n",
+        source_file, source_file_name
+      );
+    } else { // op >= 10 (0x0A)
+      int DBG_FIRST_SPECIAL = 0x0a;
+      int DBG_LAST_SPECIAL = 0xff;
+      int DBG_LINE_BASE = -4; // the smallest line number increment
+      int DBG_LINE_RANGE = 15;
+      int adjusted_opcode = op - DBG_FIRST_SPECIAL;
+      line += DBG_LINE_BASE + (adjusted_opcode % DBG_LINE_RANGE);
+      address += (adjusted_opcode / DBG_LINE_RANGE);
+      System.err.printf("line -> %d, address -> %d\n", line, address);
+    }
+  } while (op != 0 && address >= last_address && ++count < 500);
+  ns.clear();
+}
+
+

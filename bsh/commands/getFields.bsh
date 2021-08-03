@@ -1,0 +1,365 @@
+public static Pair<List__List> getFields(sun.jvm.hotspot.oops.Oop oop, boolean unknownFlag) {
+  List<Object> extras = new ArrayList<Object>();
+  List<Field> fields = new ArrayList<Field>();
+  sun.jvm.hotspot.oops.OopVisitor visitor = FunctionUtil.delegate(sun.jvm.hotspot.oops.OopVisitor.class, (Iterable) Arrays.asList(Pair.of("fields", fields), Pair.of("extras", extras)), new String[] { "(val, z) -> { if (Boolean.isInstance(z)) fields.add(val); else { if (val != null) extras.add(val); if (z != null) extrad.add(z); }; return null; };" });
+  oop.iterateFields(visitor, unknownFlag);
+  return Pair.of(extras, fields);
+}
+
+ 
+
+public static Pair<List__List> getFields(sun.jvm.hotspot.oops.Oop oop) {
+  return getFields(oop, true);
+}
+
+ 
+
+public static Pair<List__List> getFields(sun.jvm.hotspot.oops.Metadata metadata, boolean doFields) {
+  List<Object> extras = new ArrayList<Object>();
+  List<Field> fields = new ArrayList<Field>();
+  sun.jvm.hotspot.oops.MetadataVisitor visitor = FunctionUtil.delegate(sun.jvm.hotspot.oops.MetadataVisitor.class, (Iterable) Arrays.asList(Pair.of("fields", fields), Pair.of("extras", extras)), new String[] { "(val, z) -> { if (Boolean.isInstance(z)) fields.add(val); else { if (val != null) extras.add(val); if (z != null) extrad.add(z); }; return null; };" });
+  if (doFields)
+    metadata.iterateFields(visitor);
+  else
+    metadata.iterate(visitor);
+  return Pair.of(extras, fields);
+}
+
+ 
+
+public static Pair<List__List> getFields(sun.jvm.hotspot.oops.Metadata metadata) {
+  List<Object> extras = new ArrayList<Object>();
+  List<Field> fields = new ArrayList<Field>();
+  Pair fieldsPair = getFields(metadata, true);
+  Pair dataPair = getFields(metadata, false);
+  extras.addAll(fieldsPair.getKey());
+  extras.addAll(dataPair.getKey());
+  fields.addAll(fieldsPair.getValue());
+  fields.addAll(dataPair.getValue());
+  return Pair.of(extras, fields);
+}
+
+ 
+
+public static Map getFields(sun.jvm.hotspot.HotSpotTypeDataBase tdb) {
+  Map fieldMap = new TreeMap();
+  for (Map.Entry e : tdb.nameToTypeMap.entrySet()) {
+    String typeName = e.getKey();
+    sun.jvm.hotspot.types.basic.BasicType type = e.getValue();
+    fields = IteratorUtils.toList(type.getFields());
+    for (Object fld : fields) {
+      Object valueType = fld.getType();
+      boolean isStatic = fld.isStatic();
+      long offset = (isStatic) ? fld.getStaticFieldAddress() : fld.getOffset();
+      Object origValue = null;
+      if (isStatic && (offset instanceof sun.jvm.hotspot.debugger.Address && ((sun.jvm.hotspot.debugger.Address) offset).getValue() > 100L) && valueType.toString().indexOf("char*") != -1) {
+        try {
+          value = TextUtil.catv(IOUtils.toString(new ByteArrayInputStream(getCharStringFromPointer(offset, true))));
+        } catch (sun.jvm.hotspot.debugger.UnmappedAddressException ume) {
+          Log.w("getCharStringFromPointer", ume);
+          try {
+            value = TextUtil.catv(IOUtils.toString(new ByteArrayInputStream(getCharStringFromPointer(offset, false))));
+          } catch (Exception e) {
+            if (e instanceof RuntimeException)
+              throw Util.sneakythrow(e);
+            Log.e("getCharStringFromPointer", "Unable to interpret address %s correctly (as static field %s) to construct a character string. (with %s as direct pointer: %s; via indirect %s)", offset, fld, offset, ume, e);
+            value = offset;
+          }
+        }
+      }
+      if (value == null && isStatic) {
+        Object maybeValue = Reflector.invokeOrDefault(fld, "getValue");
+        if (maybeValue != null && (value == null || value instanceof sun.jvm.hotspot.debugger.Address)) {
+          origValue = maybeValue;
+        } else {
+          origValue = value;
+        }
+      }
+      System.out.printf("%s:: %s <%s%s> = %s\n", typeName, fld, isStatic ? "@" : "+", offset, value);
+      fieldMap.put(String.format("%s::%s", typeName_), Pair.of(fld, origValue));
+    }
+  }
+  return fieldMap;
+}
+
+ 
+
+public static Map getFields() {
+  sun.jvm.hotspot.HotSpotTypeDataBase tdb = sun.jvm.hotspot.runtime.VM.getVM().getTypeDataBase();
+  return getFields((sun.jvm.hotspot.HotSpotTypeDataBase) tdb);
+}
+
+ 
+
+public static Map getFields(sun.jvm.hotspot.HotSpotTypeDataBase tdb) {
+  Map fieldMap = new TreeMap();
+  for (Map.Entry e : tdb.nameToTypeMap.entrySet()) {
+    String typeName = e.getKey();
+    sun.jvm.hotspot.types.basic.BasicType type = e.getValue();
+    fields = IteratorUtils.toList(type.getFields());
+    for (Object fld : fields) {
+      Object valueType = fld.getType();
+      boolean isStatic = fld.isStatic();
+      long offset = (isStatic) ? fld.getStaticFieldAddress() : fld.getOffset();
+      Object origValue = null;
+      if (isStatic && (offset instanceof sun.jvm.hotspot.debugger.Address && ((sun.jvm.hotspot.debugger.Address) offset).getValue() > 100L) && valueType.toString().indexOf("char*") != -1) {
+        try {
+          value = TextUtil.catv(IOUtils.toString(new ByteArrayInputStream(getCharStringFromPointer(offset, true))));
+        } catch (sun.jvm.hotspot.debugger.UnmappedAddressException ume) {
+          Log.w("getCharStringFromPointer", ume);
+          try {
+            value = TextUtil.catv(IOUtils.toString(new ByteArrayInputStream(getCharStringFromPointer(offset, false))));
+          } catch (Exception e) {
+            if (e instanceof RuntimeException)
+              throw Util.sneakythrow(e);
+            Log.e("getCharStringFromPointer", "Unable to interpret address %s correctly (as static field %s) to construct a character string. (with %s as direct pointer: %s; via indirect %s)", offset, fld, offset, ume, e);
+            value = offset;
+          }
+        }
+      }
+      if (value == null && isStatic) {
+        Object maybeValue = Reflector.invokeOrDefault(fld, "getValue");
+        if (maybeValue != null && (value == null || value instanceof sun.jvm.hotspot.debugger.Address)) {
+          origValue = maybeValue;
+        } else {
+          origValue = value;
+        }
+      }
+      System.out.printf("%s:: %s <%s%s> = %s\n", typeName, fld, isStatic ? "@" : "+", offset, value);
+      fieldMap.put(String.format("%s::%s", typeName), Pair.of(fld, origValue));
+    }
+  }
+  return fieldMap;
+}
+
+ 
+
+public static Map getFields(sun.jvm.hotspot.HotSpotTypeDataBase tdb) {
+  Map fieldMap = new TreeMap();
+  for (Map.Entry e : tdb.nameToTypeMap.entrySet()) {
+    String typeName = e.getKey();
+    sun.jvm.hotspot.types.basic.BasicType type = e.getValue();
+    fields = IteratorUtils.toList(type.getFields());
+    for (Object fld : fields) {
+      Object valueType = fld.getType();
+      boolean isStatic = fld.isStatic();
+      long offset = (isStatic) ? fld.getStaticFieldAddress() : fld.getOffset();
+      Object origValue = null;
+      if (isStatic && (offset instanceof sun.jvm.hotspot.debugger.Address && ((sun.jvm.hotspot.debugger.Address) offset).getValue() > 100L) && valueType.toString().indexOf("char*") != -1) {
+        try {
+          value = TextUtil.catv(IOUtils.toString(new ByteArrayInputStream(getCharStringFromPointer(offset, true))));
+        } catch (sun.jvm.hotspot.debugger.UnmappedAddressException ume) {
+          Log.w("getCharStringFromPointer", ume);
+          try {
+            value = TextUtil.catv(IOUtils.toString(new ByteArrayInputStream(getCharStringFromPointer(offset, false))));
+          } catch (Exception e) {
+            if (e instanceof RuntimeException)
+              throw Util.sneakythrow(e);
+            Log.e("getCharStringFromPointer", "Unable to interpret address %s correctly (as static field %s) to construct a character string. (with %s as direct pointer: %s; via indirect %s)", offset, fld, offset, ume, e);
+            value = offset;
+          }
+        }
+      }
+      if (value == null && isStatic) {
+        Object maybeValue = Reflector.invokeOrDefault(fld, "getValue");
+        if (maybeValue != null && (value == null || value instanceof sun.jvm.hotspot.debugger.Address)) {
+          origValue = maybeValue;
+        } else {
+          origValue = value;
+        }
+      }
+      String name = fld.getName();
+      System.out.printf("%s:: %s <%s%s> = %s\n", typeName, name, isStatic ? "@" : "+", offset, value);
+      fieldMap.put(String.format("%s::%s", typeName, name), Pair.of(fld, origValue));
+    }
+  }
+  return fieldMap;
+}
+
+ 
+
+public static Map getFields(sun.jvm.hotspot.HotSpotTypeDataBase tdb) {
+  Map fieldMap = new TreeMap();
+  for (Map.Entry e : tdb.nameToTypeMap.entrySet()) {
+    String typeName = e.getKey();
+    sun.jvm.hotspot.types.basic.BasicType type = e.getValue();
+    fields = IteratorUtils.toList(type.getFields());
+    for (Object fld : fields) {
+      Object valueType = fld.getType();
+      boolean isStatic = fld.isStatic();
+      long offset = (isStatic) ? fld.getStaticFieldAddress() : fld.getOffset();
+      Object origValue = null;
+      if (isStatic && (offset instanceof sun.jvm.hotspot.debugger.Address && ((sun.jvm.hotspot.debugger.Address) offset).getValue() > 100L) && valueType.toString().indexOf("char*") != -1) {
+        try {
+          value = TextUtil.catv(IOUtils.toString(new ByteArrayInputStream(getCharStringFromPointer(offset, true))));
+        } catch (sun.jvm.hotspot.debugger.UnmappedAddressException ume) {
+          Log.w("getCharStringFromPointer", ume);
+          try {
+            value = TextUtil.catv(IOUtils.toString(new ByteArrayInputStream(getCharStringFromPointer(offset, false))));
+          } catch (Exception e) {
+            if (e instanceof RuntimeException)
+              throw Util.sneakythrow(e);
+            Log.e("getCharStringFromPointer", "Unable to interpret address %s correctly (as static field %s) to construct a character string. (with %s as direct pointer: %s; via indirect %s)", offset, fld, offset, ume, e);
+            value = offset;
+          }
+        }
+      }
+      if (value == null && isStatic) {
+        Object maybeValue = Reflector.invokeOrDefault(fld, "getValue");
+        if (maybeValue != null && (value == null || value instanceof sun.jvm.hotspot.debugger.Address)) {
+          origValue = maybeValue;
+        } else {
+          origValue = value;
+        }
+      }
+      String name = fld.getName();
+      System.out.printf("%s:: %s <%s%s> = %s\n", typeName, name, isStatic ? "@" : "+", offset, origValue);
+      fieldMap.put(String.format("%s::%s", typeName, name), Pair.of(fld, origValue));
+    }
+  }
+  return fieldMap;
+}
+
+ 
+
+public static Map getFields(sun.jvm.hotspot.HotSpotTypeDataBase tdb) {
+  Map fieldMap = new TreeMap();
+  for (Map.Entry e : tdb.nameToTypeMap.entrySet()) {
+    String typeName = e.getKey();
+    Object value = null;
+    Object origValue = null;
+    sun.jvm.hotspot.types.basic.BasicType type = e.getValue();
+    fields = IteratorUtils.toList(type.getFields());
+    for (Object fld : fields) {
+      Object valueType = fld.getType();
+      boolean isStatic = fld.isStatic();
+      long offset = (isStatic) ? fld.getStaticFieldAddress() : fld.getOffset();
+      Object origValue = null;
+      if (isStatic && (offset instanceof sun.jvm.hotspot.debugger.Address && ((sun.jvm.hotspot.debugger.Address) offset).getValue() > 100L) && valueType.toString().indexOf("char*") != -1) {
+        try {
+          value = TextUtil.catv(IOUtils.toString(new ByteArrayInputStream(getCharStringFromPointer(offset, true))));
+        } catch (sun.jvm.hotspot.debugger.UnmappedAddressException ume) {
+          Log.w("getCharStringFromPointer", ume);
+          try {
+            value = TextUtil.catv(IOUtils.toString(new ByteArrayInputStream(getCharStringFromPointer(offset, false))));
+          } catch (Exception e) {
+            if (e instanceof RuntimeException)
+              throw Util.sneakythrow(e);
+            Log.e("getCharStringFromPointer", "Unable to interpret address %s correctly (as static field %s) to construct a character string. (with %s as direct pointer: %s; via indirect %s)", offset, fld, offset, ume, e);
+            value = offset;
+          }
+        }
+      }
+      if (value == null && isStatic) {
+        Object maybeValue = Reflector.invokeOrDefault(fld, "getValue");
+        if (maybeValue != null && (value == null || value instanceof sun.jvm.hotspot.debugger.Address)) {
+          origValue = maybeValue;
+        } else {
+          origValue = value;
+        }
+      }
+      String name = fld.getName();
+      System.out.printf("%s:: %s <%s%s> = %s\n", typeName, name, isStatic ? "@" : "+", offset, (value != null ? value : origValue != null ? origValue : null));
+      fieldMap.put(String.format("%s::%s", typeName, name), Pair.of(fld, value != null ? value : origValue != null ? origValue : null));
+    }
+  }
+  return fieldMap;
+}
+
+ 
+
+public static Map getFields(sun.jvm.hotspot.HotSpotTypeDataBase tdb) {
+  Map fieldMap = new TreeMap();
+  for (Map.Entry e : tdb.nameToTypeMap.entrySet()) {
+    String typeName = e.getKey();
+    Object value = null;
+    Object origValue = null;
+    sun.jvm.hotspot.types.basic.BasicType type = e.getValue();
+    fields = IteratorUtils.toList(type.getFields());
+    for (Object fld : fields) {
+      Object valueType = fld.getType();
+      boolean isStatic = fld.isStatic();
+      long offset = (isStatic) ? fld.getStaticFieldAddress() : fld.getOffset();
+      Object origValue = null;
+      if (isStatic && (offset instanceof sun.jvm.hotspot.debugger.Address && ((sun.jvm.hotspot.debugger.Address) offset).getValue() % 4 == 0 && ((sun.jvm.hotspot.debugger.Address) offset).getValue() > 0x10000)) {
+        try {
+          value = (origValue = HexDump.dump(getCharStringFromPointer(offset, true)).toString());
+        } catch (sun.jvm.hotspot.debugger.UnmappedAddressException ume) {
+          Log.w("getCharStringFromPointer", ume);
+          try {
+            value = (origValue = HexDump.dump(getCharStringFromPointer(offset, false)).toString());
+          } catch (Exception e) {
+            if (e instanceof RuntimeException)
+              throw Util.sneakythrow(e);
+            Log.e("getCharStringFromPointer", "Unable to interpret address %s correctly (as static field %s) to construct a character string. (with %s as direct pointer: %s; via indirect %s)", offset, fld, offset, ume, e);
+            value = offset;
+          }
+        }
+      }
+      if (value == null && isStatic) {
+        Object maybeValue = Reflector.invokeOrDefault(fld, "getValue");
+        if (maybeValue != null && (value == null || value instanceof sun.jvm.hotspot.debugger.Address)) {
+          origValue = maybeValue;
+        } else {
+          origValue = value;
+        }
+      }
+      String name = fld.getName();
+      System.out.printf("%s:: %s <%s%s> = %s\n", typeName, name, isStatic ? "@" : "+", offset, (value != null ? value : origValue != null ? origValue : null));
+      fieldMap.put(String.format("%s::%s", typeName, name), Pair.of(fld, value != null ? value : origValue != null ? origValue : null));
+    }
+  }
+  return fieldMap;
+}
+
+ 
+
+public static Map getFields(sun.jvm.hotspot.HotSpotTypeDataBase tdb) {
+  Map fieldMap = new TreeMap();
+  for (Map.Entry e : tdb.nameToTypeMap.entrySet()) {
+    String typeName = e.getKey();
+    Object value = null;
+    Object origValue = null;
+    sun.jvm.hotspot.types.basic.BasicType type = e.getValue();
+    fields = IteratorUtils.toList(type.getFields());
+    for (Object fld : fields) {
+      Object valueType = fld.getType();
+      boolean isStatic = fld.isStatic();
+      long offset = (isStatic) ? fld.getStaticFieldAddress() : fld.getOffset();
+      Object origValue = null;
+      if (isStatic && (offset instanceof sun.jvm.hotspot.debugger.Address && ((sun.jvm.hotspot.debugger.Address) offset).getValue() % 4 == 0 && ((sun.jvm.hotspot.debugger.Address) offset).getValue() > 0x10000)) {
+        try {
+          value = (origValue = HexDump.dump(getCharStringFromPointer(offset, true)).toString());
+        } catch (sun.jvm.hotspot.debugger.UnmappedAddressException ume) {
+          Log.w("getCharStringFromPointer", ume);
+          try {
+            value = (origValue = HexDump.dump(getCharStringFromPointer(offset, false)).toString());
+          } catch (Exception e) {
+            if (e instanceof RuntimeException)
+              throw Util.sneakythrow(e);
+            Log.e("getCharStringFromPointer", "Unable to interpret address %s correctly (as static field %s) to construct a character string. (with %s as direct pointer: %s; via indirect %s)", offset, fld, offset, ume, e);
+            value = offset;
+          }
+        }
+      }
+      if (value == null && isStatic) {
+        Object maybeValue = Reflector.invoke(fld, "getValue");
+        if (maybeValue == null) {
+          try {
+            maybeValue = CollectionUtil2.invokeAll(Arrays.asList(fld), "getValue", 1, null);
+          } catch (Throwable t) {
+          }
+        }
+        if (maybeValue != null) {
+          value = (origValue = maybeValue);
+        }
+      }
+      String name = fld.getName();
+      System.out.printf("%s:: %s <%s%s> = %s\n", typeName, name, isStatic ? "@" : "+", offset, (value != null ? value : origValue != null ? origValue : null));
+      fieldMap.put(String.format("%s::%s", typeName, name), Pair.of(fld, value != null ? value : origValue != null ? origValue : null));
+    }
+  }
+  return fieldMap;
+}
+
+ 

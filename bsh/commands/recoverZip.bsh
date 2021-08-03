@@ -1,0 +1,46 @@
+public static Map recoverZip(java.util.zip.ZipInputStream zis) {
+  Map zm = new TreeMap();
+  try {
+    String field = CollectionUtil.isJRE() ? "entry" : "currentEntry";
+    String csizeField = CollectionUtil.isJRE() ? "csize" : "compressedSize";
+    int attempts = 0;
+    while (true) {
+      try {
+        ze = zis.getNextEntry();
+        if (ze == null)
+          break;
+      } catch (java.io.EOFException eof) {
+        break;
+      } catch (IOException ioe) {
+        Matcher mchr = Pattern.compile("invalid entry size \\(expected [0-9]+ but got ([0-9]+) bytes\\)").matcher(Reflector.getRootCause(ioe).getMessage());
+        if (mchr.find()) {
+          Reflect.getfldval(zis, field).size = Integer.parseInt(mchr.group(1));
+          zis.getNextEntry();
+        }
+        if (++attempts > 50)
+          throw ioe;
+        System.err.println(ioe);
+        System.err.println(Reflector.getRootCause(ioe));
+        continue;
+      }
+      if (Reflect.getfldval(zis, field).size > 10000000)
+        Reflect.getfldval(zis, field).size = 0;
+      if (Reflect.getfldval(Reflect.getfldval(zis, field), csizeField) > 10000000)
+        Reflect.setfldval(Reflect.getfldval(zis, field), csizeField, 0);
+      bytes = IOUtils.toByteArray(new org.apache.commons.io.input.CloseShieldInputStream(zis));
+      String name = ze.getName(), altName = name;
+      if (zm.containsKey(name)) {
+        String altname = ze.getName();
+        for (int i = 1; zm.containsKey(altname); altname = ze.getName().indexOf("/") != -1 && StringUtils.substringAfterLast(ze.getName(), "/").lastIndexOf(".") != -1 ? String.format("%s.%03d.%s", StringUtils.substringBeforeLast(ze, "."), ++i, StringUtils.substringAfterLast(ze.getName(), ".")) : String.format("%s.%03d", ze.getName(), ++i)) ;
+        name = altName;
+      }
+      System.err.println(name);
+      zm.put(name, bytes);
+    }
+  } catch (Throwable e) {
+    Reflector.getRootCause(e).printStackTrace();
+  }
+  return zm;
+}
+
+ 

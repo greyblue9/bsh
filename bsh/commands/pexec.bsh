@@ -1,0 +1,53 @@
+
+
+public static Pair pexec(String[] cmd) {
+  return Pair.of(0, PosixFileInputStream.pexecSync(cmd));
+}
+
+
+public static Quad pexec(List<String> commands, String[] env, File dir, 
+  boolean sync)
+{
+  File cwdDir = (dir != null)
+    ? dir
+    : new File(PosixFileInputStream.cwd());
+  org.d6r.PosixFileInputStream.ExecOpts opts
+    = org.d6r.PosixFileInputStream.ExecOpts.DEFAULT.clone();
+  String[] command = commands.toArray(new String[0]);
+  Process pro = Runtime.getRuntime().exec(command, env, cwdDir);
+  
+  InputStream inStream = pro.getInputStream();
+  InputStream inErrStream = pro.getErrorStream();
+  OutputStream outStream = pro.getOutputStream();
+  
+  StreamReader outRdr = new StreamReader(inStream, "1", opts);
+  StreamReader errRdr = new StreamReader(inErrStream, "2", opts);
+  ExitWaiter waiter = new ExitWaiter(
+    pro, "waiter", opts,
+    new AutoCloseable[] { inStream, inErrStream, outStream }
+  );
+  
+  Thread outStreamThread = new Thread(outRdr),
+         errStreamThread = new Thread(errRdr),
+              exitThread = new Thread(waiter);
+  outStreamThread.start();
+  errStreamThread.start();
+  exitThread.start();
+  if (sync) {
+    try {
+      pro.waitFor();
+      outStreamThread.join();
+      errStreamThread.join();
+      exitThread.join();
+    } catch (InterruptedException ie) {
+      ie.printStackTrace();
+      Thread.currentThread().interrupted();
+    };
+  };
+  return Quad.of(pro, outRdr, errRdr, waiter);
+}
+
+
+
+
+

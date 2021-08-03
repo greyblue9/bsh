@@ -1,0 +1,11 @@
+public static List getParameters(Member mtd) {
+  org.jsoup.nodes.Document doc = null;
+  String sig = null;
+  List names = null;
+  (doc = Jsoup.parseBodyFragment(FileUtils.readFileToString(new File(new File("/tm/jdoc/docs/api/"), ClassInfo.classNameToPath(mtd.getDeclaringClass().getName(), "html"))).replace("&nbsp;", " "))).getClass();
+  sig = doc.select(String.format("a[name^=\"%s-%s\"]", mtd instanceof Constructor ? mtd.getDeclaringClass().getSimpleName() : mtd.getName(), StringUtils.join(mtd.getParameterTypes().select(FunctionUtil.bind("return m -> { m.isPrimitive()? m.getSimpleName(): ClassInfo.typeToName(m.getName()); }")), "-").replace("[]", ":A")))[0].nextSibling().nextSibling().select("li pre")[0].text().replaceAll("\\s+", " ");
+  names = Arrays.asList(StringUtils.substringBetween(sig, "(", ")").split(",").select(FunctionUtil.bind("return m -> { StringUtils.substringAfterLast(m.trim(), \" \"); }")));
+  return names;
+}
+
+ 

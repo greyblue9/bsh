@@ -1,0 +1,45 @@
+
+
+
+
+
+
+
+
+public static Object osrc(Object clazzRef) { URL url = SourceUtil.findSource(clazzRef); PathInfo pi = PathInfo.getPathInfo(url); File srcFile = new File(pi.path); if (srcFile.exists() && ! srcFile.isDirectory()) { opend(srcFile); return srcFile; }; srcFile = new File(new File(new File(pi.dir), "src/"), StringUtils.substringAfterLast(pi.url.getPath(),"!/")); if (srcFile.exists()) { opend(srcFile); return srcFile; }; String className = TextUtil.colorrm(String.format("%s", clazzRef)).trim().replaceAll("[^a-zA-Z0-9_$/.]", "").replaceAll("^.* ([^ ]+)$", "$1").replaceAll("^([^$]+)\\$.*$", "$1").replace('/', '.'); srcFile = SourceUtil.getSourceFile(className); if (srcFile != null && ! srcFile.exists()) { opend(srcFile); return srcFile; }; String src = getSource(clazzRef); if (src == null) return null; TempFile tmp = new TempFile((className.indexOf(".") != -1? StringUtils.substringAfterLast(className, "."): className).concat(".java")); FileUtils.writeStringToFile(tmp, src); opend(tmp); return tmp; };
+
+
+
+
+
+
+
+public static Object osrc(Object clazzRef) { File sf = SourceUtil.getSourceFile(clazzRef); if (sf.exists()) { opend(sf.getPath()); return sf; }; URL url = SourceUtil.findSource(clazzRef); PathInfo pi = PathInfo.getPathInfo(url); File srcFile = new File(pi.path); if (srcFile.exists() && ! srcFile.isDirectory()) { opend(srcFile); return srcFile; }; srcFile = new File(new File(new File(pi.dir), "src/"), StringUtils.substringAfterLast(pi.url.getPath(),"!/")); if (srcFile.exists()) { opend(srcFile); return srcFile; }; String className = TextUtil.colorrm(String.format("%s", clazzRef)).trim().replaceAll("[^a-zA-Z0-9_$/.]", "").replaceAll("^.* ([^ ]+)$", "$1").replaceAll("^([^$]+)\\$.*$", "$1").replace('/', '.'); srcFile = SourceUtil.getSourceFile(className); if (srcFile != null && ! srcFile.exists()) { opend(srcFile); return srcFile; }; String src = getSource(clazzRef); if (src == null) return null; TempFile tmp = new TempFile((className.indexOf(".") != -1? StringUtils.substringAfterLast(className, "."): className).concat(".java")); FileUtils.writeStringToFile(tmp, src); opend(tmp); return tmp; };
+
+
+
+
+
+
+public static Object osrc(Object clazzRef) { File sf = SourceUtil.getSourceFile(clazzRef instanceof CharSequence? CharSequenceUtil.toString(clazzRef): dumpMembers.getClass(clazzRef).getName()); if (sf.exists()) { opend(sf.getPath()); return sf; }; URL url = SourceUtil.findSource(clazzRef); PathInfo pi = PathInfo.getPathInfo(url); File srcFile = new File(pi.path); if (srcFile.exists() && ! srcFile.isDirectory()) { opend(srcFile); return srcFile; }; srcFile = new File(new File(new File(pi.dir), "src/"), StringUtils.substringAfterLast(pi.url.getPath(),"!/")); if (srcFile.exists()) { opend(srcFile); return srcFile; }; String className = TextUtil.colorrm(String.format("%s", clazzRef)).trim().replaceAll("[^a-zA-Z0-9_$/.]", "").replaceAll("^.* ([^ ]+)$", "$1").replaceAll("^([^$]+)\\$.*$", "$1").replace('/', '.'); srcFile = SourceUtil.getSourceFile(className); if (srcFile != null && ! srcFile.exists()) { opend(srcFile); return srcFile; }; String src = getSource(clazzRef); if (src == null) return null; TempFile tmp = new TempFile((className.indexOf(".") != -1? StringUtils.substringAfterLast(className, "."): className).concat(".java")); FileUtils.writeStringToFile(tmp, src); opend(tmp); return tmp; };
+
+
+
+
+
+public static File osrc(Object clsObj) {
+  String className = (clsObj instanceof String) ? (String) clsObj : ((Class) dumpMembers.getClass(clsObj)).getName();
+  JarFile jar = ((clsObj instanceof String) ? ClassInfo.getClassResource((String) clsObj) : ClassInfo.getClassResource((Class) dumpMembers.getClass(clsObj))).openConnection().getJarFile();
+  File jarSrcDir = new File(new File(jar.getName()).getParentFile(), "src");
+  File srcFile = new File(jarSrcDir, ClassInfo.classNameToPath(className, "java"));
+  if (srcFile.exists()) {
+    System.err.printf("\n%s\n", srcFile.getPath());
+    opend(srcFile.getPath());
+    return srcFile;
+  }
+  File file = SourceUtil.getSourceFile(className);
+  opend(file.getPath());
+  return file;
+}
+
+ 

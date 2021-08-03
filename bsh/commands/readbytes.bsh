@@ -1,0 +1,6 @@
+readbytes(f) {
+  fis = (f instanceof java.io.File)? new java.io.FileInputStream(f): new java.io.FileInputStream(new java.io.File(f));
+  byte[] data = new byte[fis.available()];
+  fis.read(data);
+  return data;
+}

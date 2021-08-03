@@ -1,0 +1,7 @@
+public static Document getDoc(String baseUrl) {
+  String html = PosixFileInputStream.pexecSync("wget2", "-O", "-", baseUrl);
+  String newHtml = fixUnescapedTags(html);
+  org.jsoup.parser.Parser parser = org.jsoup.parser.Parser.htmlParser();
+  Document doc = Jsoup.parse(html, baseUrl, parser);
+  return doc;
+}

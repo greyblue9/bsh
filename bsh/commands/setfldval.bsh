@@ -1,0 +1,67 @@
+import bsh.ClassIdentifier;
+
+import java.lang.reflect.Field;
+import java.lang.reflect.AccessibleObject;
+import java.lang.Class;
+
+
+setfldval(o, field_name, newval) { 
+
+  java.lang.Class clazz = null;
+  
+  if ( o instanceof bsh.ClassIdentifier ) {
+    // getfldval( com.example.MyClass, ... )
+    //clazz = this.namespace.identifierToClass(o);
+    //clazz = (java.lang.Class) o; //o.getTargetClass();
+    clazz = java.lang.Class.forName(
+      java.lang.String.valueOf(o).substring(
+      java.lang.String.valueOf(o).indexOf(":") + 2)
+    );
+  } else if ( o instanceof java.lang.String) {
+    // getfldval( "com.example.MyClass", ... )
+    clazz = this.namespace.getClass((java.lang.String)o);
+  } else if ( o instanceof java.lang.Class ) {
+    // getfldval( com.example.MyClass.class, ... )
+    // getfldval( java.lang.Class.forName("com.example.MyClass"), ... )    
+    // getfldval( myClassInst.getClass(), ... )    
+    clazz = o;
+  } else {
+    // getfldval( myClassInst, ... )    
+    clazz = o.getClass();
+  }
+  
+  if (clazz == null) return null; 
+  
+  java.lang.reflect.Field field = clazz.getDeclaredField(field_name);
+  ((java.lang.reflect.AccessibleObject) field).setAccessible(true); 
+  
+  int modifiers = field.getModifiers();
+  boolean is_static_field = (modifiers & 0x08) > 0;
+  
+  java.lang.Object refObj = o;
+  if (is_static_field) {
+    // static field
+    refObj = null;
+  } else {
+    // instance field
+    if (!(o instanceof java.lang.Object)) {
+      throw new InvalidArgumentException("First parameter must be an instance to get value of instance field");
+    }
+  }
+  value = field.get(refObj);
+  
+  print(
+    "Old value: " 
+    + (value == null?"null":value.toString()));
+  
+  field.set(refObj, newval);
+  
+  value = field.get(refObj);
+  print(
+    "New value: " 
+    + (value == null?"null":value.toString()));
+  
+  return value;
+}
+
+

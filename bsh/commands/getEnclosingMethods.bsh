@@ -1,0 +1,176 @@
+import java.util.Map.Entry;
+
+// import com.strobel.assembler.ir.OpCode;
+import com.strobel.assembler.ir.Instruction;
+import javassist.bytecode.MethodInfo;
+import javassist.bytecode.ConstPool;
+import javassist.bytecode.EnclosingMethodAttribute;
+import javassist.bytecode.ConstInfo;
+
+
+
+public static Map getEnclosingMethods(TypeDefinition td, boolean allTypes) {
+
+  Collection<Instruction> insnColl =  new ArrayList<Instruction>();
+  Map ihm =  new IdentityHashMap(); /* <Instruction, MethodDefinition> */
+  for (MethodDefinition md: td.getDeclaredMethods()) {
+    Collection insns = md.getBody().getInstructions();
+    for (com.strobel.assembler.ir.Instruction insn: insns) {
+      ihm.put(insn, md);
+    }
+    insnColl.addAll(insns);
+  }
+  
+  Collection<Pair> news = insnColl.select(FunctionUtil.bind(
+    "return m -> { " +
+    "  m.getOpCode() == opNew" +
+    "    ? Pair.of(m, ihm.get(m))" +
+    "    : null;" +
+    "}",
+    "opNew", com.strobel.assembler.ir.OpCode.NEW,
+    "ihm", ihm
+  ));
+  
+  String baseTypeName = ClassInfo.typeToName(td.getErasedSignature());
+  
+  Matcher TYPENAME_MCHR = Pattern.compile(
+    Pattern.quote(baseTypeName),
+    Pattern.DOTALL
+  ).matcher("");
+    
+  
+  for (Iterator it = news.iterator(); it.hasNext();) {
+    Pair p = it.next();
+    Instruction insn = p.getKey();
+    MethodDefinition md = p.getValue();
+    System.err.println(insn);
+    Object op0 = insn.getOperand(0);
+    TypeDefinition optd = op0.resolve();
+    TypeReference type = optd != null? optd: op0;
+    String typeDesc = type.getErasedSignature();
+    String typeName = ClassInfo.typeToName(typeDesc);
+    if (!allTypes && !TYPENAME_MCHR.reset(p.toString()).find()) {
+      it.remove();
+      continue;
+    }
+  }
+  
+  Map mp = RealArrayMap.toMap(news);
+  
+  Set entrySet;
+  Map flatMap = RealArrayMap.toMap(
+      mp.entrySet().select((entrySet = FunctionUtil.bind(
+      "return m -> {" +
+      "  Pair.of(" +
+      "    ClassInfo.typeToName(" +
+      "      m.getKey().getOperand(0).getErasedSignature()" +
+      "    ), " +
+      "    m.getValue()" +
+      "  );" +
+      "}"
+    )))
+  );
+  return flatMap;
+}
+
+
+
+public static Map getEnclosingMethods(TypeDefinition td) {
+  return getEnclosingMethods(td, false);
+}
+
+
+
+
+
+public static String attrFormatClassName(String className) {
+  String classNameNorm = ClassInfo.typeToName(className);
+  return ClassInfo.classNameToPath(classNameNorm);
+}
+
+
+public static Object getEnclosingMethods(Map ems) { //, File outDir
+  ClassPool cp = CollectionUtil.getClassPool();
+  
+  Map attrMap = new TreeMap();
+  
+  for (Entry ent: ems.entrySet()) {
+    
+    // ENCLOSED entities
+    String    enclosedTypeName = ClassInfo.typeToName(ent.getKey());
+    CtClass   enclosedCtClass = cp.get(enclosedTypeName);
+    ClassFile enclosedClassFile = enclosedCtClass.getClassFile();
+    ConstPool enclosedConstPool = enclosedClassFile.getConstPool();
+    
+    
+    List<Attribute> enclosed_attrs = enclosedClassFile.getAttributes();
+    List<EnclosingMethodAttribute> enclosed_emattrs = enclosed_attrs 
+      .typeFilter(EnclosingMethodAttribute.class);
+    
+    
+    Map classItemMap = new TreeMap();
+    for (int i=1, len=enclosedConstPool.getSize(); i<len; ++i) {
+      ConstInfo item = enclosedConstPool.getItem(i);
+      if (!(item instanceof javassist.bytecode.ClassInfo)) continue;
+      int classNameIndex = Reflect.getfldval(item, "name").intValue();
+      String className = Reflect.getfldval(
+        enclosedConstPool.getItem(classNameIndex), "string"        
+      );
+      classItemMap.put(
+        className,
+        Pair.of(
+          Pair.of(Integer.valueOf(i), item),
+          Pair.of(Integer.valueOf(classNameIndex), className)
+        )
+      );
+    }
+
+
+
+    
+    // ENCLOSING entities
+    MethodDefinition
+             enclosingMethodDef = ent.getValue();
+    TypeReference 
+             enclosingTypeDef = enclosingMethodDef.getDeclaringType();
+    String   enclosingTypeName = ClassInfo.typeToName(
+             enclosingTypeDef.getErasedSignature());
+    
+    CtClass  enclosingCtClass = cp.get(enclosingTypeName);
+    String   enclosingMethodName = enclosingMethodDef.getName();
+    String   enclosingMethodDesc = enclosingMethodDef.getErasedSignature(); 
+    CtBehavior
+             enclosingCtMethod = (enclosingMethodName.equals("<init>"))
+      ? enclosingCtClass.getConstructor(enclosingMethodDesc)
+      : enclosingCtClass.getMethod(enclosingMethodName, enclosingMethodDesc);
+    String   enclosingClassNameAsPath = ClassInfo.classNameToPath(
+             enclosingTypeName);
+    
+    MethodInfo enclosingMethodInfo = enclosingCtMethod.getMethodInfo(); 
+    ConstPool enclosingConstPool = enclosingMethodInfo.getConstPool();
+    
+    
+    
+    EnclosingMethodAttribute attrForEnclosedType = new 
+    EnclosingMethodAttribute(
+      enclosedConstPool,
+      attrFormatClassName(enclosingTypeName),
+      enclosingMethodName,
+      enclosingMethodDesc
+    );
+    // enclosedClassFile.getAttributes().add(attrForEnclosedType);
+    attrMap.put(
+      ent.getKey(), 
+      Pair.of(
+        Pair.of(enclosingCtClass, enclosingMethodInfo),
+        Pair.of(enclosedCtClass, attrForEnclosedType)
+      )
+    );
+  }
+  
+  return attrMap;
+}
+
+
+
+   

@@ -1,0 +1,36 @@
+
+public static URL getClassResource(Class cls) {
+  URL resUrl = bsh.NameSpace.getClassResource(cls);
+  if (resUrl != null) return resUrl;
+  if (CollectionUtil.isJRE()) {
+    return Thread.currentThread().getContextClassLoader().getResource(
+      ClassInfo.classNameToPath(cls.getName(), "class")
+    );
+  };
+  
+  String firstClassName = getFirstClassName(org.d6r.ClassInfo.getDex(cls));
+  int dexSize = (int) org.d6r.ClassInfo.getDex(cls).data.capacity();
+  List<Object> elements = Arrays.asList(
+    Thread.currentThread().getContextClassLoader().pathList.dexElements.select(
+      FunctionUtil.bind(
+        "return m -> { if (firstClassName.equals(m.dexFile.entries().nextElement()) && (m.zipFile == null || m.zipFile.getEntry(\"classes.dex\").getSize() == dexSize)) return m; return null; }",
+        "firstClassName", firstClassName,
+        "dexSize", dexSize
+      )
+    )
+  );
+  if (elements.isEmpty()) return null;
+  
+  File file = elements.iterator().next().file;
+  resUrl = (StringUtils.endsWith(file.getPath(), ".jar") || 
+            StringUtils.endsWith(file.getPath(), "apk")  || 
+            StringUtils.endsWith(file.getPath(), "zip"))
+              ? new URL(String.format(
+                 "jar:file://%s!/classes.dex", file.getAbsolutePath())
+                )
+              : file.toURL();
+  return resUrl;
+  
+};
+
+

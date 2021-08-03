@@ -1,0 +1,235 @@
+import java.util.Map.Entry;
+{
+
+
+
+public static String[] printStackTrace2(Throwable throwable) {
+  return printStackTrace2(throwable, 10);
+}
+
+
+public static String[] printStackTrace2(Throwable throwable, int ctxSize) {
+  List<String> list = new LinkedList<String>();
+  StackTraceElement[] stackTrace = throwable.getStackTrace();
+  
+  int searchContextSize = ctxSize + 50;
+  Matcher FILTER = Pattern.compile(
+    "(?:java.lang.reflect.Method|sun.reflect.NativeMethodAccessorImpl|sun.reflect.DelegatingMethodAccessorImpl|bsh\\.(?:BSHAllocationExpression|BSHAmbiguousName|BSHArguments|BSHArray|BSHArrayDimensions|BSHArrayInitializer|BSHAssignment|BSHBinaryExpression|BSHBlock|BSHCastExpression|BSHClassDeclaration|BSHEnhancedForStatement|BSHForStatement|BSHFormalComment|BSHFormalParameter|BSHFormalParameters|BSHIfStatement|BSHImportDeclaration|BSHLiteral|BSHMethodDeclaration|BSHMethodInvocation|BSHPackageDeclaration|BSHPowerExpression|BSHPrimaryExpression|BSHPrimarySuffix|BSHPrimitiveType|BSHRangeExpression|BSHReturnStatement|BSHReturnType|BSHStatementExpressionList|BSHSwitchLabel|BSHSwitchStatement|BSHTernaryExpression|BSHThrowStatement|BSHTryStatement|BSHType|BSHTypedVariableDeclaration|BSHUnaryExpression|BSHVariableDeclarator|BSHWhileStatement|Node|SimpleNode))(?:$|\\$|\\.)",
+    Pattern.DOTALL
+  ).matcher("");
+  
+  
+  
+  
+  Map mmap = new TreeMap();
+  nextste:
+  for (int idx = stackTrace.length - 1; idx >= 0; --idx) {
+    StackTraceElement ste = stackTrace[idx];
+    if (FILTER.reset(ste.getClassName()).find()) {
+      continue;
+    }
+    if (("dalvik.system.XClassLoader".equals(ste.getClassName()) && 
+       "main".equals(ste.getMethodName())) ||
+      ("bsh.Interpreter".equals(ste.getClassName()) && 
+       "main".equals(ste.getMethodName()) ||
+       "run".equals(ste.getMethodName()) ||
+       "eval".equals(ste.getMethodName()) ||       
+       "Line".equals(ste.getMethodName())) ||
+      (("bsh.Name".equals(ste.getClassName())
+        || "bsh.Reflect".equals(ste.getClassName())) &&
+       ste.getMethodName().startsWith("invoke")))
+    {
+      continue;
+    }
+    
+    int lineno = ste.getLineNumber();
+    
+    if (lineno < 0) {
+      list.add(0, dumpMembers.colorize(ste.toString(), "1;31"));
+      list.add(0, "");
+      lineno = 0;
+    }
+    
+    mmap.clear();
+    StackTraceElement nextste = idx > 0? stackTrace[idx - 1]: null;
+
+    String methodName = idx > 0? nextste.getMethodName(): null;
+    Collection<URL> srcfs = SourceUtil.findSource(ste.getClassName(), true, 1);
+    List<Entry> matches = null;
+    String methodName = nextste != null? nextste.getMethodName(): "xyzzy";
+    if ("<clinit>".equals(methodName)) {
+      methodName = "static \\{";
+    }
+    Matcher mchr = Pattern.compile(
+          String.format(
+            "(?:^|\n)[0-9]*[^0-9]?((?!public |private |protected |static |void |@Override )[^\n*])*(?<=[^a-zA-Z0-9_#*])(%s)\\(((?!\\*|[a-zA-Z0-9_$]+ [a-zA-Z0-9_$]+[,\\)]|\\{[\n,()]).)* *\\)?(\\)|$|\n)?$",
+            methodName.replace("$", "\\$")
+          ),
+          Pattern.DOTALL
+        ).matcher("");
+    
+    nextfile:
+    for (Iterator it = srcfs.iterator(); it.hasNext(); ) {
+      URL srcf = it.next();
+      
+      NumberedLines nl = new NumberedLines(IOUtils.toString(srcf));
+      
+
+      String[] ctxlines = null;
+      String line = null;
+      
+      try {
+        if (nl.getLines().length >= lineno) {
+          line = nl.getLine(lineno);
+          ctxlines = nl.getContextLines(lineno, ctxSize);
+          
+          if (line != null && (idx == 0 || (
+             ( methodName.startsWith("<clinit") ) ||
+             ( methodName.startsWith("<init") && (
+               line.indexOf(
+                 ClassInfo.getSimpleName(ste.getClassName()
+                   ).replaceAll("^.*\\.", "") != -1 ||
+                 Pattern.compile(
+                   String.format(
+                     "^[\t ]*(?:super\\(|new ([a-zA-Z0-9_$.]*\\.)*)(?:%s)",
+                     ClassInfo.getSimpleName(
+                       ste.getClassName()
+                     ).replaceAll("^.*\\.", "")
+                   ),
+                   Pattern.DOTALL
+                 ).matcher(line).find()
+               )
+             )) ||
+             ( line.indexOf(methodName) != -1 &&
+               mchr.reset(line).find()))))
+          {
+            int ctxlineIdx = ArrayUtils.indexOf(ctxlines, line);
+            String[] hiliteLines = ctxlines.clone();
+            hiliteLines[ctxlineIdx] = String.format(
+              "\u001b[1;31m%s\u001b[0m", line);
+    
+            list.add(0, dumpMembers.colorize(ste.toString(), "1;33"));
+            list.add(1, hiliteLines.join("\n").toString());
+            list.add(0, "");
+            break;
+          }
+        }
+        
+        matches = CollectionUtil2.filter(
+          indexedLines = (
+            origLines = nl.getLines(
+              lineno - ctxSize,
+              Math.min(nl.getLines().length, lineno + ctxSize)
+            )
+          ).indexed(),
+          mchr
+        );
+        
+      } catch (Throwable neg) {
+        matches = new Entry[0];
+      }
+
+      
+      int diff = 0;
+      
+      if (matches.length == 0) {
+        String nlstr = nl.toString();
+        mchr.reset(nlstr);
+        int lowest = Integer.MAX_VALUE;
+        int newLineNo = 0;
+        Entry match = null;
+        while (mchr.find()) {
+          int methodNameStart = mchr.start(2);
+          int lineStart = nlstr.lastIndexOf('\n', methodNameStart) + 1;
+          int lineEnd = nlstr.indexOf('\n', lineStart);
+          if (lineEnd == -1) lineEnd = nl.length();
+          String line = nl.subSequence(lineStart, lineEnd).toString();
+          int lineIndex = ArrayUtils.indexOf(
+            nl.getLines(), line
+          );
+          diff = Math.abs(lineno - (lineIndex+1));
+          if (diff > lowest) continue;
+          lowest = diff;
+          newLineNo = lineIndex + 1;
+          match = new java.util.AbstractMap.SimpleEntry(
+            0, line
+          );
+        }
+        if (match != null) {
+          matches = new Entry[] { match };
+          lineno = 0 - newLineNo;
+        } else { 
+          matches = new Entry[0];
+        }
+      }
+      
+      if (matches.length > 0) {
+        mmap.put(diff, Pair.of(nl, matches));
+        // break;
+      }
+    }
+    
+    
+    if (!mmap.isEmpty()) {
+      Entry diffAndEntry = mmap.entrySet()[0];
+      mmap.clear();
+      int adjustmentDiff = ((Integer) diffAndEntry.getKey()).intValue();
+      Entry e = diffAndEntry.getValue();
+      
+      NumberedLines nl = e.getKey();
+      Entry[] matches = e.getValue();
+      
+      Entry match = matches[0];
+        int subseqOffset = match.getKey();
+        String line = match.getValue();
+        Matcher mchr2 = mchr.reset(match.getValue());
+        if (!mchr2.find()) throw new IllegalArgumentException(String.format(
+          "methodName = %s, ptrn = %s, line = [%s]",
+          methodName, ptrn, line
+        ));
+        //continue;
+        int nameStart = mchr2.start(2), nameEnd = mchr2.end(2);
+        System.err.println(dumpMembers.colorize(line, "1;32"));
+        int realLineno = (lineno >= 0)
+          ? lineno - ctxSize + subseqOffset
+          : (0 - lineno);
+        
+        try {
+          ctxlines = nl.getContextLines(realLineno, ctxSize);
+        } catch (Throwable neg) {
+          Log.d("printStackTrace2", "getContextLines(realLineno: %s, ctxSize: %s)",
+            realLineno, ctxSize);
+          ctxlines = nl.getContextLines(lineno, ctxSize);
+          continue;
+        }
+        
+        int ctxlineIdx = ArrayUtils.indexOf(ctxlines, line);
+        hiliteLines = ctxlines.clone();
+        if (ctxlineIdx != -1 && ctxlineIdx < ctxlines.length) {
+          hiliteLines[ctxlineIdx] = String.format(
+            "%4$c[1;33m%1$s%4$c[1;31m%2$s%4$c[0m%4$c[1;37m%3$s%4$c[0m", 
+            ctxlines[ctxlineIdx].subSequence(0, nameStart), 
+            ctxlines[ctxlineIdx].subSequence(nameStart, nameEnd), 
+            ctxlines[ctxlineIdx].subSequence(
+              nameEnd, ctxlines[ctxlineIdx].length()
+            ).toString().replaceFirst(
+              "\\(((?:[^()]*|\\([^()]*\\)|\\([^()]*\\([^()]*\\)[^()]*\\))*)\\)",
+              "\u001b[1;37m(\u001b[1;32m$1\u001b[1;37m)\u001b[1;37m"
+            ),
+            0x1b
+          );
+          list.add(0, dumpMembers.colorize(ste.toString(), "1;36"));
+          list.add(1, hiliteLines.join("\n").toString());
+          list.add(0, "");
+        }
+
+      
+      mmap.clear();
+    }
+  }
+  return list.toArray(new String[0]).print();
+}
+
+
+void;
+}

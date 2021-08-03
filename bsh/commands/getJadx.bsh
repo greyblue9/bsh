@@ -1,0 +1,91 @@
+import jadx.core.utils.files.InputFile;
+import jadx.core.dex.nodes.RootNode;
+import jadx.core.dex.nodes.DexNode;
+import jadx.core.dex.nodes.ClassNode;
+import jadx.core.dex.nodes.MethodNode;
+import jadx.api.IJadxArgs;
+import jadx.api.ResourceFile;
+import jadx.api.ResourceType;
+import jadx.api.JadxDecompiler;
+import jadx.core.xmlgen.BinaryXMLParser;
+
+import libcore.io.IoUtils;
+import org.apache.commons.io.FileUtils;
+
+
+
+public static Map getJadx(byte[] dexBytes) {
+ 
+  File tempDir = PosixFileInputStream.createTemporaryDirectory("decompiler");
+  tempDir.deleteOnExit();
+  // tempDir.deleteOnExit();
+  File tempDex = new File(tempDir, "classes.dex");
+  tempDex.createNewFile();
+  tempDex.deleteOnExit();
+  FileUtils.writeByteArrayToFile(tempDex, dexBytes);
+  
+  InputFile inputFile = new InputFile(tempDex);
+  IJadxArgs args = new JadxArgs(tempDir.getPath());
+  RootNode root = new RootNode(args);
+  
+  Constructor ctor = jadx.core.dex.nodes.DexNode.class.getDeclaredConstructors()[0];
+  DexNode dexNode = ctor.getParameterTypes()[1] == jadx.core.utils.files.DexFile.class
+    ? new DexNode(root, new jadx.core.utils.files.DexFile(
+      inputFile, "classes.dex", new com.android.dex.Dex(FileUtils.readFileToByteArray(tempDex))
+    )
+  )
+  : new DexNode(root, inputFile);
+
+
+  
+  
+  // slow
+  // dexNode.loadClasses();
+  
+  ClassNode[] nodes
+    = dexNode.getClasses().toArray(new ClassNode[0]);
+  JadxDecompiler dc = new JadxDecompiler(args);
+  /* ClassNode classNode = nodes[41];
+  MethodNode mtd = classNode.getMethods()[7];
+  mtd.load(); */
+  Reflect.setfldval(dc, "root", root);
+  /* Collection dcClasses = Reflect.getfldval(dc, "classes");
+  if (dc.classes == null || dc.classes.size() == 0) {
+    javaClasses = dexNode.getClasses().select("m => new jadx.api.JavaClass(m, dc);");
+    Reflect.setfldval(dc, "classes", javaClasses);
+  } */
+  root.load(Arrays.asList(inputFile)); // ?
+  Reflect.setfldval(dc, "inputFiles", Arrays.asList(inputFile));
+  
+  /*List<ResourceFile> resources = new ArrayList<ResourceFile>();
+  List<ZipEntry> zes = StringCollectionUtil.toStringFilter(
+    ZipUtil.list(apkBytes), 
+    "^(?:AndroidManifest|res/.*)\\.xml$|^resources.arsc$"
+  );
+  for (ZipEntry zipEntry: zes) {
+    String name = zipEntry.getName();
+    System.err.printf("Adding resource file: [%s] ...\n", name);
+    ResourceType type = 
+      (name.equals("AndroidManifest.xml") 
+        ? ResourceType.MANIFEST
+        : (StringUtils.endsWith(name, ".xml")
+            ? ResourceType.XML 
+            : ResourceType.ARSC));
+    ResourceFile jadxResFile = new ResourceFile(dc, name, type);
+    ResourceFile.ZipRef zipRef 
+      = new ResourceFile.ZipRef(tempZip, name);
+    jadxResFile.setZipRef(zipRef);
+    resources.add(jadxResFile);
+  }
+  root.loadResources(resources);
+  dc.resources = resources;
+  BinaryXMLParser binxmlp = new BinaryXMLParser(root);
+  dc.xmlParser = binxmlp;
+  System.err.printf("Saving resources...\n");
+  */
+  
+  return this.namespace.variables;  
+}
+
+
+ 

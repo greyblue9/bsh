@@ -1,0 +1,11 @@
+public static String[] split(String str, Object separator) {
+  String delim = separator instanceof String ? (String) separator : String.valueOf((Object) separator);
+  String adjStr = str.replace(String.format("%1$s%1$s", delim), String.format("%1$s\007\007\007%1$s", delim));
+  String bellStr = "\007\007\007".intern();
+  String[] parts = StringUtils.split(adjStr, delim);
+  for (int i = 0, len = parts.length; i < len; ++i) {
+    if (bellStr.equals(parts[i]))
+      parts[i] = "";
+  }
+  return parts;
+}

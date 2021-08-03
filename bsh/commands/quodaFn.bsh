@@ -1,0 +1,1 @@
+public static String quodaFn(String name) { Matcher mchr = Pattern.compile("(?:^|\n)[\t ]*([a-z]+ )*[^ ]+ " + name + "((?!\n *[^(]+\\([^)]+\\)[\n ]*\\{).)*[^}]*\\}", Pattern.CASE_INSENSITIVE | Pattern.DOTALL | Pattern.MULTILINE | Pattern.UNIX_LINES).matcher(PosixFileInputStream.pexecSync("quodtext")); mchr.find(); return mchr.group(0); }

@@ -1,0 +1,40 @@
+
+public static void readXmlAsync(Object path, String varName)
+{
+  Thread t;
+  t = new Thread(new Runnable() {
+    // @Override
+    public void run() {
+      System.err.printf(
+        "readXmlAsync(%s, \"%s\"): Thread %s started "
+        + "(result will be saved into variable `%s`)\n",
+        String.valueOf(path), String.valueOf(varName),
+        String.valueOf(t), varName
+      );
+      Interpreter in = CollectionUtil.getInterpreter();
+      System.out.printf(
+        "\n%c[1;44;32m%s%c[0m ", 
+        0x1b, in.getBshPrompt().trim(), 0x1b
+      );
+      Object inResult = readXml(path, true);
+      in.setu(varName, inResult);
+      System.err.printf(
+        "readXmlAsync(%s, \"%s\"): Thread %s finished "
+        + "(result saved into variable `%s`: %s)\n",
+        String.valueOf(path), String.valueOf(varName),
+        String.valueOf(t), varName, Debug.ToString(inResult)
+      );
+      System.out.printf(
+        "\n%c[1;44;32m%s%c[0m ", 
+        0x1b, in.getBshPrompt().trim(), 0x1b
+      );
+    }
+  });
+  t.start();
+}
+
+public static void readXmlAsync(Object path) {
+  readXmlAsync(path, "t$obj");
+}
+
+

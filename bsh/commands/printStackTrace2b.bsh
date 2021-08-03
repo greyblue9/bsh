@@ -1,0 +1,92 @@
+import java.util.Map.Entry;
+{
+
+
+
+public static String[] printStackTrace2b(Throwable t2) {
+  return printStackTrace2b(t2, 10);
+}
+
+
+public static String[] printStackTrace2b(Throwable t2, int ctxSize) {
+  List<String> list = new LinkedList<String>();
+  StackTraceElement[] stackTrace = t2.getStackTrace();
+  StackTraceElement ste = null, nextste = null;
+  String methodName = null;
+  Collection<URL> srcfs = null;
+  Object matches = null, indexedLines = null, origLines = null;
+  NumberedLines nl = null;
+  Pattern ptrn = null;
+  
+  for (int idx = stackTrace.length - 1; idx > 1; --idx) {
+    Map mmap = new TreeMap(new ToStringComparator());
+    ste = t2.stackTrace[idx];
+    nextste = t2.stackTrace[idx - 1];
+    int lineno = ste.getLineNumber();
+    methodName = nextste.getMethodName();
+    srcfs = SourceUtil.findSource(ste.getClassName(), true, 60);
+    for (Iterator it = srcfs.iterator(); it.hasNext(); ) {
+      URL srcf = it.next();
+      nl = new NumberedLines(IOUtils.toString(srcf));
+      if (nl.getLines().length <= lineno) {
+        it.remove();
+        continue;
+      }
+      matches = (
+        indexedLines = (
+          origLines = nl.getLines(
+            lineno - ctxSize,
+            Math.min(nl.getLines().length - 1, lineno + ctxSize)
+          )
+        )
+      ).indexed().filter(
+        ptrn = Pattern.compile(
+          String.format(
+            "^(?:\\(([0-9]+)[^0-9])?((?!public |private |protected |static |void |@Override ).)*(?<=[^a-zA-Z0-9_$])(%s)\\(((?![a-zA-Z0-9_$]+ [a-zA-Z0-9_$]+[,\\)]|\\{[\n,()]).)* *\\)?(\\)|$|\n)",
+            methodName
+          ),
+          Pattern.DOTALL
+        )
+      );
+      if (CollectionUtil.toArray(matches).length == 0)
+        continue;
+      mmap.put(nl, matches);
+    }
+    for (Entry e: mmap.entrySet()) {
+      nl = e.getKey();
+      matches = e.getValue();
+      for (Entry match: matches) {
+        int subseqOffset = match.getKey();
+        String line = match.getValue();
+        Matcher mchr2 = ptrn.matcher(match.getValue());
+        if (!mchr2.find())
+          continue;
+        int nameStart = mchr2.start(3), nameEnd = mchr2.end(3);
+        System.err.println(dumpMembers.colorize(line, "1;32"));
+        int realLineno = lineno - ctxSize + subseqOffset;
+        String[] ctxlines = nl.getContextLines(realLineno, ctxSize);
+        int ctxlineIdx = ArrayUtils.indexOf(ctxlines, line);
+        String[] hiliteLines = ctxlines.clone();
+        hiliteLines[ctxlineIdx] = String.format(
+          "%4$c[1;31m%1$s%4$c[4;33m%2$s%4$c[0m%4$c[1;31m%3$s%4$c[0m", 
+          ctxlines[ctxlineIdx].subSequence(0, nameStart), 
+          ctxlines[ctxlineIdx].subSequence(nameStart, nameEnd), 
+          ctxlines[ctxlineIdx].subSequence(nameEnd, 
+          ctxlines[ctxlineIdx].length()), 0x1b
+        );
+        list.add(0, dumpMembers.colorize(ste.toString(), "1;36"));
+        list.add(1, hiliteLines.join("\n").toString());
+      }
+    }
+  }
+  return list.toArray(new String[0]).print();
+}
+
+
+void;
+}
+
+
+
+
+

@@ -1,0 +1,106 @@
+
+
+
+
+public static Object clone(Object orig, Set visited, int depth, int maxdepth) { 
+  
+  if (orig == null) return null; 
+  if (depth >= maxdepth) return orig; 
+  if (visited.contains(orig)) return orig; 
+  if (orig.getClass().isPrimitive()) return orig;
+  PrintStream dbg = Interpreter.debug;
+  Unsafe u = ClassPathUtil2.getUnsafe();
+  
+  dbg.printf(
+    "cloning %s @ %x, depth: %d\n", 
+    orig.getClass().getName(), orig.hashCode(), depth
+  ); 
+  
+  Class ocls = orig.getClass(); 
+  Object newt = null; 
+  visited.add(orig); 
+  
+  try { 
+    if (orig instanceof Cloneable) { 
+      Object _xc = orig.clone(); 
+      return _xc;
+    }
+  } catch (Throwable ce) { }; 
+  
+  newt = u.allocateInstance(ocls); 
+  do { 
+    for (Field _fld: ocls.getDeclaredFields()) {   
+      _fld.setAccessible(true); 
+      try { 
+        if (depth < maxdepth) { 
+          Object _xval = clone(
+            _fld.get(orig), visited, depth+1, maxdepth
+          ); 
+          _fld.set(newt, _xval);
+        } else { 
+          _fld.set(newt, _fld.get(orig));
+        }         
+      } catch (Throwable e) { 
+        _fld.set(newt, _fld.get(orig));          
+      }
+    };  
+    ocls = ocls.getSuperclass();
+  } while (ocls != Object.class && ocls != null); 
+  
+  return newt != null? newt: orig;   
+}
+
+
+
+
+public static Object clone(Object orig, int maxdepth) { 
+  return clone(orig, new java.util.HashSet(), 0, 5);
+}
+
+/*
+
+
+
+public static Object clone(Object orig) { 
+  return clone(orig, 5);
+}
+*/
+
+
+
+
+public static Object clone(Object o) {
+  File tmpDir = new File("/tm/");
+  
+  if (! (tmpDir.isDirectory() || tmpDir.mkdirs())) {
+    Quad q = PosixFileInputStream.pexec("mksh", "-c", "mount -o remount,rw \"/\" 2>&1; rs=$?; echo $rs; echo \"$1\"; mkdir -p \"$1\"; return $?; ", "--", "/tm/"); boolean ok = (q.getRight().retValue == 0); if (! ok) tmpDir = new File(System.getProperty("java.temp.dir", System.getenv("TMPDIR")));
+  };  
+  
+  File tmpXml = null;
+  try { 
+    tmpXml = File.createTempFile(String.format(
+      "tmp_xserData_%s_%d", 
+      ClassInfo.typeToName(bsh.Factory.typeof(o).getName()).replaceAll("[^a-zA-Z0-9_$]+", "-"), 
+      System.currentTimeMillis()
+    ), ".xml", tmpDir);
+    
+    System.err.println(tmpXml.getPath()); 
+    Object xs = writeXml(tmpXml.getPath(), o);
+    Object theClone = readXml(tmpXml);
+    return theClone;   
+  } finally {
+    for (File f: new File[]{ tmpXml, tmpDir }) f.delete();
+    this.namespace.clear();
+  };
+}
+
+
+
+
+
+
+
+public static Object clone(Object orig) { Class cls = orig.getClass(); Method clone = Reflect.getMember(cls, "clone", new Class[0]); try { clone.setAccessible(true); Object copy = clone.invoke(orig); if (cls.isInstance(copy)) return copy; throw new UnsupportedOperationException(String.format("%s.clone() returned wrong instance type: %s", ClassInfo.typeToName(orig), ClassInfo.typeToName(copy)));  } catch (Throwable e) { e.printStackTrace(); return null; }; };
+
+
+

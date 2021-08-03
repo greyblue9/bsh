@@ -1,0 +1,49 @@
+
+public static java.lang.Object getfldval(java.lang.Object o, java.lang.String pName) {
+  
+  return getfldval(o, null, pName);
+}
+
+public static java.lang.Object getfldval(java.lang.Object o, java.lang.Class cls, java.lang.String pName) {
+  
+  if (o == null) return "null";
+  if (cls == null) cls = o.getClass();
+  if (cls == null) return "null";
+  
+  java.lang.String lf 
+    = new java.lang.Character((char)0x0a).toString();
+  
+  java.lang.reflect.Field[] fields 
+    = cls.getDeclaredFields();
+  java.lang.reflect.Field field;
+  
+  java.lang.StringBuilder sb = new java.lang.StringBuilder(75);
+  sb.append("=== As "+cls.getName()+" ==="+lf);
+  
+  for (int n=0; n<fields.length; n++) {
+    field = fields[n];
+    java.lang.String name = field.getName();
+    if (name.equals(pName)) {
+      
+      ((java.lang.reflect.AccessibleObject) field) 
+        .setAccessible(true);
+      boolean isStatic = java.lang.reflect.Modifier.isStatic(
+        field.getModifiers());
+      
+      java.lang.Object val = field.get(isStatic? null: o);
+      return val;
+      
+    }
+  }
+  
+  java.lang.Class superCls = cls.getSuperclass();
+  if (superCls == null || superCls == java.lang.Object.class) {
+    System.err.println(sb.toString());
+    return null;
+  }
+  
+  //sb.append(lf);
+  return getfldval(o, superCls, pName);
+}
+
+

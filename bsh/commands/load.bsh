@@ -1,0 +1,88 @@
+/**
+	Load a serialized Java object from filename.  Returns the object.
+*/
+
+bsh.help.load = "usage: load(filename)";
+
+setAccessibility(true);
+
+import bsh.BshClassManager;
+import java.io.*;
+import java.lang.reflect.Proxy;
+
+import bsh.Capabilities;
+
+if ( Capabilities.classExists("bsh.ClassGeneratorImpl") )
+{
+public class BshObjectInputStream extends java.lang.ObjectInputStream
+{
+	BshClassManager bcm;
+
+	public BshObjectInputStream( BshClassManager bcm, InputStream in)
+        throws IOException, StreamCorruptedException
+    {
+		super(in);
+		this.bcm = bcm;
+    }
+
+    protected java.lang.Class resolveClass( java.lang.ObjectStreamClass clas )
+        throws IOException, java.lang.ClassNotFoundException
+    {
+//        java.lang.ClassLoader loader = Thread.currentThread().getContextClassLoader();
+//        return java.lang.Class.forName( clas.getName(), false, loader );
+		java.lang.Class c = null;
+		try {
+			c = super.resolveClass( clas );
+		} catch ( java.lang.ClassNotFoundException e ) { }
+		if ( c != null )
+			return c;
+		c = bcm.classForName( clas.getName() );
+		if ( c != null )
+			return c;
+		throw new java.lang.ClassNotFoundException( "bcm not found: "+clas.getName() );
+	}
+
+/*
+	protected java.lang.Class resolveProxyClass( java.lang.String[] interfaces )
+        throws IOException, java.lang.ClassNotFoundException
+    {
+		return super.resolveProxyClass( interfaces );
+
+//        java.lang.ClassLoader loader = Thread.currentThread().getContextClassLoader();
+//
+//        java.lang.Class[] classes = new java.lang.Class[interfaces.length];
+//
+//        for (int i = 0; i < interfaces.length; i++)
+//            classes[i] = java.lang.Class.forName(interfaces[i], false, loader);
+//
+//        try {
+//            return Proxy.getProxyClass(loader, classes);
+//        } catch (java.lang.IllegalArgumentException e) {
+//            throw new java.lang.ClassNotFoundException("java.lang.reflect.Proxy class not found", e);
+//        }
+    }
+*/
+}
+}
+
+Object load( java.lang.String filename )
+{
+	this.file = pathToFile( filename );
+
+	java.lang.Object obj;
+	FileInputStream in = new FileInputStream( file );
+	javap( BshObjectInputStream );
+	java.lang.ObjectInputStream oin;
+	if ( BshObjectInputStream != void )
+		oin = new BshObjectInputStream( this.namespace.getClassManager(), in );
+	else
+		oin = new java.lang.ObjectInputStream( in );
+	obj = oin.readObject();
+	oin.close();
+
+	// bind bsh objects into the caller's namespace
+	if ( obj instanceof bsh.This )
+		bind( obj, this.caller.namespace );
+
+	return obj;
+}

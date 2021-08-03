@@ -1,0 +1,11 @@
+
+public static Map getInstanceMap() {
+  Map im = CollectionUtil.dbg.get("im");
+  if (im == null) {
+    CollectionUtil.dbg.put("im", (im = new HashMap())); 
+    // im.put(Class.class, Object.class);
+  }
+  im.put(Class.class, Object.class);
+  return im;
+}
+

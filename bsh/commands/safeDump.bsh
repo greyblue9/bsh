@@ -1,0 +1,4 @@
+safeDump(o) { for (fl: o.getClass().getDeclaredFields()) { fl.setAccessible(true); System.out.println(java.lang.String.format("========== %s ==========", fl.toString()));  try { fl.setAccessible(true); v = fl.get(o); if (v != null && v.getClass().isArray()) { print_r(v); } else { str=(v!=null)? dump(v,true): "null"; str = str.length()>600? str.substring(0,600): str; System.out.println(str); } } catch (java.lang.Throwable e) { } } }
+  
+public static String safeDump(Object o) { return Dumper.dumpStr(o, 9, 5).replaceAll("(, [^,\n]*, [^,\n]*){50,}", "L"); }
+

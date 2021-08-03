@@ -1,0 +1,7 @@
+
+
+public static Map parseChromeRequestsFromJsonExport(InputStream is) { return RealArrayMap.toMap(new org.json.JSONObject(IOUtils.toString(is, java.nio.charset.StandardCharsets.UTF_8)).nameValuePairs["events"].values.indexed().select(FunctionUtil.bind("return m -> { m.getValue().get('type') == 101? (Pair.of(String.format('request_%05d_%08d.bin', m.getKey(), m.getValue()['source']['id']), ByteUtil.hexStringToByteArray(m.getValue()['params']['hex_encoded_bytes']))): null; }"))); };
+
+
+public static Map parseChromeRequestsFromJsonExport(File file) { InputStream is = null; try { is = new FileInputStream(file); return parseChromeRequestsFromJsonExport(is); } finally { IOUtils.closeQuietly(is); }; };
+

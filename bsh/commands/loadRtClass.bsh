@@ -1,0 +1,18 @@
+
+
+
+public static Class loadRtClass(String className) { byte[] clsBytes = ZipUtil.toByteArray("/external_sd/_projects/sdk/rt.jar", className.replace('.', '/').concat(".class")); className = getClassName(clsBytes); d = AndroidClassLoader.dexClassBytes(className, clsBytes); zf = writeZip(file = File.createTempFile(className, ".jar", new File("/data/local/tmp_clazzes/")), RealArrayMap.toMap(Arrays.asList(Pair.of("classes.dex", d)))); int mCookie = DexFile.openDexFileNative(file.getPath(), null, 0); df = Reflect.allocateInstance(DexFile.class); Reflect.setfldval(df, "mFileName", file.getPath()); Reflect.setfldval(df, "mCookie", Integer.valueOf(mCookie)); String[] classNames = DexFile.getClassNameList(df.mCookie); String firstClass = classNames[0]; cls = DexFile.defineClassNative(firstClass, new AndroidClassLoader(), mCookie); return cls; }
+
+
+
+
+
+public static Class loadRtClass(byte[] clsBytes) { className = getClassName(clsBytes); d = AndroidClassLoader.dexClassBytes(className, clsBytes); zf = writeZip(file = File.createTempFile(className, ".jar", new File("/data/local/tmp_clazzes/")), RealArrayMap.toMap(Arrays.asList(Pair.of("classes.dex", d)))); int mCookie = DexFile.openDexFileNative(file.getPath(), null, 0); df = Reflect.allocateInstance(DexFile.class); Reflect.setfldval(df, "mFileName", file.getPath()); Reflect.setfldval(df, "mCookie", Integer.valueOf(mCookie)); String[] classNames = DexFile.getClassNameList(df.mCookie); String firstClass = classNames[0]; cls = DexFile.defineClassNative(firstClass, new AndroidClassLoader(), mCookie); return cls; }
+
+
+
+
+public static Object loadRtClass(String className, ClassLoader classLoader) { byte[] clsBytes = ZipUtil.toByteArray("/external_sd/_projects/sdk/rt.jar", className.replace('.', '/').concat(".class")); className = getClassName(clsBytes); d = AndroidClassLoader.dexClassBytes(className, clsBytes); zf = writeZip(file = File.createTempFile(className, ".jar", new File("/data/local/tmp_clazzes/")), RealArrayMap.toMap(Arrays.asList(Pair.of("classes.dex", d)))); int mCookie = DexFile.openDexFileNative(file.getPath(), null, 0); df = Reflect.allocateInstance(DexFile.class); Reflect.setfldval(df, "mFileName", file.getPath()); Reflect.setfldval(df, "mCookie", Integer.valueOf(mCookie)); String[] classNames = DexFile.getClassNameList(df.mCookie); String firstClass = classNames[0]; try { cls = DexFile.defineClassNative(firstClass, classLoader, mCookie); return cls; } catch (Throwable e) { e.printStackTrace(); return Triple.of(firstClass, mCookie, df); } }
+
+
+

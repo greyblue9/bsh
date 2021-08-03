@@ -1,0 +1,91 @@
+
+import bsh.*;
+import libcore.reflect.*;
+import java.lang.reflect.*;
+
+public static java.lang.reflect.Method findMethod
+(Object o, String name)
+{
+    
+    return org.d6r.Reflect.findMethod(o, name);
+}
+
+public static java.lang.reflect.Method findMethod(
+Object o, String name, Class[] args)
+{
+    return org.d6r.Reflect.findMethod(o, name, args);
+    /*
+    if (name.indexOf('(') != -1) {
+      name = name.replaceAll("[^A-Za-z0-9_.$<> ]+", "");
+    }
+    
+    Interpreter env = this.interpreter;
+    Class cls = null;
+    Object obj = null;
+
+    if (o instanceof Class) {
+      cls = (Class) o;
+      obj = null;
+    } else if (o instanceof ClassIdentifier) {
+      cls = (Class) ((ClassIdentifier) o).getTargetClass();
+      obj = null;
+    } else if (o != null) {
+      cls = o.getClass();
+      obj = o;
+      //Type superType = cls.getGenericSuperclass();
+      //if (superType instanceof ParameterizedTypeImpl) {
+      //  typeMap.put(cls, superType);
+      //}
+    } else {
+      // o == null)
+      env.println("'o' is null");
+      return;
+    }
+    return (args != null)
+      ? _findMethod(cls, name, args)
+      : _findMethod(cls, name);
+    */
+}
+  
+/*
+public static Method _findMethod(Class cls, String name) {
+
+    for (Method m: cls.getDeclaredMethods()) { 
+      if (m.getName().equals(name)) { 
+        m.setAccessible(true);
+        return m;
+      }
+    }
+    
+    Method m = null;
+    Class sup = cls.getSuperclass();
+    //print(cls+"/"+sup);
+    return sup == null || sup.equals(cls)
+      ? null
+      : findMethod(sup, name);
+}
+  
+public static Method _findMethod
+(Class cls, String name, Class[] args)
+{
+    Method m = null;
+    try {
+      m = cls.getDeclaredMethod(
+        name, 
+        args == null
+            ? args = new Class[0]
+            : args
+      );
+    } catch (Throwable te) {
+      Class sup = cls.getSuperclass();
+      return (sup == null || sup.equals(cls))
+        ? null
+        : findMethod(cls.getSuperclass(), name, args);
+    } 
+    m.setAccessible(true);
+    return m;
+}
+
+*/
+
+  

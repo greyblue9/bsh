@@ -1,0 +1,41 @@
+public static boolean fixSrc() {
+  String path = System.getProperty("input.path");
+  if (path == null)
+    return false;
+  (s = readstring(path)).length();
+  mchr = Pattern.compile("^[^0-9]*[0-9]+(?:[^0-9]|$)(.*)$", Pattern.DOTALL).matcher("");
+  (src = (lines = s.split("\n").filter("[0-9]").select(FunctionUtil.bind("return m -> { mchr.reset(m).replaceAll(\"$1\"); }", "mchr", mchr))).join("\n").toString()).length();
+  Object t = null;
+  int lastlineno = -1, lineno = -1;
+  do {
+    lastlineno = lineno;
+    try {
+      t = parseJava(src, true);
+      break;
+    } catch (Throwable e) {
+      ex = Reflector.getRootCause(e);
+      if (ex.getMessage() == null)
+        throw e;
+      mchr = Pattern.compile("at line ([0-9]+), ").matcher("");
+      lineno = (mchr.reset(ex.getMessage()).find()) ? Integer.parseInt(mchr.group(1)) : -1;
+      if (lineno != -1 && lineno != lastlineno) {
+        if (lines[lineno - 2].indexOf("//") != -1)
+          lines[lineno - 1] = "//" + lines[lineno - 1];
+        lines[lineno - 1] += lines[lineno];
+        lines[lineno] = "";
+        src = (lines = ArrayUtils.remove(lines, lineno)).join("\n");
+        continue;
+      }
+      throw ex;
+    }
+    break;
+  } while (lineno != -1 && t == null);
+  if (t != null) {
+    System.out.println(t);
+    writeFile(path, t.toString().replace("  ", "  "));
+    return true;
+  }
+  throw ex;
+}
+
+ 

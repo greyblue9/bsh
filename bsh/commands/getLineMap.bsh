@@ -1,0 +1,69 @@
+import org.ow2.asmdex.ApplicationReader;
+import org.ow2.asmdex.tree.ApplicationNode;
+import org.ow2.asmdex.Opcodes;
+import org.ow2.asmdex.tree.MethodNode;
+import org.ow2.asmdex.tree.LineNumberNode;
+import javassist.bytecode.SignatureAttribute;
+import javassist.bytecode.SignatureAttribute.BaseType;
+
+public static Map getLineMap(Class cls) {
+  Iterable<Member> members = Iterables.concat(Arrays.asList(
+    Arrays.asList(cls.getDeclaredConstructors()),
+    Arrays.asList(cls.getDeclaredMethods())
+  ).toArray(new Iterable[0]));
+  return getLineMap(members);
+}
+
+public static Map getLineMap(Iterable<Member> mtds) {
+  Class cls = mtds.iterator().next().getDeclaringClass();
+  Dex dex = org.d6r.ClassInfo.getDex(cls);
+  byte[] dexBytes = dex.getBytes();
+  ApplicationReader ar = new ApplicationReader(Opcodes.ASM4, dexBytes);
+  ApplicationNode an = new ApplicationNode(Opcodes.ASM4);
+  ar.accept(an, new String[] {
+    String.format("L%s;", ClassInfo.classNameToPath(cls.getName()))
+  }, 0);
+  String methodName = mtds.iterator().next().getName();
+  Map mmap = new TreeMap();
+  List<MethodNode> methodNodes = an.classes.iterator().next().methods.select(
+    FunctionUtil.bind(
+      "return m -> { m.name == methodName? m: null; }", "methodName", methodName
+    )
+  );
+  for (MethodNode methodNode: methodNodes) {
+    SortedSet lineNumbers = Sets.newTreeSet(Arrays.asList(
+      CollectionUtil2.typeFilter(
+        CollectionUtil.toArray(methodNode.instructions.iterator()), 
+        LineNumberNode.class
+      ).select(FunctionUtil.bind("return m -> { m.line }"))
+    ));
+    int min = lineNumbers.iterator().next().intValue();
+    int max = lineNumbers.toArray()[lineNumbers.size() - 1].intValue();
+    
+    // Class returnType = InternalNames.getClass(...);
+    MethodSignature msig = SignatureAttribute.toMethodSignature(
+      String.format("(%s)V", methodNode.desc)
+    );
+    
+    List<BaseType> types = msig.getParameterTypes();
+    List<BaseType> pars = (! types.isEmpty())
+      ? types.subList(1, types.size())
+      : Collections.emptyList();
+    BaseType ret = types.isEmpty()? null: types.iterator().next();
+    
+    Class[] paramClsz = ((List) pars).select(FunctionUtil.bind(
+      "return m -> { " +
+      "  var sb = new(StringBuffer); m.encode(sb); " +
+      "  var encodedName = sb.toString(); " +
+      "  return DexVisitor.classForName(ClassInfo.typeToName(encodedName)); " +
+      "}"
+    )).toArray(new Class[0]);
+    
+    Member mb = Reflect.getDeclaredConstructorOrMethod(
+      cls, methodNode.name, paramClsz
+    );
+    mmap.put(Range.closed(Integer.valueOf(min), Integer.valueOf(max)), mb);
+  }
+  return mmap;
+}
+

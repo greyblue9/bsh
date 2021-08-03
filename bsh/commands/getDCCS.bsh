@@ -1,0 +1,5 @@
+public static org.benf.cfr.reader.state.DCCommonState makeDccs(opts, cfs) { Class dccsCls = Class.forName("org.benf.cfr.reader.state.DCCommonState"); for (java.lang.reflect.Constructor ctor: dccsCls.getDeclaredConstructors()) { if (ctor.getParameterTypes().length == 2) { return (org.benf.cfr.reader.state.DCCommonState) ctor.newInstance(new Object[]{ opts, cfs }); } else { return (org.benf.cfr.reader.state.DCCommonState) ctor.newInstance(opts); } } throw new RuntimeException("class ctor not found: "+dccsCls.getName()+"(opts, cfs) or "+dccsCls.getName()+"(opts)"); }; 
+
+public static org.benf.cfr.reader.state.DCCommonState getDCCS() { String fileName = "/data/media/0/cf_out.out"; String methodName = null; Map map = new HashMap(); org.benf.cfr.reader.util.getopt.Options opts = new org.benf.cfr.reader.util.getopt.OptionsImpl(fileName, methodName, map); cfs = new org.benf.cfr.reader.state.ClassFileSourceImpl(opts); dccs = makeDccs(opts, cfs); (dccs.explicitlyLoadJar("/external_sd/_projects/sdk/jack/jack-lambda-jack-lambda/jack-tests/prebuilts/core-hostdex.jar")).size(); return dccs; }
+
+

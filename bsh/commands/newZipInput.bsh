@@ -1,0 +1,55 @@
+
+
+
+import kellinwood.zipio.ZipInput;
+
+
+
+public static ZipInput newZipInput(byte[] bytes) {
+  RandomAccessStream ras = new RandomAccessStream(bytes);
+  return newZipInput(ras);
+}
+
+
+
+public static ZipInput newZipInput(File file) {
+  PosixFileInputStream pfis = new PosixFileInputStream(file);
+  RandomAccessStream ras = new RandomAccessStream(pfis);
+  return newZipInput(ras);
+}
+
+
+
+public static ZipInput newZipInput(String filePath) {
+  File file = new File(filePath);
+  if (! file.exists()) {
+    File maybeResolvedFile = PosixFileInputStream.resolve(file);
+    if (! maybeResolvedFile.exists()) throw new FileNotFoundException(filePath);
+    else return newZipInput(maybeResolvedFile); 
+  } else {
+    return newZipInput(file); 
+  }
+}
+
+
+
+public static ZipInput newZipInput(RandomAccessFile raf) {
+  ZipInput zi = Reflect.allocateInstance(ZipInput.class);
+  zi.in = raf;
+  zi.fileLength = raf.length();
+  zi.zioEntries = new LinkedHashMap(); 
+  zi.inputFilename = PosixFileInputStream.getPath(raf.getFD());
+  try { 
+    zi.doRead();
+  } catch (Throwable err) {
+    try { 
+      if (zi != null) zi.close();
+    } catch (IOException ioe) { 
+      err.addSuppressed(ioe);
+    }
+    Reflector.Util.sneakyThrow(err);
+  }
+  return zi;
+}
+
+

@@ -1,0 +1,121 @@
+import java.io.File;
+
+public static List<Element> appendClassPath(
+  java.lang.String s1, java.lang.String s2, java.lang.String s3,
+  java.lang.String s4, java.lang.String s5, java.lang.String s6,
+  java.lang.String s7, java.lang.String s8, java.lang.String s9,
+  java.lang.String s10, java.lang.String s11
+){
+  return appendClassPath(new String[] { 
+    s1, s2, s3, s4, s5, s6, s7, s8, s9, s10, s11
+  });
+}
+
+public static List<Element> appendClassPath(
+  java.lang.String s1, java.lang.String s2, java.lang.String s3,
+  java.lang.String s4, java.lang.String s5, java.lang.String s6,
+  java.lang.String s7, java.lang.String s8, java.lang.String s9,
+  java.lang.String s10
+){
+  return appendClassPath(new String[] { 
+    s1, s2, s3, s4, s5, s6, s7, s8, s9, s10
+  });
+}
+
+public static List<Element> appendClassPath(
+  java.lang.String s1, java.lang.String s2, java.lang.String s3,
+  java.lang.String s4, java.lang.String s5, java.lang.String s6,
+  java.lang.String s7, java.lang.String s8, java.lang.String s9
+){
+  return appendClassPath(new String[] { 
+    s1, s2, s3, s4, s5, s6, s7, s8, s9
+  });
+}
+
+public static List<Element> appendClassPath(
+  java.lang.String s1, java.lang.String s2, java.lang.String s3,
+  java.lang.String s4, java.lang.String s5, java.lang.String s6,
+  java.lang.String s7, java.lang.String s8
+){
+  return appendClassPath(new String[] { 
+    s1, s2, s3, s4, s5, s6, s7, s8
+  });
+}
+
+public static List<Element> appendClassPath(
+  java.lang.String s1, java.lang.String s2, java.lang.String s3,
+  java.lang.String s4, java.lang.String s5, java.lang.String s6,
+  java.lang.String s7
+){
+  return appendClassPath(new String[] { 
+    s1, s2, s3, s4, s5, s6, s7
+  });
+}
+
+public static List<Element> appendClassPath(
+  java.lang.String s1, java.lang.String s2, java.lang.String s3,
+  java.lang.String s4, java.lang.String s5, java.lang.String s6
+){
+  return appendClassPath(new String[] { 
+    s1, s2, s3, s4, s5, s6
+  });
+}
+
+public static List<Element> appendClassPath(
+  java.lang.String s1, java.lang.String s2, java.lang.String s3,
+  java.lang.String s4, java.lang.String s5
+){
+  return appendClassPath(new String[] { 
+    s1, s2, s3, s4, s5
+  });
+}
+
+public static List<Element> appendClassPath(
+  java.lang.String s1, java.lang.String s2, java.lang.String s3,
+  java.lang.String s4
+){
+  return appendClassPath(new String[] { 
+    s1, s2, s3, s4
+  });
+}
+
+public static List<Element> appendClassPath(
+  java.lang.String s1, java.lang.String s2, java.lang.String s3
+){
+  return appendClassPath(new String[] { 
+    s1, s2, s3
+  });
+}
+
+public static List<Element> appendClassPath(
+  java.lang.String s1, java.lang.String s2
+){
+  return appendClassPath(new String[] { 
+    s1, s2
+  });
+}
+
+public static List<Element> appendClassPath(
+  java.lang.String s1
+){
+  return appendClassPath(new String[] { 
+    s1
+  });
+}
+
+
+public static List<Element> appendClassPath(
+  java.lang.String[] paths, ClassLoader ldr)
+{
+  return addClassPath(paths, ldr, true);
+}
+
+public static List<Element> appendClassPath(java.lang.String[] paths) 
+{
+  return appendClassPath(
+    paths, 
+    Thread.currentThread().getContextClassLoader()
+  );
+}
+
+

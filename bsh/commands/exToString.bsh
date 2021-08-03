@@ -1,0 +1,28 @@
+  
+public static String exToString(java.lang.IllegalArgumentException e) {
+  StringBuilder sb = new StringBuilder(76 * 10);
+  Arrays.sort(a = StringCollectionUtil.toStringFilter(e.getStackTrace(), ".*com.sun.tools.*"), new Comparator(){
+
+    public int compare(StackTraceElement a, StackTraceElement b) {
+      return (a.getClassName() + "#" + a.getMethodName()).compareTo(b.getClassName() + "#" + b.getMethodName());
+    }
+
+    public boolean equals(Object o) {
+      if (!(o instanceof StackTraceElement)) return false;
+      return o == this;
+    }
+  });
+  ;
+  indent = "";
+  for (StackTraceElement el : a) {
+    sb.append(String.format("%s\n", el.toString()));
+  }
+  sb.append("\n\n");
+  for (StackTraceElement el : a) {
+    indent = String.format("  %s", indent);
+    sb.append(String.format("%-40s %s:%d\n ", indent + "- " + el.getMethodName(), el.getClassName().replaceAll("^.*\\.([^.]+)$", "$1"), el.getLineNumber()));
+  }
+  sb.insert(0, "\n\n");
+  return sb.toString().replaceAll("\\((.+):(.+)\\)", "\n  at $1, line $2");
+}
+

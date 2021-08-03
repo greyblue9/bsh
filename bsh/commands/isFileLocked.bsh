@@ -1,0 +1,7 @@
+
+
+
+public static boolean isFileLocked(String path) { File f = new File(path); FileDescriptor fd = PosixUtil.open(f.getPath(), PosixUtil.O_RDONLY, 0); libcore.io.StructFlock sf = new libcore.io.StructFlock(); PosixUtil.fcntlFlock(fd, PosixUtil.F_GETLK64, sf); if ((long) sf.l_pid == 0L) { sf = new libcore.io.StructFlock(); PosixUtil.fcntlFlock(fd, PosixUtil.F_GETLK, sf); }; PosixUtil.close(fd); return (long) sf.l_pid != 0L; }
+
+
+

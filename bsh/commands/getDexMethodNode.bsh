@@ -1,0 +1,7 @@
+
+
+
+public static d2jcd9.com.googlecode.d2j.node.DexMethodNode getDexMethodNode(Method mtd) { Class dc = mtd.getDeclaringClass(); d2jcd9.com.googlecode.d2j.node.DexClassNode dcn = getDexClassNode(dc); String name = mtd.getName(), desc = ProcyonUtil.getErasedSignature(mtd); d2jcd9.com.googlecode.d2j.node.DexMethodNode dmn = dcn.methods.select(FunctionUtil.bind("return m -> { name.equals(m.method.name) && desc.equals(m.method.desc)? m: null; }", "name", name, "desc", desc)).firstOrDefault(); return dmn; };
+
+
+

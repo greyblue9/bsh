@@ -1,0 +1,17 @@
+
+
+
+public static Object fillInObject(Object inst, int maxdepth) { Class c = inst.getClass(); do { Field[] flds = c.getDeclaredFields(); for (Field fld: flds) { fld.setAccessible(true); Object val = fld.get(inst); if (val != null) continue; System.err.println(dumpMembers.colorize(fld)); try { Object obj = tryGetInstance(fld.getType(), 0, maxdepth); if (obj == null) continue; System.err.printf("got a %s\n",bsh.Factory.typeof(obj).getName()); fld.set(inst, obj); } catch (Throwable ex) { System.err.println(Reflector.getRootCause(ex)); }; };  } while ((c = c.getSuperclass()) != null); return inst; };
+
+
+
+
+public static Object fillInObject(Object inst) { return fillInObject(inst, 7); }
+
+
+
+
+public static Object fillInObject(Object inst, int maxdepth, int maxcdepth) { int cdepth = 0; Class c = inst.getClass(); do { Field[] flds = c.getDeclaredFields(); for (Field fld: flds) { fld.setAccessible(true); Log.d("fillInObject", "Checking field %s ...", fld.toGenericString()); Object val = fld.get(inst); if (val != null) continue; try { Object obj = tryGetInstance(fld.getType(), 0, maxdepth-1); if (obj == null) { System.err.printf("  - Tried %s\n", fld.getType());  continue; }; System.err.printf("got a %s\n",bsh.Factory.typeof(obj).getName()); fld.set(inst, obj); } catch (Throwable ex) { System.err.println(Reflector.getRootCause(ex)); }; };  } while ((++cdepth) < maxcdepth && (c = c.getSuperclass()) != null); return inst; };
+
+
+

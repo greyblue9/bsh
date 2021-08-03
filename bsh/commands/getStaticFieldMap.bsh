@@ -1,0 +1,13 @@
+public static Map<String_Object> getStaticFieldMap(Class cls, boolean returnMap) {
+  StringBuilder sb = new StringBuilder(76 * 10);
+  Map fmap = new TreeMap();
+  for (Field f : cls.getDeclaredFields()) {
+    if (!Modifier.isStatic(f.getModifiers()))
+      continue;
+    f.setAccessible(true);
+    Object value = f.get(null);
+    fmap.put(f.getName(), value);
+  }
+  Map ofmap = new com.google.common.collect.ImmutableMap.Builder().putAll(fmap).orderEntriesByValue(NaturalOrdering.INSTANCE).build();
+  return ofmap;
+}

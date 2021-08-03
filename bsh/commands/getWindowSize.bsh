@@ -1,0 +1,4 @@
+
+public static Pair getWindowSize(int fdNo) { FileDescriptor fd=new FileDescriptor(); PosixFileInputStream.setInt(fd, fdNo); libcore.util.MutableInt mutArg = new libcore.util.MutableInt(0); int errno = PosixUtil.ioctlInt(fd, 0x5413, mutArg);  if (errno != 0) throw new libcore.io.ErrnoException(String.format("ioctlInt(fd: %d (%s), num: TIOCGWINSZ (0x%x), argument: 0 -> %d) exted with status %d.", PosixFileInputStream.getInt(fd), PosixFileInputStream.getPath(fd), TIOCGWINSZ, Integer.reverseBytes(mutArg.value),  errno), errno);  int result = Integer.reverseBytes(mutArg.value);   int lines = (result >> 24) & 0xFF, cols = (result >> 8) & 0xFF;  return Pair.of(cols, lines); };
+
+

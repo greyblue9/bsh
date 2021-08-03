@@ -1,0 +1,53 @@
+import com.strobel.decompiler.languages.java.ast.InvocationExpression;
+import com.strobel.assembler.metadata.IMemberDefinition;
+import com.strobel.assembler.metadata.MemberReference;
+
+
+public static String decompileInvokedMethods(
+  TypeDefinition td, MethodDeclaration mdast)
+{
+  Set mds = new IdentityHashSet();
+  ArrayDeque q = new ArrayDeque();
+  
+  ast = ProcyonUtil.decompileToAst(td);
+  masts = CollectionUtil2.typeFilter(
+    ast.getTypes()[0].getMembers(),
+    MethodDeclaration.class
+  );
+  
+  decls = new IdentityHashSet();
+  newInvs = CollectionUtil2.typeFilter(
+    mdast.getDescendants(), InvocationExpression.class
+  );
+
+  q.addAll(newInvs);
+  while (!q.isEmpty()) {
+    inv = q.poll();
+    System.err.printf("Processing InvocationExpression (%s) of %d\n", inv.getText(), q.size());
+    List<IMemberReference> refs = ProcyonUtil.getDataList(inv, new com.strobel.componentmodel.Key[] { ProcyonUtil.METHOD_DEFINITION, ProcyonUtil.MEMBER_REFERENCE });
+    IMemberDefinition md = CollectionUtil.firstOrDefault(CollectionUtil2.typeFilter(refs, IMemberDefinition.class));
+    if (md == null) {
+      MemberReference ref = (MemberReference) CollectionUtil.firstOrDefault(refs);
+      if (ref != null) {
+        System.err.printf("Resolving ref = %s ...", ref);
+        md = ProcyonUtil.getResolver(ref).resolve(ref);
+        System.err.printf(" %s: %s\n", (md != null) ? "OK" : "FAIL", md);
+      } else {
+        System.err.printf("ref == null for inv: %s\n", inv);
+      }
+    }
+    System.err.printf("Resolved target of invocation [%s] is: %s\n", inv.getText(), md);
+    if (mds.add(md)) {
+      mdecl = ProcyonUtil.decompileToAst(md);
+      decls.add(mdecl);
+      newInvs = CollectionUtil2.typeFilter(
+        mdecl.getDescendants(), InvocationExpression.class
+      );
+      System.err.printf("Adding newInvs to queue: %s\n", newInvs);
+      q.addAll(newInvs);
+    }    
+  }
+  allDecls = Iterables.concat(Arrays.asList(Arrays.asList(mdast), decls).toArray(new Iterable[0]));
+  String retStr = StringUtils.join(allDecls.select(FunctionUtil.bind("return m -> { m.getText(); }")), "\n\n");
+  return retStr;
+}

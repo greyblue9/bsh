@@ -1,0 +1,54 @@
+
+{
+
+public static Object updateLoaderPaths(ClassLoader classLoader) {
+  if (CollectionUtil.isJRE()) {
+    ClassPathUtil.mapClassPathJre2();
+    return ClassPathUtil.mapClassPathJre2();
+  }
+  
+  BaseDexClassLoader loader = (classLoader instanceof BaseDexClassLoader)
+    ? (BaseDexClassLoader) classLoader
+    : Thread.currentThread().getContextClassLoader();
+  if (!(classLoader instanceof BaseDexClassLoader)) return null;
+  
+  Object pathList = Reflect.getfldval(loader, "pathList");
+  int nullIndex;
+  if ((nullIndex = ArrayUtils.indexOf(pathList.dexElements, null)) != -1) {
+    Log.w(
+      "updateLoaderPaths", 
+      "pathList contains null element(s): index %d", nullIndex
+    );
+  }
+  
+  Object[] dexElements = Reflect.getfldval(pathList, "dexElements");
+  List<File> files = new ArrayList<File>(dexElements.length);
+  for (Object dexElement: dexElements) {
+    File file = dexElement.file;
+    if (file == null) {
+      Log.w(
+        "updateLoaderPaths", 
+        "dexElement[index: %d].file == null: %s",
+        index, Debug.ToString(dexElement)
+      );
+      continue;
+    }
+    files.add(file);
+  }
+  String classpath = StringUtils.join(files, ':');
+  
+  File[] libDirs = Reflect.getfldval(pathList, "nativeLibraryDirectories");
+  String libPath = StringUtils.join(libDirs, ':');
+  Reflect.setfldval(loader, "originalPath", classpath); 
+  Reflect.setfldval(loader, "originalLibraryPath", libPath);
+    
+  return pathList;
+}
+
+public static Object updateLoaderPaths() { 
+  return updateLoaderPaths(Thread.currentThread().getContextClassLoader());
+}
+
+
+  void;
+}

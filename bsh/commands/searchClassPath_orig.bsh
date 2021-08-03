@@ -1,0 +1,70 @@
+
+import ch.qos.logback.core.util.StringCollectionUtil;
+import java.util.ArrayList;
+import java.io.PrintStream;
+import org.apache.commons.collections.FastArrayList;
+
+/*
+public static Class[] searchClassPath(java.lang.String query) { this.interpreter.set("classMap", mapClassPath()); java.util.List l = new java.util.ArrayList(); query = query.toUpperCase(); for (j: (x = this.interpreter.get("classMap")).keySet()) { clsz = this.interpreter.get("classMap").get(j).length; print(String.format("%30s: %d", j, clsz)); for (xe: x.get(j)) { if (xe.toUpperCase().indexOf(query) != -1) { print(xe); Class c = null; try { c = java.lang.Class.forName(xe); } catch (Throwable e) {} if (c != null) { l.add(c); } } } } return (Class[]) l.toArray(new Class[]{  }); }
+*/
+
+
+public static List searchClassPath(String regex) { 
+  ret = searchClassPath(new String[]{ regex });
+  System.out.println(ret.getClass());
+}
+  
+public static List flattenValues(Map classpathMap) {
+  Collection allClasses2d = classpathMap.values();
+  
+  int size = 0;
+  int idx = 0;
+  for (String[] sl: allClasses2d) {
+    size += sl.length;
+  }
+  String[] allStrings = new String[size];
+  
+  for (String[] sl: allClasses2d) {
+    System.arraycopy(sl, 0, allStrings, idx, sl.length);
+    idx += sl.length;
+  }
+  
+  return Arrays.asList(allStrings);
+}
+
+
+public static List searchClassPath(String[] regexes) { 
+  PrintStream out = System.out; 
+  
+  List allClasses = this.interpreter.get("allClasses"); 
+  if (allClasses == null) {
+    classpathMap = this.interpreter.get("classpathMap");
+    if (classpathMap == null) {
+      classpathMap = mapClassPath(); 
+      this.interpreter.set("classpathMap", classpathMap);
+    }
+    allClasses = flattenValues(classpathMap);
+    this.interpreter.set("allClasses", allClasses);
+  }
+  
+  
+  ArrayList matchList = new ArrayList(allClasses);
+  
+  StringCollectionUtil.retainMatching(matchList, regexes);
+  //out.println(matchList.size());
+  // Add to total matches classlist and print each
+  /*Iterator it = matchList.iterator();
+  while (it.hasNext()) {
+    out.println(it.next());
+  } */
+  for (String s: matchList.toArray()) {
+    out.println(s); //matchList);
+  }
+  return matchList;
+}
+
+
+ 
+
+
+

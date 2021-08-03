@@ -1,0 +1,123 @@
+
+
+
+import org.jf.dexlib2.iface.debug.*; 
+import org.jf.dexlib2.dexbacked.*; 
+import org.jf.dexlib2.dexbacked.util.*;
+import org.jf.dexlib2.immutable.debug.ImmutableStartLocal; 
+import org.jf.dexlib2.Opcodes;
+
+
+
+public static String dumpMethods(Class cls) {
+  
+  
+  byte[] dexBytes = org.d6r.ClassInfo.getDex(cls).getBytes(); 
+  DexBackedDexFile df = new DexBackedDexFile(
+    Opcodes.forApi(18), 
+    dexBytes
+  );
+  
+  StringBuilder sb = new StringBuilder(
+    String.format("\n%s {\n\n",
+      dumpMembers.colorize(cls.toString(), "0;35")
+    )
+  );    
+   
+  DexBackedClassDef[] defs = df.getClasses().toArray(new DexBackedClassDef[0]); 
+    
+  String clsBinaryName = cls.getName().replace('.', '/').replaceAll("^(.*)$", "L$1;");
+  
+  DexBackedClassDef def 
+   = StringCollectionUtil.toStringFilter(defs, clsBinaryName)[0];
+
+  DexBackedMethod[] mthds 
+   = CollectionUtil.toArray(def.getMethods()); 
+  
+  int mIdx = 0;
+  for (DexBackedMethod m: mthds) { 
+    
+    DexBackedMethodImplementation i = m.getImplementation(); 
+    String mName = m.getName(); 
+    String retType = BshClassPath.toNiceNames(
+      new String[]{  m.getReturnType().toString()  }, 1)[0];
+
+    ArrayList al = new ArrayList(); 
+    
+    DebugInfo di = i.getDebugInfo();
+    Iterator<DebugItem> it = di.iterator(); 
+    DebugItem item = null; 
+    while (it.hasNext()) {
+      item = it.next(); 
+      if (item instanceof ImmutableStartLocal) {
+        al.add(Reflect.getfldval(item, "signature"));
+      }
+    }
+    
+    StringBuilder psb = new StringBuilder(76 * 10);
+    int j = 0; 
+    for (param: m.getParameters()) {
+      String typeName = param.getType().toString();
+      if (al.size() > j && al.get(j) != null
+      && !String.valueOf(al.get(j)).contains("null")) {
+        try { 
+          typeName = al.get(j);
+        } catch (Throwable e) { }   
+      }
+      typeName = BshClassPath.toNiceNames(
+        new String[]{ typeName }, 1)[0];
+        
+      String colorName = dumpMembers.colorize(
+        typeName, "1;32");
+      colorName = colorName.replaceAll(
+        "mL([A-Za-z_.]+);", "m$1");
+      psb.append(String.format(
+        "%s %s, ", 
+        colorName,
+        param.getName()
+      ));
+      j++;
+    }
+    String paramPart = psb.toString().replaceAll(", $", "");
+    
+    sb.append(String.format(
+      "  %s %s %s%c[0m(%s%c[0m);\n", 
+      dumpMembers.colorize(
+        Modifier.toString(m.getAccessFlags()),
+        "1;30"
+      ),
+      dumpMembers.colorize(retType, "1;36"),
+      dumpMembers.colorize(mName, "1;33"),
+      (char) 0x1b,
+      paramPart,
+      (char) 0x1b
+    ));
+
+  }
+  
+  sb.append(String.format("\n%c[0;35m}\n", (char) 0x1b));
+  return sb.toString(); 
+}
+
+
+public static String dumpMethods(bsh.ClassIdentifier ci) {
+  return dumpMethods(
+    (Class) ((bsh.ClassIdentifier) ci).getTargetClass()
+  );
+}
+
+
+public static String dumpMethods(Object o) {
+  return dumpMethods((Class) o.getClass());
+}
+
+
+
+
+
+
+  
+  
+
+public static void dumpMethods(Object type) { Class cls = dumpMembers.getClass(type); TypeDefinition td = ProcyonUtil.getTypeDefinition(cls);  for (MethodDefinition md: td.getDeclaredMethods()) { if ((md.getModifiers() & Modifier.ABSTRACT) != 0) continue; System.out.println(dumpMembers.colorize(ProcyonUtil.getMethod(md))); MethodDefinition superMd = ProcyonUtil.getOverriddenMethod(md); if (superMd != null) System.out.printf("  \u001b[1;31m@\u001b[1;35mOverride\u001b[0m of :\n%s (%s)\n\n", dumpMembers.colorize(ProcyonUtil.getMethod(superMd)), dumpMembers.colorize(superMd.getDeclaringType().toString(),"1;36")); System.out.printf("\n    %s\n\n", StringUtils.join(md.getBody()!=null? md.getBody().getInstructions().select(FunctionUtil.bind("""return m -> { m.getOpCode().getFlowControl().name() == "Call"? m: null; }""")): Arrays.asList(), "\n    "));  }; };
+

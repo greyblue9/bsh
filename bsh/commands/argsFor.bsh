@@ -1,0 +1,22 @@
+
+
+
+public static Object[] argsFor(Constructor ctor, int depth, int maxdepth) {
+  Class[] ptypes = ctor.getParameterTypes(); 
+  int nargs = ptypes.length; 
+  Object[] args = new Object[nargs]; 
+  for (int i=0; i<nargs; ++i) {
+    Class ptype = ptypes[i]; 
+    Object pinst = getInstance(ptype); 
+    if (pinst == null) { 
+      pinst = Reflect.defaultValue(ptype); 
+      if (pinst == null && depth < maxdepth) { 
+        pinst = tryGetInstance(ptype, depth+1, maxdepth);
+      };
+    };
+    args[i] = pinst;
+  };
+  return args;
+}; 
+
+

@@ -1,0 +1,7 @@
+
+public static void openOCRPro() {
+
+  Collection files = findFiles.iterate("/storage/extSdCard/Pictures/Screenshots", 1, ".*\\.png").select(FunctionUtil.eval("""return m -> { Pair.of(Long.valueOf(m.lastModified()), m); }""")); Comparator modTimeComparator = java8.util.Comparators.comparing(FunctionUtil.delegate(Function.class, """return m -> { m.getKey(); }"""), FunctionUtil.delegate(Comparator.class, """(a, b) -> { return a.compareTo(b); }""")); Collections.sort(files, modTimeComparator); Collections.reverse(files); URI mostRecent = files.iterator().next().getValue().toURI(); android.content.Intent i = new android.content.Intent("android.intent.action.SEND"); i.addCategory("android.intent.category.DEFAULT"); i.setType("image/png"); i.setComponent(new android.content.ComponentName("com.thesimplest.ocrpro", "com.thesimplest.ocr.MainActivity")); i.setFlags(0x13000001); i.putExtra("android.intent.extra.STREAM", android.net.Uri.parse(mostRecent.toString())); android.app.IActivityManager.WaitResult result = android.app.ActivityManagerNative.getDefault().startActivityAndWait((android.app.IApplicationThread) null, "android", i, i.getType(), (android.os.IBinder) /*resultTo*/null, (String) /*resultWho*/null, /*requestCode*/ (int) 0, /*startFlags*/ (int)i.getFlags(), /*profileFile*/(String)null, (android.os.ParcelFileDescriptor) /*profileFd*/null, (android.os.Bundle) /*options*/ null, (int) 0);
+
+}
+

@@ -1,0 +1,3 @@
+
+public static String mdToStr(com.strobel.assembler.metadata.MethodReference md) { String modstr = Modifier.toString(md.getModifiers()); String gpstr = StringUtils.join(td.getDeclaredMethods()[6].getGenericParameters(), ", "); String pstr = StringUtils.join(md.getParameters().select(FunctionUtil.eval("""return m -> { String.format("%s %s", m.getParameterType(), m.getName()) }""")), ", "); return StringUtils.join(Arrays.asList(modstr.concat(md.getGenericParameters().isEmpty()? "": String.format(" <%s>", gpstr)), md.getReturnType(), md.getName().concat(String.format("(%s)", pstr))), " ").trim(); }
+

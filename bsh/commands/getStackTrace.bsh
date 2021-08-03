@@ -1,0 +1,5 @@
+
+public static String getStackTrace(Throwable ex) { PrintWriter pw; ByteArrayOutputStream baos; String output; ex.printStackTrace(pw = new PrintWriter(baos = new ByteArrayOutputStream())); pw.flush(); pw.close(); baos.flush(); return (output = IOUtils.toString(baos.toByteArray()));  }
+
+public static List getStackTrace(Throwable th) { List al = new ArrayList(); for (StackTraceElement ste: th.getStackTrace()) { boolean isNative = ste.isNativeMethod() || ste.getLineNumber() <= 0;  if (isNative) continue;  System.out.printf("%50s @ %4d\n", ste.getClassName(), ste.getLineNumber(), ste.getFileName()); try { c = Class.classForName(ste.getClassName(), false, Thread.currentThread().getContextClassLoader()); al.add(c); System.out.println(new bsh.ClassIdentifier(c)); getGenericInterfaces(c); } catch (Throwable e) { System.err.println(e);; };;  } return al; }
+

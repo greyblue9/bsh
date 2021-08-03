@@ -1,0 +1,18 @@
+public static String formatPublicXmlResourcesString(String xmlDocumentText) {
+  org.jsoup.nodes.Document doc = Jsoup.parseBodyFragment(xmlDocumentText);
+  org.jsoup.nodes.Element body = doc.body();
+  Iterable<Element> bodyChildElements = body.children();
+  org.jsoup.nodes.Element root = (bodyChildElements.size() == 1) ? bodyChildElements.iterator().next() : body;
+  Iterable<Element> specs = root.select("public");
+  Comparator cmp = com.google.common.collect.Ordering.compound(Arrays.asList(Comparators.comparingInvocation(org.jsoup.nodes.Node.class, "attr", new Class[] { String.class }, new Object[] { "type" }), Comparators.comparingInvocation(org.jsoup.nodes.Node.class, "attr", new Class[] { String.class }, new Object[] { "name" })));
+  SortedSet<Node> nodeSet = new TreeSet<Node>(cmp);
+  Collections.addAll(nodeSet, root.childNodes().toArray(new org.jsoup.nodes.Node[0]));
+  for (org.jsoup.nodes.Node child : root.childNodes().toArray(new org.jsoup.nodes.Node[0])) {
+    root.removeChild(child);
+  }
+  root.addChildren(nodeSet.toArray(new org.jsoup.nodes.Node[0]));
+  String finalXmlOutput = StringUtils.join(new String[] { "<?xml version=\"1.0\" encoding=\"utf-8\"?>", formatXml(root), "\n" }, "\n").trim();
+  return finalXmlOutput;
+}
+
+ 

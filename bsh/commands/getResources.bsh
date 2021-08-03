@@ -1,0 +1,59 @@
+import jadx.core.xmlgen.ResTableParser;
+import jadx.core.xmlgen.ResContainer;
+import jadx.core.codegen.CodeWriter;
+import java.nio.charset.StandardCharsets;
+
+public static Map getResources(byte[] apkBytes) {
+  // return new TreeMap();
+  byte[] arscBytes = ZipUtil.toByteArray(apkBytes, "resources.arsc");
+  InputStream is = null;
+  try {
+    is = new ByteArrayInputStream(arscBytes);
+    return getResources(is);
+  } catch (IOException ioe) {
+    throw new RuntimeException(ioe);
+  } finally {
+    if (is != null) IOUtils.closeQuietly(is);
+  }
+}
+
+
+public static Map getResources(InputStream arscInputStream) {
+  ResTableParser rtp = new ResTableParser();
+  ResContainer d = null;
+  
+  try {
+    BufferedInputStream bis = new BufferedInputStream(arscInputStream);
+    bis.mark(256 * 1024 * 32);
+    try {
+      d = rtp.decodeFiles(bis);
+    } catch (NullPointerException npe) {
+      bis.reset();
+      bis.mark(256 * 1024 * 32);
+      Reflect.setfldval(
+        Reflect.getfldval(rtp, "resStorage"), "appPackage", "android"
+      );
+      d = rtp.decodeFiles(bis);
+    }
+  } catch (IOException ioe) {
+    throw new RuntimeException(ioe);
+  }
+  
+  Map/*<String, byte[]>*/ resMap = new IdentityHashMap();
+  
+  for (ResContainer subFile: d.getSubFiles()) {
+    
+    String name = subFile.getName();
+    CodeWriter code = subFile.getContent();
+    if (code == null) {
+      continue;
+    }
+    System.err.printf("Processing ResContainer: %s\n", name);
+    String text = code.getCodeStr();
+    resMap.put(name, text.getBytes(StandardCharsets.ISO_8859_1));
+    System.err.println(name);
+    
+  }
+  System.err.println("return ResMap");
+  return resMap;
+}

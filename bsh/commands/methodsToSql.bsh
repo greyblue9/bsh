@@ -1,0 +1,65 @@
+
+
+
+public static String methodsToSql(Method[] mthds, int len) {
+  
+  Map cmb = CollectionUtil.getInterpreter().getu("cmb");
+  if (cmb == null) {
+    CollectionUtil.getInterpreter().setu("cmb", (cmb = new TreeMap()));
+  }
+  
+  StringBuilder sb = new StringBuilder(76 * 100); 
+  
+  for (Method m: mthds) {
+      
+      String mthdName = m.getName();
+      String clsn = m.getDeclaringClass().getSimpleName();  
+      Class[] pts = m.getParameterTypes(); 
+      String n
+        = clsn + "." + mthdName;
+      String nmeCaps
+        = clsn.substring(0, 1).toUpperCase()
+        + clsn.substring(1)
+        + "."
+        + mthdName.substring(0, 1).toUpperCase()
+        + mthdName.substring(1);
+      String caps = nmeCaps
+        .replaceAll("[^A-Z0-9]+", "").toLowerCase(); 
+        
+      if (pts.length > 0 && pts[0] == String.class) {
+        n = n + "(";        
+      } else if (pts.length == 0) { 
+        n = n + "()";
+      } 
+      
+      if (caps.length() == 1 && n.length() >= 2) { 
+        caps = caps 
+          + String.valueOf(n.charAt(1)).toLowerCase(); 
+      }
+      int l = len;
+      while (l < caps.length() 
+      && (
+           caps.length() > l &&
+           cmb.get(caps.substring(0, l)) != null
+         )
+      ) 
+      {
+        l += 1;
+      }
+      
+      caps = caps.substring(0, Math.min(caps.length(), l)); 
+      
+      sb.append(String.format(
+        "insert into utext (title, note) "
+        + "values (\"%s\", \"%s\"); \n", 
+        caps, 
+        n.replaceAll("\"", "\\\"")
+      ));          
+    }  
+      
+    String sql = sb.toString();
+    return StringUtils.join(
+      sql.replaceAll("\"\\)","(\")").selectLines("insert ").sort().uniq(),
+      "\n"
+    );
+}

@@ -1,0 +1,17 @@
+
+
+public static Map[] replaceIllegalNames(Map origSrcMap) {
+
+  Map map2 = new TreeMap();
+  for (Object ent: CollectionUtil.toArray(origSrcMap.entrySet())) {
+    String name = StringEscapeUtils.escapeJava(ent.getKey()).replace("\\u","__");
+    String src = StringEscapeUtils.escapeJava(ent.getValue()).replace("\\u", "__").replace("\\n","\n").replace("\\\"", "\"").replaceAll("([^a-zA-Z0-9_$])(if|while|for|select|catch)([^a-zA-Z0-9_$ ]| [^(])", "$1_$2$3").replaceAll("\n// compiled from: Source\n(class |@?interface |enum )","\n\npublic $1");
+    map2.put(name, src);
+    System.err.println(name);
+  };
+  return Arrays.asList(map2).toArray(new Map[0]);
+
+}
+
+
+

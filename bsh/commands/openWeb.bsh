@@ -1,0 +1,54 @@
+import android.app.IActivityManager;
+import android.app.ActivityManagerNative;
+import android.content.Intent;
+import android.content.ComponentName;
+import android.net.Uri;
+
+import android.os.IBinder;
+import android.os.Bundle;
+import android.os.ParcelFileDescriptor;
+import android.app.IApplicationThread;
+import android.net.Uri;
+
+public static Pair openWeb(File localFile) {
+  
+  // File localFile = new File("/data/media/0/David/www/fstat.html");
+  File wwwBase 
+    = PosixFileInputStream.resolve(new File("/data/media/0/David/www")); 
+  File wwwFile = PosixFileInputStream.resolve(localFile);
+  String rawUri 
+    = StringUtils.substringAfter(wwwFile.getPath(), wwwBase.getPath());
+  URL url = new URL(StringUtils.join(
+    Arrays.asList("http://", "localhost", rawUri), ""
+  ));
+  Uri dataUri = Uri.parse(url.toString());
+  
+  
+  
+  Intent intent = new Intent("android.intent.action.VIEW")
+    .addCategory("android.intent.category.DEFAULT")
+    .setData(dataUri)
+    .setComponent(new ComponentName(
+      "com.chrome.canary",
+      "org.chromium.chrome.browser.ChromeTabbedActivity"
+    ));
+  
+  IActivityManager.WaitResult result
+    = ActivityManagerNative.getDefault().startActivityAndWait(
+        (IApplicationThread) null,
+        "com.myboyfriendisageek.airterm",
+        intent, 
+        "text/plain",
+        (IBinder) null, // IBinder resultTo
+        (String) null, // String resultWho
+        (int) 0, // int requestCode
+        (int) 0x13800000, // int startFlags
+        (String) null, // String profileFile
+        (ParcelFileDescriptor) null, // profileFd
+        (Bundle) null, // Bundle options,
+        (int) 0
+      );
+  
+  return Pair.of(intent, result);
+}
+

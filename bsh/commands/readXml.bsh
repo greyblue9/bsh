@@ -1,0 +1,107 @@
+import com.thoughtworks.xstream.core.*; 
+import com.thoughtworks.xstream.mapper.*;  
+import com.thoughtworks.xstream.converters.reflection.*; 
+import com.thoughtworks.xstream.*; 
+import com.thoughtworks.xstream.io.HierarchicalStreamReader;
+import com.thoughtworks.xstream.io.xml.*; 
+import org.apache.commons.io.input.AutoCloseInputStream;
+import com.thoughtworks.xstream.converters.collections.ArrayConverter;
+import com.thoughtworks.xstream.io.HierarchicalStreamDriver;
+
+
+public static Object readXml(InputStream is, boolean experimental) { 
+
+  System.err.printf("is = %s\n", is);
+  InputStream is2 = new AutoCloseInputStream(is);
+  System.err.printf("is2 = %s\n", is2);
+  
+  XStream xs = getXStream(experimental);
+  System.err.printf("xs = %s\n", xs);
+  HierarchicalStreamDriver drv = Reflect.getfldval(xs, "hierarchicalStreamDriver");
+  System.err.printf("drv = %s\n", drv);
+  HierarchicalStreamReader hsr = drv.createReader(is2);
+  System.err.printf("hsr = %s\n", hsr);
+  
+  Object result = xs.unmarshal(hsr, null, xs.newDataHolder());
+  System.err.printf(
+    "result = %s@%08x\n",
+    ClassInfo.typeToName(result), System.identityHashCode(result)
+  );
+  IOUtils.closeQuietly(is2);
+  IOUtils.closeQuietly(is2);
+  
+  return result;
+};
+
+public static Object readXml(Object path) { 
+  return readXml(path, true);
+}
+
+public static Object readXml(Object path, boolean experimental) 
+{ 
+  ClassLoaderReference clref = new ClassLoaderReference(
+    Thread.currentThread().getContextClassLoader()
+  );  
+  System.err.println(clref);
+  DefaultMapper dm = new DefaultMapper(clref); 
+  System.err.println(dm);
+  DefaultImplementationsMapper dim 
+    = new DefaultImplementationsMapper(dm); 
+  OuterClassMapper ocm = new OuterClassMapper(dim);
+  System.err.println(ocm);
+  ArrayConverter aconv = new ArrayConverter(ocm);
+  System.err.println(aconv);
+  FieldDictionary dict = new FieldDictionary();
+  System.err.println(dict);
+  ReflectionProvider rp 
+    = new SunUnsafeReflectionProvider(); 
+  System.err.println(rp);    
+  DomDriver driver = new DomDriver(
+    "UTF-8", new XmlFriendlyReplacer()
+  ); 
+  System.err.println(driver);
+  XStream xs = new XStream(
+    rp, 
+    driver, 
+    Thread.currentThread().getContextClassLoader(),
+    ocm
+  );
+  
+  xs.registerConverter(aconv);
+  
+  System.err.println(xs);
+  FileInputStream fis = new FileInputStream(new File(path));
+  InputStream acis = new AutoCloseInputStream(fis);
+  BufferedInputStream bis = new BufferedInputStream(acis);
+
+  InputStreamReader isrdr = new InputStreamReader(bis);  
+  Reader reader = driver.createReader(isrdr);
+  System.err.println(reader);
+  
+  
+  Object result = null;
+  try {
+    result = xs.unmarshal(hsr, null, xs.newDataHolder());
+    IOUtils.closeQuietly(reader);
+    IOUtils.closeQuietly(isrdr);
+    IOUtils.closeQuietly(acis);
+    IOUtils.closeQuietly(bis);
+    IOUtils.closeQuietly(fis);  
+    System.err.printf(
+      "result = %s@%08x\n",
+      ClassInfo.typeToName(result), System.identityHashCode(result)
+    );
+  } catch (Throwable t) {
+    IOUtils.closeQuietly(reader);
+    IOUtils.closeQuietly(isrdr);
+    IOUtils.closeQuietly(acis);
+    IOUtils.closeQuietly(bis);
+    IOUtils.closeQuietly(fis);  
+  }
+  return result;
+} 
+  
+  
+  
+  
+    

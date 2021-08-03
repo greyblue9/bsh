@@ -1,0 +1,270 @@
+
+import bsh.*;
+import java.util.*;
+import java.lang.reflect.*;
+
+
+public static SimpleNode jjtGetChild(Object node, int childIdx) 
+{
+  java.lang.reflect.Method jjtgc = SimpleNode.class.getDeclaredMethod(
+    "jjtGetChild", new Class[]{ Integer.TYPE });
+  jjtgc.setAccessible(true); 
+  return jjtgc.invoke(node, childIdx);
+}
+
+public static int jjtGetNumChildren(Object node) 
+{
+  java.lang.reflect.Method jjtgnc = SimpleNode.class.getDeclaredMethod(
+    "jjtGetNumChildren", new Class[0]); 
+  jjtgnc.setAccessible(true);
+  return jjtgnc.invoke(node);
+}
+
+public static SimpleNode[] getChildNodes(Object node) 
+{
+  java.lang.reflect.Method gcn = SimpleNode.class.getDeclaredMethod(
+    "getChildNodes", new Class[0]); 
+  gcn.setAccessible(true); 
+  return gcn.invoke(node);
+}
+
+public static String getText(Object node) 
+{
+  java.lang.reflect.Method gt = SimpleNode.class.getDeclaredMethod(
+    "getText", new Class[0]); 
+  gt.setAccessible(true); 
+  return gt.invoke(node);
+}
+
+public static String getFirstToken(Object node) 
+{
+  Field ft = SimpleNode.class.getDeclaredField("firstToken");
+  ft.setAccessible(true); 
+  return ft.get(node).image;
+}
+
+public static String getLastToken(Object node) 
+{
+  Field lt = SimpleNode.class.getDeclaredField("lastToken");
+  lt.setAccessible(true); 
+  return lt.get(node).image;
+}
+
+
+public static StringBuilder tostr(BSHBlock n, StringBuilder sb, String indent)
+{
+  tostr(n, indent, sb);
+  return sb;
+}
+
+public static String red(String str) {
+  return dumpMembers.colorize(str, "1;31");
+}
+public static String yellow(String str) {
+  return dumpMembers.colorize(str, "1;33");
+}
+public static String green(String str) {
+  return dumpMembers.colorize(str, "1;32");
+}
+public static String cyan(String str) {
+  return dumpMembers.colorize(str, "1;36");
+}
+public static String magenta(String str) {
+  return dumpMembers.colorize(str, "1;35");
+}
+public static String gray(String str) {
+  return dumpMembers.colorize(str, "1;30");
+}
+public static String darkblue(String str) {
+  return dumpMembers.colorize(str, "1;34");
+}
+
+
+public static String bgred(String str) {
+  return dumpMembers.colorize(str, "1;41");
+}
+public static String bgyellow(String str) {
+  return dumpMembers.colorize(str, "1;43");
+}
+public static String bggreen(String str) {
+  return dumpMembers.colorize(str, "1;42");
+}
+public static String bgcyan(String str) {
+  return dumpMembers.colorize(str, "1;46");
+}
+public static String bgmagenta(String str) {
+  return dumpMembers.colorize(str, "1;45");
+}
+public static String bggray(String str) {
+  return dumpMembers.colorize(str, "1;40");
+}
+public static String bgdarkblue(String str) {
+  return dumpMembers.colorize(str, "1;44;37");
+}
+
+
+
+public static String nodeStr(Object rawNode, StringBuilder sb, String lastTok) {
+  bsh.SimpleNode node = null;
+  
+  if (rawNode instanceof bsh.SimpleNode) {
+    node = (SimpleNode) rawNode;
+  } else {
+    return (node != null)
+      ? node.getClass().getSimpleName()
+      : "??";
+  }
+  int len = jjtGetNumChildren(node);
+  
+  if (sb == null) sb = new StringBuilder(256);
+  
+  String textRaw = getText(node);
+  String text = textRaw.replaceAll(
+    "([A-Za-z\\(\\[])\\s+([.(\\[\\]\")])", "$1$2" 
+  );
+        
+  sb.append(text);
+  
+
+  /*String tok = getFirstToken(node);
+  
+  if (! tok.equals(lastTok)) {
+    sb.append(tok);
+    sb.append(' ');
+    lastTok = tok;
+  }
+  //sb.append( getFirstToken(node) );
+  //sb.append(' ');
+  for (int i=0; i<len; i++) {
+    Object ch = jjtGetChild(node, i);
+    lastTok = nodeStr(ch, sb, lastTok);
+  }
+  
+  
+  */
+  String tok2 = getLastToken(node);
+  //if (! tok2.equals(lastTok)) {
+
+    if (! tok2.equals(';')) {
+      //sb.append(tok2);
+      //sb.append(' ');
+    }
+  //  lastTok = tok2;
+    sb.append('\n');
+    sb.append("  ");
+  //}
+  return lastTok;
+}
+
+public static StringBuilder tostr
+(Object n, String indent, StringBuilder sb) 
+{  
+  if (sb == null ) sb = new StringBuilder(384); 
+  if (indent == null) indent = ""; 
+  String cindent = String.format("%s  ", indent); 
+  
+  int nLen = jjtGetNumChildren(n); 
+  String nFirstTok = getFirstToken(n);
+  String nLastTok = getLastToken(n);
+  String nText = getText(n);
+  
+  sb.append(nFirstTok); // {
+  String lastTok = nFirstTok;
+  
+  if (nLen > 0) {
+    sb.append('\n');
+    sb.append(cindent);
+    
+    for (int i=0; i<nLen; i++) {
+      
+      Object ch = jjtGetChild(n, i);
+      
+      //String chFirstTok = getFirstToken(ch);
+      lastTok = nodeStr(ch, sb, nFirstTok);
+      //String chLastTok = getLastToken(ch);
+      //String childTextRaw = getText(ch);
+      
+      
+      // if (childTextRaw.length() >= 4) {
+      //  tostr(ch, cindent, sb);
+      // } else {
+      //sb.append(yellow(chNodeStr));
+        /*String childText = childTextRaw.replaceAll(
+          "([A-Za-z\\(\\[])\\s+([.(\\[\\]\")])", "$1$2" 
+        );
+        sb.append(bgdarkblue(childText));*/
+      //StringBuilder _csb = new StringBuilder(64);
+      //tostr(ch, _csb, cindent);
+      //sb.append( _csb.toString() );
+      //sb.append(cyan(chLastTok));
+      // }
+      
+    }
+    
+    if (! nLastTok.equals(lastTok)) {
+      sb.append(nLastTok); 
+      
+      sb.append('\n');
+    }
+    return sb;
+  } // end if childNodes.length > 0
+  
+  // no child nodes (leaf)
+  sb.append(nFirstTok);
+  sb.append(red(nText));  
+  sb.append(nLastTok);
+  
+  return sb;
+}
+
+
+public static StringBuilder tostr
+(BSHBlock n, String indent, StringBuilder sb, boolean debug) 
+{  
+  if (!debug) return tostr(n, indent, sb);
+  
+  if (sb == null ) sb = new StringBuilder(128); 
+  if (indent == null) indent = ""; 
+  cindent = indent+"  "; 
+  
+  int len = jjtGetNumChildren(n); 
+  sb.append(getFirstToken(n));
+  sb.append("\n");
+  
+  if (len > 0) {
+    sb.append(String.format("\n%s", indent + getText(n)));
+    /*if (len > 1) {
+      sb.append("\n");
+      sb.append(cindent);
+    }*/
+    sb.append(cindent);
+    
+    for (int i=0; i<len; i++) {
+      ch = jjtGetChild(n, i);
+      String chFirstTok = getFirstToken(ch);
+      String childText = getText(ch).replaceAll(
+          "([A-Za-z\\(\\[])\\s+([.(\\[\\]\")])", 
+          "$1$2" 
+        );
+      String chLastTok = getLastToken(ch);
+      sb.append("<Ft=`");
+      sb.append(chFirstTok);
+      sb.append("`; text=`");
+      sb.append(childText);
+
+      sb.append("`; Lt=`");
+      sb.append(chLastTok);
+      sb.append("`>");
+      sb.append("\n" + cindent);
+    } 
+    
+    sb.append(getLastToken(n)); 
+    sb.append("\n");
+    return sb;
+  }  
+  
+  sb.append(getLastToken(n));  
+  return sb;
+}
+
+

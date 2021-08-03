@@ -1,0 +1,53 @@
+
+
+
+
+public static String getClassName(byte[] bytes) {
+   com.android.dx.cf.direct.DirectClassFile dcf = new com.android.dx.cf.direct.DirectClassFile(bytes, "/dev/null", false); com.android.dx.cf.direct.AttributeFactory attrFactory = new com.android.dx.cf.direct.StdAttributeFactory(); dcf.setAttributeFactory(attrFactory); try { dcf.parse(); } catch (Throwable e) {
+   if (e.toString().matches("com.android.dx.cf.iface.ParseException: extra bytes.*at offset [0-9a-f]{8}")) {
+   offshex = e.toString().replaceAll("^.*at offset ([0-9a-f]{8})", "$1"); System.err.printf("offset : %s\n", offshex); offs = Integer.valueOf(offshex, 16); System.err.printf("%d\n", offs); dcf = new com.android.dx.cf.direct.DirectClassFile(Arrays.copyOfRange(bytes, 0, offs), "/dev/null", false); dcf.setAttributeFactory(attrFactory);  dcf.parse(); System.err.println("recovered file"); e = null; }; if (e != null) {
+   System.err.printf("[%s]: Parsing error: %s\n", file, e); this.interpreter.setu("$_e", e); return null; } }; StringBuilder classNameSb = new StringBuilder(dcf.getThisClass().getDescriptor().getString().replace('/', '.')); if (classNameSb.charAt(0) == 'L') {
+   classNameSb = classNameSb.delete(classNameSb.length() - 1, classNameSb.length()).delete(0, 1); } String retName = classNameSb.toString(); classNameSb = null; dcf = null; bytes = null; file = null; path = null; return retName; 
+}
+
+
+
+
+public static String getClassName(File file) {
+   byte[] bytes = FileUtils.readFileToByteArray(file); return getClassName((byte[]) bytes); 
+}
+
+
+
+
+public static String getClassName(URL url) {
+   InputStream is = null; URLConnection conn = null; try { conn = url.openConnection(); conn.setUseCaches(false); is = conn.getInputStream(); byte[] bytes = IOUtils.toByteArray(is); return getClassName((byte[]) bytes); } finally { try { conn.close(); } catch (Throwable e) {
+   ;; };; IOUtils.closeQuietly(is); } 
+}
+
+
+
+
+public static String getClassName(String path) {
+   File file = null; if (path.indexOf(':') == -1 && (file = new File(path)).exists()) {
+   return getClassName((File) file); }; try { URL url = new URL(path); return getClassName((URL) url); } catch (java.net.MalformedURLException ex) {
+   System.err.println(ex.toString() + ": " + path); } return null; 
+}
+
+
+
+
+
+
+public static String getClassName(com.github.javaparser.ast.CompilationUnit cu) { com.github.javaparser.ast.expr.Name name = cu.getPackageDeclaration().get().getName();  StringBuilder sb = new StringBuilder(76 * 10); String id; com.github.javaparser.ast.expr.Name qualifier; while (name != null) { id = name.getIdentifier(); qualifier = name.getQualifier().isPresent()? name.getQualifier().get(): null; if (sb.length() != 0) sb.insert(0, "."); sb.insert(0, id); name = qualifier; }; if (sb.length() != 0) sb.append("."); sb.append(cu.getTypes()[0].getName().getIdentifier()); return sb.toString(); };
+
+
+
+
+
+public static String getClassName(Object dexElement, int typeIndex) { Dex dex = DexVisitor.classForName(DexFile.getClassNameList(dexElement.dexFile.mCookie)[0]).getDex(); String name = ClassInfo.typeToName(dex.strings()[dex.typeIds()[typeIndex]]); return name; };
+
+
+
+public static String getClassName(com.sun.source.tree.CompilationUnitTree cuTree) { return StringUtils.join(new String[]{ String.valueOf(cuTree.getPackageName()), getSimpleName(cuTree) }, "."); };
+

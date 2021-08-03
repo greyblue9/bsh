@@ -1,0 +1,7 @@
+
+
+
+public static Pair setNonBlocking(FileDescriptor fd, boolean nonblocking) { int flags = PosixUtil.fcntlLong(fd, PosixUtil.F_GETFL, 0L); int result = PosixUtil.fcntlLong(fd, PosixUtil.F_SETFL, (0xFFFFFFFFL & ((nonblocking)? (flags | PosixUtil.O_NONBLOCK): (flags & (~(0xFFFFFFFFL & PosixUtil.O_NONBLOCK)))))); if (result != 0) throw new libcore.io.ErrnoException(PosixFileInputStream.getPath(fd), result); int newFlags = PosixUtil.fcntlLong(fd, PosixUtil.F_GETFL, 0L); return Pair.of(Integer.valueOf(newFlags), CollectionFactory.newSet(ConstUtil.constantMap(PosixUtil.class, "O_", newFlags).values())); };
+
+
+

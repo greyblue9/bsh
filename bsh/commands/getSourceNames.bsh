@@ -1,0 +1,14 @@
+public static List<String> getSourceNames(String makefilePath) {
+  Matcher mchr = Pattern.compile("(?:^|\n)(((\t[\t ]*[^\n]*[^ \\\\] +\\\\(?=\n|$)\n?)+)([^\n\\\\]+))", Pattern.DOTALL | Pattern.CASE_INSENSITIVE).matcher(StringUtils.substringAfter(IOStream.readFileAsString(makefilePath), "\nSOURCE"));
+  String sourcelines = mchr.find() ? mchr.group(0) : "";
+  List<String> fileNames = Arrays.asList(StringUtils.split(sourcelines.trim(), "\\\\\n")).invokeAll("trim");
+  List<File> ret = new ArrayList<File>(fileNames.size());
+  File makefileDir = new File(makefilePath).getParentFile();
+  for (String fileName : fileNames) {
+    File file = new File(makefileDir, findFiles.iterate(makefileDir, fileName).firstOrDefault().getName());
+    ret.add(file);
+  }
+  return ret;
+}
+
+ 

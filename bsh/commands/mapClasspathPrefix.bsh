@@ -1,0 +1,4 @@
+
+public static Map mapClasspathPrefix(String prefixPath) { Map zm = new TreeMap(); List<JarFile> jars = IteratorUtils.asIterable(Thread.currentThread().getContextClassLoader().findResources(prefixPath)).select(FunctionUtil.bind("return m -> { m.openConnection().getJarFile(); }")); for (JarFile jar: jars) { System.err.printf("==> %s\n", jar.getName()); Map lhm = jar.entries().ze.val$iterator.this$0; Matcher mchr = Pattern.compile("^".concat(Pattern.quote(prefixPath)).concat("[^=]*[^/=]=")).matcher(""); List<Pair> pairs = lhm.entrySet().filter(mchr).select(FunctionUtil.bind("return m -> { var is = null; var pair = Pair.of(m.getKey(), IOUtils.toByteArray(is = jf.getInputStream(m.getValue()))); is.close(); return pair; }", "jf", jar)); for (Pair pair: pairs) { if (! zm.containsKey(pair.getKey())) zm.put(pair.getKey(), pair.getValue()); System.err.println(pair.getKey()); }; }; return zm; }
+
+

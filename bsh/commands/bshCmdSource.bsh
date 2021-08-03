@@ -1,0 +1,24 @@
+
+
+
+public static String bshCmdSource(String command) {
+  
+  String cmdName = command.replaceAll("\\(.*$", "");
+  
+  byte[] bytes = ZipUtil.toByteArray(
+    bsh.NameSpace.getClassResource(bsh.Interpreter.class).openConnection().getJarFile(),
+    String.format("bsh/commands/%s.bsh", cmdName)
+  );
+  
+  if (bytes == null) {
+    bytes = FileUtils.readFileToByteArray(
+      new File(new File("/data/media/0/bsh/commands/"), String.format("%s.bsh", cmdName))
+    );
+  }
+  
+  return bytes != null? TextUtil.toString(bytes): null;
+  
+}
+
+
+

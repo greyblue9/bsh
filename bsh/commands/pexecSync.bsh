@@ -1,0 +1,10 @@
+
+
+
+public static Object pexecSync(String[] command) {
+  String cmdName = command[0];
+  String[] rest = (command.length > 1) ? Arrays.copyOfRange(command, 1, command.length) : new String[0];
+  return PosixFileInputStream.pexecSync(ArrayUtils.addAll(ArrayUtils.addAll(new String[] { "/system/xbin/busybox", "env", "LD_LIBRARY_PATH=/system/lib:/system/vendor/lib", "LD_PRELOAD=", "PATH=/system/bin:/system/xbin" }, new String[] { "mksh-static-printf", "-x", "-v", cmdName }), rest));
+}
+
+

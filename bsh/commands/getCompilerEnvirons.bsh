@@ -1,0 +1,22 @@
+
+
+// import org.mozilla.javascript.*; 
+import org.mozilla.javascript.CompilerEnvirons;
+
+
+public static CompilerEnvirons getCompilerEnvirons() { 
+  Map im = getInstanceMap();
+  CompilerEnvirons compEnv = im.get(CompilerEnvirons.class);
+  if (compEnv == null) {
+    CompilerEnvirons compEnv = CompilerEnvirons.ideEnvirons(); 
+    compEnv.setWarnTrailingComma(false); 
+    compEnv.setRecordingLocalJsDocComments(true); 
+    compEnv.setAllowMemberExprAsFunctionName(true); 
+    compEnv.setAllowSharpComments(true); 
+    
+    im.put(CompilerEnvirons.class, compEnv);
+  };
+  return compEnv;
+};
+
+

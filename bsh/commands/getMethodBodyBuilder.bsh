@@ -1,0 +1,8 @@
+public static com.strobel.decompiler.languages.java.ast.AstMethodBodyBuilder getMethodBodyBuilder(MethodDefinition md) {
+  com.strobel.decompiler.languages.java.ast.AstMethodBodyBuilder mbb = new com.strobel.decompiler.languages.java.ast.AstMethodBodyBuilder(new com.strobel.decompiler.languages.java.ast.AstBuilder(ProcyonUtil.getDecompilerContext()), md, ProcyonUtil.getDecompilerContext());
+  mbb._context._currentMethod = md;
+  mbb._context._currentType = md.getDeclaringType();
+  return mbb;
+}
+
+;

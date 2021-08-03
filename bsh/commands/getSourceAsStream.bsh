@@ -1,0 +1,4 @@
+public static String getSourceAsStream(Class cls) { String[] sources = ClassPathUtil.findClassSource(cls.getName()).toArray(new String[0]); for (String srcPath: sources) { URL url = null; java.util.zip.ZipFile zf = null; try { url = new URL(String.format("jar:file://%s!/%s.java", srcPath, cls.getName().replace('.', '/'))); zf = url.openConnection().getJarFile(); } catch (java.util.zip.ZipException zipEx) { continue; }; return url.openConnection().getInputStream(); } return null; }
+
+
+public static String getSourceAsStream(bsh.ClassIdentifier ci) { return getSourceAsStream((Class) ((bsh.ClassIdentifier) ci).getTargetClass()); }

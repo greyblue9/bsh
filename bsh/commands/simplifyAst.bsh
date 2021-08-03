@@ -1,0 +1,72 @@
+
+
+
+
+
+public static String simplifyAst0(
+  com.strobel.decompiler.languages.java.ast.AstNode ast)
+{
+  String s = ast.getText().replaceAll("    ", "  ");
+  Collection types = getTypes(ast);
+  for (TypeReference type: types) {
+    if (type.getErasedSignature().indexOf(".") == -1) continue;
+    Matcher mchr = Pattern.compile(String.format(
+      "\\b%s\\b", Pattern.quote(type.getName())
+    )).matcher(s);
+    if (mchr.find()) {
+      s = mchr.replaceAll(type.getErasedSignature());
+    };
+  }
+  String s2 = s.replaceAll("final |<[^>\n;]*>", "");
+  return s2;
+};
+
+
+
+
+public static String simplifyAst(com.strobel.decompiler.languages.java.ast.AstNode ast, boolean collapse) { 
+
+  String sastStr = Pattern.compile(
+    "(?:java\\.(io|lang|util)|org.d6r)\\.(([a-z]+\\.)*)([A-Z][^.(]+)").matcher(simplifyAst0(ast).replaceAll("List>","List"))
+      .replaceAll("$4");
+  
+  String sast = sastStr;
+  
+  java.util.List<TypeReference> types = getTypes(ast).sort().uniq();
+  java.util.Map replaceMap = RealArrayMap.toMap(
+    FunctionUtil.select(
+      types,
+      FunctionUtil.bind(
+        "return m -> { var desc = m.getSimpleName(); var typeName = m.getFullName(); if (desc == null || typeName == null || desc.equals(typeName)) return null; return Pair.of(desc, typeName); }"
+      )
+    )
+  );
+  
+  for (java.util.Map.Entry e: replaceMap.entrySet()) {
+    Matcher mchr = Pattern.compile(
+      String.format(
+        "([^a-zA-Z0-9_$.])(?:%s)([^a-zA-Z0-9_$]|$)",
+        e.getKey().replace('$', '.')
+      )
+    ).matcher("");
+    if (mchr.reset(sast).find()) {
+      sast = mchr.replaceAll(String.format("$1%s$2", e.getValue()));
+    }
+  }
+   
+  return (collapse)
+    ? sast.replaceAll("[\t ]*\n[\t ]*", " ")
+    : sast;
+    
+}
+
+
+
+public static String simplifyAst(
+  com.strobel.decompiler.languages.java.ast.AstNode ast)
+{ 
+  return simplifyAst(ast, false);
+}
+
+
+

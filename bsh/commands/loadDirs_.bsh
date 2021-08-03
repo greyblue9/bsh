@@ -1,0 +1,2 @@
+for (String path: new String[]{ "/storage/extSdCard/_projects/sdk/bin", "/storage/extSdCard/_projects/sdk/lib","/storage/extSdCard/_projects/sdk/dexed-jars"  })  {  File dir = new File(path);  l = dir.listFiles();  for (File _f: l) { if (_f.getPath().indexOf(".jar")  != _f.getPath().length() - 4 && _f.getPath().indexOf(".apk")  != _f.getPath().length() - 4) continue; System.out.println(_f); try { appendClassPath(new String[]{  _f.getPath() }); } catch (Throwable e) { System.out.println(e.getClass().getName() + ": " + e.getMessage()); } } }
+

@@ -1,0 +1,696 @@
+import org.json.JSONArray;
+import org.json.JSONObject;
+import java.math.BigDecimal;
+import java.math.BigInteger;
+import java.nio.charset.StandardCharsets;
+import java.nio.charset.CharsetDecoder;
+import java.nio.charset.CoderResult;
+import com.google.common.collect.ImmutableBiMap;
+import com.google.common.collect.RegularImmutableBiMap;
+
+  public static Object toCamelCase(String stringWithUnderscores) {
+    if (stringWithUnderscores == null || stringWithUnderscores == void) {
+      stringWithUnderscores = "";
+    }
+    Matcher mchr = Pattern.compile("((?:_|^)[a-z])").matcher("");
+    String str = stringWithUnderscores.toLowerCase();
+    int last = -1;
+    do {
+      mchr.reset(str);
+      if (!mchr.find()) break;
+      if (mchr.start() == last) {
+        System.err.printf("infinite loop starting at: %d\n", last);
+        break;
+      }
+      last = mchr.start(1);
+      str = StringUtils.join(
+        new String[] { 
+          str.substring(0, mchr.start(1)), 
+          str.substring(mchr.start(1) + (mchr.end(1) - mchr.start(1) - 1),
+          mchr.end(1)).toUpperCase(), 
+          str.substring(mchr.end(1))
+        }, ""
+      );
+    } while (true);
+    return str;
+  };
+  
+  public static Object headersToMap(List<String> rawHeaderStrings) {
+    if (rawHeaderStrings == null || rawHeaderStrings == void) {
+      rawHeaderStrings = new ArrayList();
+    }
+    
+    Map hdrs = new TreeMap();
+    for (String m: rawHeaderStrings) {
+      String key = (m.indexOf(":") != -1)
+        ? toCamelCase(
+            StringUtils.substringBefore(m, ":").replaceAll("[^a-zA-Z0-9_]","-_")
+          )
+        : "Status-Line";
+      String val = (m.indexOf(":") != -1)
+        ? StringUtils.substringAfter(m, ": ")
+        : m;
+      
+      hdrs.put(key, val);
+    }
+    return hdrs;
+  }
+  
+public static List toList(Object _keys) {
+  if (_keys == null) return Collections.emptyList();
+  Class _cls = _keys.getClass();
+  if (_cls.isArray() && _cls.getComponentType().isPrimitive()) {
+    return Arrays.asList((Object[]) ArrayUtils.toObject(_keys));
+  }
+  return (_keys != null)
+    ? Arrays.asList(
+        (
+          (!(_keys instanceof Object[]))
+            ? CollectionUtil.toArray(
+                (_keys instanceof Iterable)
+                  ? _keys
+                  : IteratorUtils.asIterable(_keys)
+              )
+            : _keys
+        )
+      )
+    : Collections.emptyList();
+}
+
+public static Object tryInvoke(Object obj, Object[] args, Iterable names) {
+  for (String name: names) {
+    Object result = Reflector.invokeOrDefault(obj, name, args);
+    if (result != null) return result;    
+  }
+  List params = new ArrayList();
+  for (Object param: args) params.add(param != null? String.valueOf(param): null);
+  Object[] strArgs = params.toArray();
+  for (String name: names) {
+    Object result = Reflector.invokeOrDefault(obj, name, strArgs);
+    if (result != null) return result;    
+  }
+  return null;
+}
+
+public static Object tryGet(Object ht, Object k) {
+  return tryInvoke(
+    ht,
+    (k != null)? new Object[]{ k }: new Object[0],
+    Arrays.asList(
+      "get", "doGet", "getValue", "getBundle", "getChunk", "item", "getItem",
+      "getItemAt", "at", "getAt", "element", "getElement", "elementAt", "getByKey",
+      "getEntry", "getString", "getStringArray", "getObject", "getProperty",
+      "getRaw", "handleGetObject", "internalGet", "getInstance", "getJarEntry",
+      "getNodeName", "getSymbol", "getSpi", "getDefaultInstance"
+    )
+  );
+}
+
+public static Object mapGet(Object _map, Object _key) {
+  if (_map instanceof Map && _map.containsKey(_key)) {
+    return _map.get(_key);
+  }
+  if (_map instanceof Hashtable && _map.containsKey(_key)) {
+    return _map.get(_key);
+  }
+  String _keyAsString = String.valueOf(_key);
+  Object _keys = tryInvoke(_map, new Object[0], Arrays.asList(
+    "keySet", "keys", "getKeys", "names", "getNames", "items", "getItems",
+    "entries", "getEntries", "iterator", "toList", "toArray"
+  ));
+  List keys = toList(_keys);
+  for (Object key: keys) {
+    if (key == null) continue;
+    String str = (key instanceof String)? (String) key: String.valueOf(key);
+    if (libcore.util.Objects.equal(key, _key) ||
+        str.equals(_keyAsString) ||
+        (_key instanceof Number && _keyAsString.indexOf('.') != -1 &&
+         StringUtils.substringBefore(_keyAsString, ".").equals(str)))
+    {
+      Object v = tryGet(_map, key);
+      if (v != null) return v;
+    }
+  }
+  if (_map instanceof Iterable) {
+    Iterator it = _map.iterator();
+    int _i = -1;
+    while (it.hasNext()) {
+      ++_i;
+      Object item = it.next();
+      if (item instanceof java.util.Map$Entry) {
+        Object key = item.getKey();
+        if (key != null && ((Object)key).equals(_key)) return item.getValue();
+        if (key != null && String.valueOf(key).equals(String.valueOf(_key))) {
+          return item.getValue();
+        }
+      }
+      if (String.valueOf(_i).equals(_key)) return item;
+      if (String.valueOf(_i).equals(String.valueOf(_key))) return item;
+      if (item instanceof CharSequence && String.valueOf(item).equals(_key)
+       || String.valueOf(item).equals(_keyAsString))
+      {
+        Object v = null;
+        v = tryGet(_map, key);
+        if (v != null) return v;
+        v = tryGet(_map, String.valueOf(key));        
+        if (v != null) return v;
+        v = tryGet(item, null);
+        if (v != null) return v;
+        v = tryGet(_map, _i);
+        if (v != null) return v;
+      }
+      Object maybeKey = Reflector.invokeOrDefault(item, "getKey");
+      if (maybeKey != null) {
+        if (maybeKey.equals(_key) ||
+            String.valueOf(maybeKey).equals(String.valueOf(_key)))
+        {
+          Object maybeValue = tryGet(item, null);
+          if (maybeValue != null) return maybeValue;
+          maybeValue = tryGet(_map, item);
+          if (maybeValue != null) return maybeValue;
+        }
+      }
+    }
+  }
+  return null;
+}
+
+public static Object parseNetExport(byte[] b) {
+  System.err.printf("reading string ...\n");
+
+  String json = (b != null)
+    ? new String(b, java.nio.charset.StandardCharsets.UTF_8)
+    : null;
+    
+  System.err.printf(
+    "parsing JSON %s...\n",
+    (json != null)? "": "via getOtherJsonObject() "
+  );
+  
+  JSONObject o = (json != null)
+    ? new JSONObject(json)
+    : getOtherJsonObject();
+  
+  System.err.printf("typeof o: %s\n",bsh.Factory.typeof(o));
+  
+  Map constants = o.get("constants").nameValuePairs;
+  System.err.printf("# of constants: %d\n", constants.size());
+  
+  RegularImmutableBiMap types = RegularImmutableBiMap.copyOf(
+    constants.get("logEventTypes").nameValuePairs).inverse();
+  CollectionUtil.getInterpreter().setu("types", types);
+  
+  JSONObject[] events
+    = CollectionUtil.toArray(o.nameValuePairs.get("events").values);
+  CollectionUtil.getInterpreter().setu("events", events);
+  
+  Map byid = new TreeMap();
+  Map byurl = new TreeMap();
+  Map m2 = new TreeMap();
+  Map eventsById = new TreeMap();
+  
+  Set m = new TreeSet();
+  CollectionUtil.getInterpreter().setu("byid", byid);
+  CollectionUtil.getInterpreter().setu("byurl",byurl);
+  CollectionUtil.getInterpreter().setu("m2", m2);
+  CollectionUtil.getInterpreter().setu("eventsById", eventsById);
+  
+  for (java.util.Map$Entry eventEntry: events.indexed()) {
+     int idx = eventEntry.getKey();
+     Map event = Reflect.getfldval(eventEntry.getValue(), "nameValuePairs");     
+     if (event == null) {
+       System.err.printf(
+         "nameValuePairs failed on (%s) eventEntry.getValue() @ idx: %s\n",
+         eventEntry.getValue() != null? eventEntry.getValue(): "null",
+         String.valueOf(idx)
+       );
+     }
+     if (! event.containsKey("time")) continue;
+     if (! event.containsKey("params")) continue;
+     if (! event.containsKey("source")) continue;
+     if (event.containsKey("id")) {
+       Object eventId = event.get("id");
+       eventsById.put(eventId, event);
+     }
+     if (event.containsKey("type")) {
+       Object eventType = event.get("type");
+       int intEventType = Integer.parseInt(
+         (eventType != null)? eventType.toString(): "0", 10
+       );
+       String eventTypeName = types.get(intEventType);
+       /*System.err.printf(
+         "  events[%s] is %s; time: %s, source: %s; %d params, %d keys\n",
+         String.valueOf(idx),
+         eventTypeName,
+         event.get("time"),
+         event.get("source"),
+         event.get("params") instanceof Map? event.get("params").size(): -1,
+         event.keySet().size()
+       );*/
+     };
+     
+     m.add(Pair.of(Integer.valueOf(idx), event));
+  };
+  
+  CollectionUtil.getInterpreter().setu("eventMap", m);
+  CollectionUtil.getInterpreter().setu("byurl", byurl);
+  
+  System.err.printf("m.size() = %d\n", m.size());
+  
+  Matcher REQUEST_LINE_MCHR = Pattern.compile(
+    "([A-ZA-Z0-9_]+) +([^ ](?:.*[^ ])?) ([A-Za-z0-9_$]+)/([0-9.]+)").matcher("");
+  
+  int count = m.size();
+  CollectionUtil.getInterpreter().setu("m", m);
+  
+  for (java.util.Map$Entry e: m) {
+    Object index = e.getKey();
+    Map dat = e.getValue();
+    // System.err.printf("  - dat: %s\n",bsh.Factory.typeof(dat));
+    Object params = dat.get("params");
+    // System.err.printf("  - params: %s\n",bsh.Factory.typeof(params));
+    if (params == null) continue;
+    
+    Map pmap = params.nameValuePairs;
+    int id = dat.get("source").get("id").intValue();
+    Map dm = new HashMap();
+    dm.putAll(dat);
+    dm.put("sourceId", id);
+    List byid_ = byid.get(id);
+    if (byid_ == null) byid.put(id, (byid_ = new ArrayList()));
+    byid_.add(dm);
+    dm.put("index", index);
+    dm.put("params", pmap);
+    m2.put(index, dm); 
+  };
+  
+  Map rmap = new HashMap();
+  System.err.printf("set to variable `rmap`: %s\n", rmap); 
+  
+  for (java.util.Map$Entry e2: m2.entrySet()) {
+    Object value = e2.getValue();
+    Object params = null;
+    String hex = null;
+    if (value instanceof Map &&
+        value.containsKey("params") &&
+       (params = value.get("params")) instanceof Map &&
+       (hex = params.get("hex_encoded_bytes")) != null)
+    {
+      if (hex instanceof byte[]) continue;
+      byte[] datBytes = ByteUtil.hexStringToByteArray(hex);
+      params.put("hex_encoded_bytes", datBytes);
+      System.err.printf("%s: %d\n", e2.getKey(), datBytes.length);
+    };
+  };
+  
+  Map reqs = RealArrayMap.toMap(toList(byid.entrySet()));
+  Map idm2 = new TreeMap();
+  CollectionUtil.getInterpreter().getNameSpace().setVariable("reqs", reqs, false);
+  System.err.printf("set to variable `reqs`");
+  
+  for (java.util.Map$Entry e: reqs.entrySet()) {
+    int id = e.getKey().intValue();
+    Map rmap = new HashMap();
+    idm2.put(id, rmap);
+    List al = e.getValue(); 
+    for (Object alent: al) { 
+      String type = toCamelCase(types.get(alent.get("type")));
+      rmap.put(type, alent); 
+    };
+  };
+  
+  List ideml = new ArrayList();
+  CollectionUtil.getInterpreter().setu("ideml", ideml);
+  
+  Object es = idm2.entrySet();
+  Iterator it = es.iterator();
+  Object hdrs = new TreeMap();
+
+  while (it.hasNext()) {
+    Object ide = it.next();
+    Object ideKey = ide.getKey();
+    Object ideValue = ide.getValue();
+  
+    int id = ideKey.intValue();
+    
+    System.out.printf("id = %s\n", id);
+    Object idem = ide.getValue();
+    
+    // BEGIN DEBUG _______________________________________________________________
+    ideml.add(idem);
+    System.out.printf("added idem to ideml; new size: %d\n", ideml.size());
+    // END DEBUG _________________________________________________________________
+    Object objRequestAlive = (idem instanceof Map)
+      ? idem.get("RequestAlive")
+      : null;
+    if (idem instanceof Map) {
+      if (objRequestAlive == null) {
+      // no objRequestAlive entry
+        for (Map.Entry entry: idem.entrySet().toArray(new Map.Entry[0])) {
+          Object key = entry.getKey();
+          Object value = entry.getValue();
+          
+          if (value instanceof org.json.JSONObject) {
+            value = toMap((org.json.JSONObject) value);
+          }
+          
+          if (value instanceof Map) {
+            System.err.printf(
+              "idem[%s] => %s (%s)\n",
+              key, value, ClassInfo.typeToName(value)
+            );
+            if (value.containsKey("params")) {
+              objRequestAlive = value;
+              System.err.printf(
+                "Found params in entry %s\n", entry
+              );
+            }
+          }
+        }
+      }
+      if (objRequestAlive != null) {
+        System.err.printf("objRequestAlive: %s\n", objRequestAlive);
+      }
+    } else {
+      System.err.printf(
+        "idem is %s; Map instance expected\n",
+        (idem != null)? idem.getClass().getName(): "null"
+      );
+      continue;
+    }
+    
+    
+
+    
+    Object objParams = (objRequestAlive instanceof Map)
+      ? objRequestAlive.get("params")
+      : null;
+    if (objParams instanceof org.json.JSONObject) {
+      objParams = toMap((org.json.JSONObject) objParams);
+      objRequestAlive.put("params", objParams);
+    }
+    if (objParams == null) {
+      System.err.printf(
+        "objRequestAlive is %s; Map expected",
+        (objRequestAlive != null)? objRequestAlive.getClass().getName(): "null"
+      );
+      continue;
+    }
+    System.err.printf("objParams: %s\n", objParams);
+    
+    Object objUrl = objParams.get("url");
+    
+    if (objUrl == null) {
+      Object source = objRequestAlive.get("source"),
+             srcDep = objParams.get("source_dependency");
+      if (source instanceof org.json.JSONObject) {
+        source = toMap((org.json.JSONObject) source);
+        objRequestAlive.put("source", source);
+      }
+      if (srcDep instanceof org.json.JSONObject) {
+        srcDep = toMap((org.json.JSONObject) srcDep);
+        objParams.put("source_dependency", srcDep);
+      }
+      Object parent = null;
+      for (Map srcMap: Arrays.asList(source, srcDep)) {
+        if (srcMap != null && srcMap.containsKey("id")) {
+          Object id = srcMap.get("id");
+          parent = reqs.get(id).get(0);
+          if (parent instanceof org.json.JSONObject) {
+            parent = toMap((org.json.JSONObject) parent);
+            reqs.get(id).set(0, parent);
+          }
+          if (!(parent instanceof Map)) continue;
+          if (parent.containsKey("url")) {
+            objUrl = parent.get("url");
+            System.err.printf(
+              "Found url in parent request(id#%d): %s\n",
+              id, parent.get("url")
+            );
+            break;
+          }
+          if (parent.containsKey("params")) {
+            Object parentParams = 
+              (parent.get("params") instanceof Map
+                ? (Map) parent.get("params")
+                : toMap((org.json.JSONObject) parent.get("params")));
+            if (! parentParams.containsKey("url")) continue;
+            objUrl = parentParams.get("url");
+            System.err.printf(
+              "Found url in parent request(id#%d)[\"params\"]: %s\n",
+              id, parentParams.get("url")
+            );
+            break;
+          }
+        }
+      }
+    }
+    
+    if (objUrl == null) {
+      System.err.printf("objUrl == null for id = %s\n", id);
+      continue;
+    }
+    System.err.printf("objUrl: %s\n", objUrl);    
+    String url = (objUrl instanceof String)
+      ? (String) objUrl
+      : String.format("unknown://id/%s", String.valueOf(id));
+    if (!(objUrl instanceof String)) {
+      System.err.printf(
+        "objUrl is %s; String expected",
+        (objUrl != null)? objUrl.getClass().getName(): "null"
+      );
+      continue;
+    }
+    
+    System.err.printf("Found '%s' ...\n", url);
+    
+    String sendReqHdrsKey = null;
+    for (String k: idem.keySet()) {
+      if (!(k instanceof String)) {
+        System.err.printf(
+          "k is %s; String expected", (k != null)? k.getClass().getName(): "null"
+        );
+        continue;
+      }
+      if (k.startsWith("HttpTransaction") || k.indexOf("RequestHeaders") != -1 || k.indexOf("BoundToRequest") != -1) {
+        sendReqHdrsKey = k;
+        System.err.printf(
+          "found \"send request headers\" key: \"%s\"\n", sendReqHdrsKey
+        );
+        break;
+      }
+    }
+    System.err.printf("sendReqHdrsKey: %s\n", sendReqHdrsKey);
+    if (sendReqHdrsKey == null) {
+      System.err.printf(
+        "Abandon current event because no sendReqHdrsKey was found in idem; " +
+        "The available keys are:\n  %s\n",
+        (idem instanceof Map? StringUtils.join(idem.keySet(), ",\n  "): "<null>")
+      );
+      System.err.printf("id was %s\n", String.valueOf(id));
+      if (ideml != null && idem != null) {
+        ideml.add(idem);
+        System.err.printf("Added to ideml; new size: %d\n", ideml.size());
+      };
+    } else {
+      System.err.printf(
+        "hdrs = idem.get(\"%s\")[\"params\"][\"headers\"]\n",
+        sendReqHdrsKey
+      );
+      
+      Object o1 = (idem != null && sendReqHdrsKey != null)
+        ? Reflector.invokeOrDefault(idem, "get", sendReqHdrsKey)
+        : null;
+      if (ideml != null) {
+        System.err.printf("ideml is %s\n", ideml.getClass().getName());
+      }
+      Object o2 = null;
+      Object o3 = null;
+      if (o1 instanceof Map) {
+        o2 = o1.get("params");
+        if (o2 instanceof Map) {
+          o3 = o2.get("headers");
+        }
+      }
+      
+      if (o3 != null) {
+        hdrs = o3;
+        CollectionUtil.getInterpreter().setu("hdrs", hdrs);
+        System.err.printf(
+          "hdrs = (%s) %s\n", hdrs != null? hdrs.getClass().getName(): "null",
+          Debug.ToString(hdrs)
+        );
+        List<String> rawHeaderStrings_req
+          = (hdrs instanceof JSONArray)
+              ? hdrs.values
+              : hdrs.nameValuePairs.entrySet().select(FunctionUtil.bind(
+                  "return m -> { StringUtils.join(" +
+                  "  Arrays.asList(m.getKey(), m.getValue()), \": \" " +
+                  "); }"
+                ));
+        System.err.printf(
+          "rawHeaderStrings_req = (%s) %s\n",
+          rawHeaderStrings_req != null
+            ? rawHeaderStrings_req.getClass().getName(): "null",
+          rawHeaderStrings_req
+        );
+        
+        String readRespHdrsKey = null;
+        for (String k: idem.keySet()) {
+          if (k.startsWith("HttpTransaction") && k.indexOf("ResponseHeaders") != -1) {
+            readRespHdrsKey = k;
+            System.err.printf(
+              "found read response headers key: \"%s\"\n", readRespHdrsKey);
+            break;
+          }
+        }
+        System.err.printf(
+          "hdrs = idem.get(\"%s\")[\"params\"][\"headers\"]\n",
+          readRespHdrsKey
+        );
+        
+        Object params2 = 
+          ((readRespHdrsKey != null)
+            ? (idem.get(readRespHdrsKey) != null
+                ? (idem.get(readRespHdrsKey)["params"] != null
+                    ? idem.get(readRespHdrsKey)["params"]
+                    : new org.json.JSONObject("{}"))
+                : new org.json.JSONObject("{}"))
+            : new org.json.JSONObject("{}")
+          );
+          
+          
+        Object hdrs2 = (params2 != null)
+          ? mapGet(params2, "headers")
+          : new org.json.JSONObject("{}");
+      hdrs2 = (hdrs2 != null) ? hdrs2 : new org.json.JSONObject("{}");
+        
+        System.err.printf(
+          "hdrs2 = (%s) %s\n", hdrs2 != null? hdrs2.getClass().getName(): "null",
+          Debug.ToString(hdrs2)
+        );
+        
+        List<String> rawHeaderStrings_resp
+          = (hdrs2 instanceof JSONArray)
+              ? hdrs2.values
+              : hdrs2.nameValuePairs.entrySet().select(FunctionUtil.eval(
+                  "return m -> { StringUtils.join(" +
+                  "  Arrays.asList(m.getKey(), m.getValue()), \": \" " +
+                  "); }"
+                ));
+        System.err.printf(
+          "rawHeaderStrings_resp = (%s) %s\n",
+          rawHeaderStrings_resp != null
+            ? rawHeaderStrings_resp.getClass().getName(): "null",
+          rawHeaderStrings_resp
+        );
+        
+        Map reqHdrs = headersToMap(rawHeaderStrings_req);
+        Map respHdrs = headersToMap(rawHeaderStrings_resp);
+        
+        String requestLine = params2 != null? mapGet(params2, "line"): null;
+        if (requestLine == null) {
+          String maybeProto = StringUtils.substringBetween(
+            sendReqHdrsKey, "HttpRequest", "SendRequestHeaderS"
+          );
+          if (maybeProto == null || maybeProto.length() == 0) {
+            maybeProto = "UNKNOWN";
+          }
+          requestLine = String.format(
+            "%s %s %s/%s", 
+            reqHdrs.containsKey(":method")
+              ? reqHdrs.get(":method").toUpperCase(): "",
+            reqHdrs.containsKey(":path")
+              ? reqHdrs.get(":path"): "",
+            maybeProto, "0.0"
+          );
+        }
+        System.err.printf("requestLine = \"%s\"\n", requestLine);
+        Matcher mchr = REQUEST_LINE_MCHR.reset(requestLine);
+        boolean match = mchr.find();
+        String requestLine  = match? mchr.group(0): ""; 
+        String method       = match? mchr.group(1): "";
+        String rawUri       = match? mchr.group(2): "";
+        String proto        = match? mchr.group(3): "UNKNOWN";
+        BigDecimal protoVer = new BigDecimal(match? mchr.group(4): "0.0");
+        URI uri;
+        try {
+          uri = new URI(rawUri);
+        } catch (URISyntaxException uriEx) {
+          uri = null;
+          System.err.printf("Could not parse rawUri \"%s\": %s\n", rawUri, uriEx);
+        }
+        String contentType = (respHdrs.containsKey("Content-Type"))
+          ? respHdrs["Content-Type"]
+          : "binary/octet-stream";
+          
+        String respKey = null;
+        for (String k: idem.keySet()) {
+          if ((k.indexOf("Response") != -1 
+               || (respKey == null && k.indexOf("BytesRead") != -1))
+            && k.indexOf("Headers") == -1)
+          {
+            Map v = idem.get(k);
+            if (v.containsKey("params")) {
+              if (respKey == null || v["params"].containsKey("hex_encoded_bytes")) {
+                respKey = k;
+                System.err.printf("found %s response key: \"%s\"\n", 
+                  v.containsKey("hex_encoded_bytes") ? "likely": "possible", respKey);
+              }
+            }
+          }
+        }
+        Map respInfo = (respKey != null)
+          ? idem.get(respKey)
+          : RealArrayMap.toMap("params", Collections.emptyMap());
+        System.err.printf("respInfo = %s\n", respInfo);
+        
+        byte[] resp = (respInfo["params"].containsKey("hex_encoded_bytes"))
+          ? respInfo["params"]["hex_encoded_bytes"]
+          : new byte[0];
+        Map info = RealArrayMap.toMap(
+            "url", url,
+            "request_line", requestLine,
+            "method", method,
+            "raw_uri", rawUri,
+            "uri", uri,
+            "proto", Pair.of(proto, protoVer),
+            "response", resp,
+            "req_headers", reqHdrs,
+            "resp_headers", respHdrs,
+            "content_type", contentType,
+            "idem", idem
+          );
+        byurl.put(url, info);
+        byurl.put(
+          url != null? url: String.valueOf(ideKey),
+          info
+        );
+      }
+    }
+  };
+  return this.namespace.getVariables();
+}
+
+
+/*
+
+
+
+*/
+
+public static Object getOtherJsonObject() {
+  List<File> files = findFiles.iterate(
+    "/data/media/0/", 0, ".*(net|share|chrome).*(json|export|data).*");
+  for (File f: files) {
+    String json = new String(b, java.nio.charset.StandardCharsets.UTF_8);
+    try {
+      JSONObject o = new JSONObject(json);
+      String[] keys = CollectionUtil.toArray(o.keys());
+      if (ArrayUtils.indexOf(keys, "evennData") != -1) return o;
+    } catch (Throwable e) { 
+      continue;
+    }
+  };
+  throw new IllegalArgumentException("byte[] b == null");
+}

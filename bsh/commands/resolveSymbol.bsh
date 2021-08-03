@@ -1,0 +1,105 @@
+import com.strobel.decompiler.languages.java.ast.AstNode;
+import com.strobel.componentmodel.UserDataStore;
+import com.strobel.assembler.metadata.IMetadataTypeMember;
+import com.strobel.assembler.metadata.MemberReference;
+
+
+/*
+public static Object resolveSymbol(Object ast, Object filter) { Object km = Reflect.searchObject(ast.getDescendantsAndSelf().filter(filter)[-1].getParent(), com.strobel.componentmodel.UserDataStore.class, false, 0, 5)[-1]._map; Class fc = km.getClass(); do { for (Field fld: km.getClass().getDeclaredFields()) { fld.setAccessible(true); Object val = fld.get(km); if bsh.Factory.typeof(val).getName().startsWith("com.strobel.assembler.metadata")) { return val.resolve() != null? val.resolve(): val; } }; fc = fc.getSuperclass(); } while (fc.getSuperclass() != null); return null; }
+
+*/
+
+/*
+public static Object resolveSymbol(Object ast, Object filter, int depth) { Object kms = Reflect.searchObject(ast.getDescendants().filter(filter).select(FunctionUtil.eval("""return m -> { Pair.of(m, m.getParent()); }""")), com.strobel.componentmodel.UserDataStore.class, false, 0, depth).select(FunctionUtil.eval("""return m -> { m._map; }""")); for (Object km: kms) { Class fc = km.getClass(); do { for (Field fld: km.getClass().getDeclaredFields()) { fld.setAccessible(true); Object val = fld.get(km); if bsh.Factory.typeof(val).getName().startsWith("com.strobel.assembler.metadata")) { return val.resolve() != null? val.resolve(): val; } }; fc = fc.getSuperclass(); } while (fc.getSuperclass() != null); }; return null; }
+*/
+
+public static boolean isSane(Object found, Object filter) {
+  if (found != null) { 
+    String name = 
+      (found instanceof MemberReference)
+        ? ((MemberReference) found).getFullName()
+        : ((found instanceof IMetadataTypeMember)
+           ? ((IMetadataTypeMember) found).getName()
+           : String.valueOf(found));
+    
+    String retLetters = name.replaceAll("([^a-zA-Z])", "").toLowerCase();
+    String filtLetters = String.valueOf(filter).replaceAll("([^a-zA-Z])", "").toLowerCase();
+    return retLetters.indexOf(filtLetters) != -1 ||
+           filtLetters.indexOf(retLetters) != -1;
+  } else return false;
+}
+
+
+
+public static Object resolveSymbol(AstNode ast, String regex) {
+  return resolveSymbol(
+    ast,
+    Pattern.compile("^" + regex + "$"),
+    12
+  );
+}
+
+
+public static Object resolveSymbol(AstNode ast, String regex, int maxdepth) {
+  return resolveSymbol(
+    ast,
+    Pattern.compile(regex),
+    maxdepth
+  );
+}
+
+
+public static Object resolveSymbol(AstNode ast, Pattern filter, int maxdepth) {
+  
+  Iterable<AstNode> desc = ast.getDescendants();
+  Iterable<AstNode> filtered = CollectionUtil2.filter(desc, filter);
+  
+  Object kms = Reflect.searchObject(
+    filtered.select(
+      FunctionUtil.eval(
+        "return m -> { Pair.of(m, m.getParent()); }"
+      )
+    ),
+    UserDataStore.class, false, 0, maxdepth
+  ).select(
+    FunctionUtil.eval(
+      "return m -> { m._map; }"
+    )
+  );
+  
+  Object ret = null;
+  
+  for (Object km: kms) {
+    Class fc = km.getClass();
+    do { 
+      for (Field fld: km.getClass().getDeclaredFields()) {
+        fld.setAccessible(true);
+        Object val = fld.get(km);
+        if (val == null) continue;
+        if (val.getClass().getName().startsWith("com.strobel.assembler.metadata")) 
+        {
+          Object maybeRet = (val.resolve() != null)? val.resolve(): val;
+          if (isSane(maybeRet, filter)) return maybeRet;
+          continue;
+        }
+      }
+      fc = fc.getSuperclass();
+      if (fc != null) continue;
+    } while (false);
+    
+  };
+  if (ret == null) ret = resolveType(ast, filter.pattern());
+  if (! isSane(ret, filter) && maxdepth < 11) {
+    return resolveSymbol(
+      ast, Pattern.compile("^" + String.valueOf(filter) + "$"), 13
+    );
+  };
+  return ret;
+};
+
+
+
+
+
+
+

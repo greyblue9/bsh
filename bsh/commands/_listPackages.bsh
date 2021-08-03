@@ -1,0 +1,41 @@
+
+
+public static java.util.List<PackageInfo> listPackages() throws RemoteException 
+{
+  /* * /
+  IUserManager um = IUserManager.Stub.asInterface(
+    ServiceManager.getService("user")
+  );
+  /**/
+  IPackageManager pm = IPackageManager.Stub.asInterface(
+    ServiceManager.getService("package")
+  );
+  int flags = 0;
+  int userId = UserHandle.USER_OWNER;
+  
+  java.util.List<PackageInfo> packageInfos 
+    = new ArrayList<PackageInfo>();
+  PackageInfo lastItem = null;
+  
+  ParceledListSlice<PackageInfo> slice;
+  do {
+    
+    java.lang.String lastKey 
+      = (lastItem != null)
+        ? lastItem.packageName 
+        : null;
+        
+    slice = pm.getInstalledPackages(0, lastKey, userId);
+    lastItem = slice.populateList(
+      packageInfos, PackageInfo.CREATOR
+    );
+    print(slice);
+  } while (! slice.isLastSlice());
+
+  return packageInfos;
+}
+
+
+
+
+

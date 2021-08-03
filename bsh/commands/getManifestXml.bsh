@@ -1,0 +1,19 @@
+public static String getManifestXml(byte[] apkBytes) {
+  byte[] mfbytes = ZipUtil.toByteArray(apkBytes, "AndroidManifest.xml");
+  axmlp = new diff.rednaga.AXMLPrinter(mfbytes);
+  xmlstr = axmlp.getXml();
+  List<Node> docNodes = org.jsoup.parser.Parser.parseXmlFragment(xmlstr, "http://schemas.android.com/apk/res/android");
+  org.jsoup.nodes.Node manifNode = CollectionUtil.firstOrDefault(docNodes.filter("manifest"));
+  Collection<Node> nodes = manifNode.select("*");
+  for (org.jsoup.nodes.Node node : nodes) {
+    if (node.attributes() == null || node.attributes().size() == 0)
+      continue;
+    for (Map.Entry e : node.attributes().toMap().entrySet().toArray(new Map.Entry[0])) {
+      newKey = String.format("android:%s", StringUtils.substringAfter(e.getKey(), ":"));
+      node.attributes().remove(e.getKey());
+      node.attributes().put(newKey, e.getValue());
+    }
+  }
+  String outStr = StringUtils.join(docNodes, "\n");
+  return outStr;
+}

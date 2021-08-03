@@ -1,0 +1,42 @@
+import java.util.logging.Logger;
+import java.util.logging.Level;
+import dalvik.system.DalvikLogHandler;
+import java.util.Map.Entry;
+import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.logging.Handler;
+
+
+
+public static List<Logger> setupLoggers() {
+  return setupLoggers("^(com.strobel|(?:.*\\.|)jadx)\\.");
+}
+
+public static List<Logger> setupLoggers(String classNamePtrn) {
+  Handler console = new java.util.logging.ConsoleHandler();
+  
+  List<Handler> handlers = new CopyOnWriteArrayList(new Handler[]{ console });
+  
+  getFields.getFields(
+    searchClassPath(null, classNamePtrn), "static .*java.util.logging.Logger"
+  );
+  
+  java.util.logging.LogManager logmgr = Reflect.getfldval(
+    java.util.logging.Logger.global, "manager"
+  );
+  
+  List loggerList = Iterables.concat(
+    Arrays.asList(logmgr.rootLogger.global),
+    CollectionUtil2.invokeAll(logmgr.rootLogger.kids, "get")
+  ).toList();
+  
+  for (java.util.logging.Logger logger : loggerList) {
+    logger.levelValue = (
+      logger.levelObject = java.util.logging.Level.ALL
+    ).intValue();
+    logger.handlers = handlers;
+    System.err.println(Debug.ToString(logger));
+  }
+  
+  return loggerList;
+}
+

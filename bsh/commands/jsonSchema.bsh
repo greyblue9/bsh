@@ -1,0 +1,17 @@
+
+
+
+
+
+
+public static String jsonSchema(String dbPath) { String json = PosixFileInputStream.pexecSync("jsonschema", dbPath).replace("\n\n  }\n", "").replaceAll("\\}\\}$", "}\n}\n").replaceAll("\\}\n    \"", "},\n    \"").replace("\n\n", "\n"); return json; };
+
+
+
+
+
+
+public static String jsonSchema(String dbPath) { String json = PosixFileInputStream.pexecSync("jsonschema", dbPath).replace("\n\n  }\n", "").replaceAll("\\}\\}$", "}\n}\n").replaceAll("\\} *\n *\"", "},\n    \"").replace("\n\n", "\n"); return json; };
+
+
+

@@ -1,0 +1,110 @@
+/**
+  Workhorse print-to-string (a-la `sprintf`)
+  function.
+  
+  All other functions in this page use it to 
+  do their main work.
+*/
+public static java.lang.String sprintarr (java.lang.Object[] arr) {
+  
+  java.lang.String aStr = Arrays.toString(arr);
+  java.lang.String oStr = 
+    java.lang.String.format("[%c  ", 0x0a,0x0a,0x0a)
+  + aStr.substring(1, aStr.length() - 1).replace(
+        ", ", 
+        java.lang.String.format(",%c  ", 0x0a)
+      ) 
+  + java.lang.String.format("%c]", 0x0a); 
+
+  return oStr;
+}
+
+
+/**
+  Main print-type (wrapper) function
+*/
+public static void printarr (java.lang.Object o) {
+  java.lang.String pStr = java.lang.String.format(
+    "%c%c%s",
+    0x0a, 0x0a, sprintarr(o)
+  );
+  try {
+    System.out.println( pStr );
+    return;
+  } catch (java.lang.Exception e) {
+    print( pStr );
+  }
+}
+
+
+//
+// sprint-type (wrapper) functions
+
+// Each just boxes the array so it can be used 
+// as an java.lang.Object[] array by the main 
+// (sprintarr) rendering function.
+// 
+
+public static java.lang.String sprintarr (long[] arr) {
+  return sprintarr( (java.lang.Long[]) arr );
+}
+public static java.lang.String sprintarr (int[] arr) {
+  return sprintarr( (java.lang.Integer[]) arr );
+}
+public static java.lang.String sprintarr (short[] arr) {
+  return sprintarr( (java.lang.Short[]) arr );
+}
+public static java.lang.String sprintarr (char[] arr) {
+  return sprintarr( (Char[]) arr );
+}
+public static java.lang.String sprintarr (byte[] arr) {
+  return sprintarr( (java.lang.Byte[]) arr );
+}
+public static java.lang.String sprintarr (double[] arr) {
+  return sprintarr( (java.lang.Double[]) arr );
+}
+public static java.lang.String sprintarr (float[] arr) {
+  return sprintarr( (java.lang.Float[]) arr );
+}
+public static java.lang.String sprintarr (boolean[] arr) {
+  return sprintarr( (java.lang.Boolean[]) arr );
+}
+public static java.lang.String sprintarr (java.lang.Void[] arr) {
+  return sprintarr( (java.lang.Object[]) arr );
+}
+
+// 
+// print-type functions for primitive types
+// 
+
+
+public static void printarr (long[] arr) {
+  return printarr( (java.lang.Long[]) arr );
+}
+public static void printarr (int[] arr) {
+  return printarr( (java.lang.Integer[]) arr );
+}
+public static void printarr (short[] arr) {
+  return printarr( (java.lang.Short[]) arr );
+}
+public static void printarr (char[] arr) {
+  return printarr( (Char[]) arr );
+}
+public static void printarr (byte[] arr) {
+  return sprintarr( (java.lang.Byte[]) arr );
+}
+public static void printarr (double[] arr) {
+  return printarr( (java.lang.Double[]) arr );
+}
+public static void printarr (float[] arr) {
+  return printarr( (java.lang.Float[]) arr );
+}
+public static void printarr (boolean[] arr) {
+  return printarr( (java.lang.Boolean[]) arr );
+}
+public static void printarr (java.lang.Void[] arr) {
+  return printarr( (java.lang.Object[]) arr );
+}
+
+
+

@@ -1,0 +1,23 @@
+getNative() { 
+  
+appendLibraryPath(new java.lang.String[]{ "/storage/extSdCard/_projects/sdk/lib/com/sun/jna/linux-armv7l", "/system/lib", "/system/vendor/lib" });
+
+// DexPathList[[zip file "/storage/extSdCard/_projects/sdk/bsh/trunk/bsh-mod.jar"],nativeLibraryDirectories=[/storage/extSdCard/_projects/sdk/lib/com/sun/jna/linux-armv7l, /system/lib, /system/vendor/lib, /storage/extSdCard/_projects/sdk/lib/com/sun/jna/linux-armv7l, /system/lib, /system/vendor/lib]]
+
+appendClassPath(new java.lang.String[]{ "/storage/extSdCard/_projects/sdk/lib/jna.jar", "/storage/extSdCard/_projects/sdk/jna-3.5.1.jar", "/storage/extSdCard/_projects/sdk/dexed-jars/java.awt.jar" });
+
+// DexPathList[[zip file "/storage/extSdCard/_projects/sdk/bsh/trunk/bsh-mod.jar", zip file "/storage/extSdCard/_projects/sdk/lib/jna.jar", zip file "/storage/extSdCard/_projects/sdk/jna-3.5.1.jar"],nativeLibraryDirectories=[/storage/extSdCard/_projects/sdk/lib/com/sun/jna/linux-armv7l, /system/lib, /system/vendor/lib, /storage/extSdCard/_projects/sdk/lib/com/sun/jna/linux-armv7l, /system/lib, /system/vendor/lib]]
+
+dalvik.system.BaseDexClassLoader ldr = Thread.currentThread().getContextClassLoader();
+
+Class cls = ldr.loadClass("com.sun.jna.Native");
+
+cm = this.namespace.getClassManager(); cm.cacheClassInfo("com.sun.jna.Native", cls);
+
+// bsh.classpath.ClassManagerImpl@96823e40
+
+// print(  getClass("com.sun.jna.Native").getDeclaredMethods() );
+return cls;
+}
+
+

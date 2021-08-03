@@ -1,0 +1,5 @@
+public static String dumpDexClass2_noImpl(Class cls) { String str = dumpDexClass2(cls); Matcher mchr = Pattern.compile("(class|interface)(?:.\\[[0-9;]*m| )*(" + cls.getName().replace("$", "[.$]") + ")").matcher(str); if (mchr.find()) { int start = mchr.start(2); int lstart = str.lastIndexOf('\n', start); str = str.substring(lstart); }; return str; }
+
+
+public static String dumpDexClass2_noImpl(bsh.ClassIdentifier ci) { return dumpDexClass2_noImpl((Class) ((bsh.ClassIdentifier) ci).getTargetClass()); }
+

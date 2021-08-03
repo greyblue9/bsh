@@ -1,0 +1,1 @@
+public static DexPathList loadDirsRecursive(String path) { File file = new File(path); Collection<File> files = FileUtils.listFiles(file, new String[]{ "jar" }, true); String[] paths = new String[files.size()]; int i=0; for (f: files) { paths[i++] = f.getPath(); } return appendClassPath(paths); }

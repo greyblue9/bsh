@@ -1,0 +1,47 @@
+import java.util.Map.Entry;
+{
+  boolean exists = bsh.Capabilities.classExists("nl.lxtreme.binutils.elf.Elf");
+  if (bsh.Capabilities.classExists("nl.lxtreme.binutils.elf.Elf")) {
+    for (String _sn: Arrays.asList("Elf", "SectionHeader", "SectionType", "DynamicEntry")) {
+      this.namespace.importClass("nl.lxtreme.binutils.elf.".concat(_sn));
+    }
+  }
+
+  if (!exists) System.err.printf(
+    "Adding to classpath: %s ...\n", 
+    appendClassPathFile("/external_sd/_projects/sdk/elf/elf.jar"));
+  System.out.println(
+    bsh.Capabilities.classExists("nl.lxtreme.binutils.elf.Elf")? "OK": "Failed");
+  if (bsh.Capabilities.classExists("nl.lxtreme.binutils.elf.Elf")) {
+    for (String _sn: Arrays.asList("Elf", "SectionHeader", "SectionType", "DynamicEntry")) {
+      this.namespace.importClass("nl.lxtreme.binutils.elf.".concat(_sn));
+    }
+  }
+
+}
+
+
+
+
+
+
+
+
+public static Collection getJniMethods(byte[] elfBytes) { 
+  Elf elf = null;
+  return StringCollectionUtil.matchAll(Pattern.compile("(^|\n)Java_", Pattern.DOTALL).matcher(StringUtils.join(Arrays.asList(splitByNullByte((elf = getElf(elfBytes)).getSection(elf.getSectionHeaderByType(SectionType.STRTAB) != null? elf.getSectionHeaderByType(SectionType.STRTAB): elf.sectionHeaders[0]).array()).filter("^Java_")), "\n")).replaceAll("$1").replace('_', '.'), Pattern.compile("([^\n]+)\\.([^.\n]*)", Pattern.DOTALL), "$1.$2"); 
+};
+
+
+
+
+
+
+
+
+
+public static Map getJniMethods(Map nls) { Map methodNameMap = new TreeMap(); for (Entry ent: nls.entrySet()) { String path = ent.getKey(); String name = new File(path).getName(); byte[] elfBytes = ent.getValue(); try { Collection methodNames = getJniMethods(elfBytes); } catch (Exception e) { System.err.printf("Error reading methods from [%s], length=%d: %s\n", path, elfBytes.length, Reflector.getRootCause(e)); continue; }; methodNameMap.put(path, methodNames); }; return methodNameMap; };
+
+
+
+

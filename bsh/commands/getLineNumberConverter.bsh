@@ -1,0 +1,65 @@
+import com.strobel.decompiler.languages.java.OffsetToLineNumberConverter;
+import com.strobel.decompiler.languages.java.LineNumberTableConverter;
+import com.strobel.assembler.ir.attributes.SourceAttribute;
+import com.strobel.assembler.ir.attributes.LineNumberTableAttribute;
+/**
+Documentation:
+  public class LineNumberTableConverter implements OffsetToLineNumberConverter {
+    private final int _maxOffset;
+    private final int[] _offset2LineNo;
+    public LineNumberTableConverter(LineNumberTableAttribute lineNumberTable);
+    @Override public int getLineForOffset(int offset);
+  }
+  interface OffsetToLineNumberConverter {
+    public static OffsetToLineNumberConverter NOOP_CONVERTER;  // always unknown
+    public static int UNKNOWN_LINE_NUMBER;                     // == -100
+    int getLineForOffset(int);
+  }
+*/
+
+
+public static OffsetToLineNumberConverter getLineNumberConverter(Member mtd) {
+  DexParser.LineNumberTable table = DexParser.parseDebugInfo(mtd).lineNumberTable;
+  if (! table.entries().isEmpty()) {
+    LineNumberTableAttribute attr = table.toLineNumberAttribute();
+    return new LineNumberTableConverter(attr);
+  }
+}
+
+
+
+public static OffsetToLineNumberConverter getLineNumberConverter(MethodDefinition md) {
+  Map converters = null;
+  if (!CollectionUtil.dbg.containsKey("LineNumberConverters")) {
+    CollectionUtil.dbg.put("LineNumberConverters", (converters = new TreeMap()));
+  } else {
+    converters = CollectionUtil.dbg.get("LineNumberConverters");
+  }
+  String mdKey = md.getFullName().concat(md.getErasedSignature());
+  if (converters.containsKey(mdKey)) {
+    return converters.get(mdKey);
+  }
+;
+  Collection<SourceAttribute> attrs = md.getSourceAttributes();
+  Collection<LineNumberTableAttribute> filteredAttrs = CollectionUtil2.typeFilter(attrs, LineNumberTableAttribute.class);
+  LineNumberTableAttribute attr = // method comes with LineNumberTableAttribute
+  (!filteredAttrs.isEmpty()) ? filteredAttrs.iterator().next() : null;
+
+  OffsetToLineNumberConverter converter = null;
+  if (attr != null) {
+    converter = new LineNumberTableConverter(attr);
+    converters.put(mdKey, converter);
+    return converter;
+  }
+  // no LineNumberTableAttribute provided
+  Member mtd = ProcyonUtil.getMethod(md);
+  if (mtd == null) {
+    Log.w("getLineNumberConverter", "Could not get corresponding live Member instance for %s '%s' (%s); " + "results depending on line number info will be degraded or missing.", md.getClass().getSimpleName(), md.toString(), "class lacks attribute and ProcyonUtil.getMethod(md) returned null");
+    return OffsetToLineNumberConverter.NOOP_CONVERTER;
+  }
+  converter = getLineNumberConverter((Member) mtd);
+  if (converter != null) converters.put(mdKey, converter);
+  return converter;
+}
+
+ 

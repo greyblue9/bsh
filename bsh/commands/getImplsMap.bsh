@@ -1,0 +1,27 @@
+public static Map getImplsMap(Class cls, List<Class> implClasses) {
+  return RealArrayMap.toMap(CollectionUtil2.invokeAll(CollectionUtil2.invokeAll(ClassPathUtil.getImpls(cls.getName()), TypeTools.resolveRawArguments[0], 1, new Object[] { cls, null }), java.util.Arrays.asList[0], 0, new Object[] { null }).indexed().select(FunctionUtil.bind("return m -> { Pair.of(ims.get(m.getKey()), m.getValue().iterator().next()); }", "ims", implClasses)).filter(Pattern.compile("^((?!class org.d6r.TypeTools.Unknown).)+$")));
+}
+
+ 
+
+public static Map getImplsMap(Class cls, List<Class> implClasses) {
+  Map im = RealArrayMap.toMap(CollectionUtil2.invokeAll(CollectionUtil2.invokeAll(ClassPathUtil.getImpls(cls.getName()), TypeTools.resolveRawArguments[0], 1, new Object[] { cls, null }), java.util.Arrays.asList[0], 0, new Object[] { null }).indexed().select(FunctionUtil.bind("return m -> { Pair.of(ims.get(m.getKey()), m.getValue()); }", "ims", implClasses)).filter(Pattern.compile("^((?!class org.d6r.TypeTools.Unknown).)+$")));
+  printMap(RealArrayMap.toMap(im.entrySet().select(FunctionUtil.bind("return m -> { Pair.of(new(ClassIdentifier, m.getKey()), String.format(\"%s<%s>\", dumpMembers.colorize(iface.getSimpleName(), \"1;37\"), StringUtils.join(CollectionUtil2.to(m.getValue(), new(ClassIdentifier, ClassIdentifier)),\", \")).replace(\"0;36\", \"1;31\")); }", "iface", iface))));
+  return im;
+}
+
+ 
+
+public static Map getImplsMap(Class cls) {
+  return getImplsMap(cls, ClassPathUtil.getImpls(cls.getName()));
+}
+
+ 
+
+public static Map getImplsMap(Class cls, List<Class> implClasses) {
+  Map im = RealArrayMap.toMap(CollectionUtil2.invokeAll(CollectionUtil2.invokeAll(ClassPathUtil.getImpls(cls.getName()), TypeTools.resolveRawArguments[0], 1, new Object[] { cls, null }), java.util.Arrays.asList[0], 0, new Object[] { null }).indexed().select(FunctionUtil.bind("return m -> { Pair.of(ims.get(m.getKey()), m.getValue()); }", "ims", implClasses)).filter(Pattern.compile("^((?!class org.d6r.TypeTools.Unknown).)+$")));
+  printMap(RealArrayMap.toMap(im.entrySet().select(FunctionUtil.bind("return m -> { Pair.of(new(ClassIdentifier, m.getKey()), String.format(\"%s<%s>\", dumpMembers.colorize(iface.getSimpleName(), \"1;37\"), StringUtils.join(CollectionUtil2.to(m.getValue(), new(ClassIdentifier, ClassIdentifier)),\", \")).replace(\"0;36\", \"1;31\")); }", "iface", cls))));
+  return im;
+}
+
+ 

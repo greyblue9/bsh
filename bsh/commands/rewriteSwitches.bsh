@@ -1,0 +1,154 @@
+import com.strobel.assembler.metadata.MemberReference;
+import com.strobel.assembler.metadata.MethodReference;
+
+import com.strobel.assembler.metadata.*;
+import com.strobel.assembler.metadata.FieldReference;
+import com.strobel.assembler.metadata.IMethodSignature;
+import com.strobel.assembler.metadata.MethodReference;
+import com.strobel.assembler.flowanalysis.ControlFlowGraph;
+import com.strobel.decompiler.languages.java.ast.Keys;
+import com.strobel.decompiler.languages.java.ast.CaseLabel;
+import com.strobel.decompiler.languages.java.ast.Expression;
+import com.strobel.decompiler.languages.java.ast.IndexerExpression;
+import com.strobel.decompiler.languages.java.ast.MemberReferenceExpression;
+import com.strobel.decompiler.languages.java.ast.MethodDeclaration;
+import com.strobel.decompiler.languages.java.ast.*;
+import com.strobel.decompiler.languages.java.ast.PrimitiveExpression;
+import com.strobel.decompiler.languages.java.ast.SwitchSection;
+import com.strobel.decompiler.languages.java.ast.SwitchStatement;
+
+public static int rewriteSwitches(
+  com.strobel.decompiler.languages.java.ast.AstNode mdecl)
+{
+  return rewriteSwitches(mdecl, false);
+}
+
+public static int rewriteSwitches(
+  com.strobel.decompiler.languages.java.ast.AstNode mdecl, boolean verbose) 
+{
+  String TAG = "rewriteSwitches";
+  boolean v = verbose;
+  int rewrittenSwitchCount = 0;
+  
+  for (SwitchStatement ss:
+    mdecl.getDescendantsAndSelf().typeFilter(SwitchStatement.class))
+  {
+    try {
+      boolean success = false;
+      if (v) Log.d(TAG, "ss = %s", ss);
+      
+      Expression swExpr = ss.getExpression();
+      if (v) Log.d(TAG, "swExpr = %s", swExpr);
+      if (!(swExpr instanceof IndexerExpression)) continue; 
+      Expression targetExpr = swExpr.getTarget();
+      if (v) Log.d(TAG, "targetExpr = %s", targetExpr);
+      // if (!(targetExpr instanceof MemberReferenceExpression)) continue;
+      
+      MemberReference memberRef = Keys.MEMBER_REFERENCE.get(targetExpr);
+      if (v) Log.d(
+        TAG, "memberRef = (%s) %s", ClassInfo.typeToName(memberRef), memberRef);
+      if (memberRef == null) continue;
+      
+      MethodReference ref = null;
+      if (memberRef instanceof MethodReference) {
+        ref = (MethodReference) memberRef;
+      } else {
+        FieldReference generatedClass_switchMapField = memberRef;
+        Log.d(
+          TAG, "generatedClass_switchMapField = %s", generatedClass_switchMapField
+        );
+
+        ref = findSwitchMapInitializer(generatedClass_switchMapField);
+      }
+      
+      MethodDefinition swMapMethod = (ref instanceof MethodDefinition)
+          ? (MethodDefinition) ref
+          : (ref instanceof MethodReference)
+              ? ((MethodReference) ref).resolve()
+              : null;
+      
+      if (v) Log.d(TAG, "swMapMethod = %s", swMapMethod);
+      if (swMapMethod == null) continue;
+      
+      Map<Integer__String> mapping = getEnumMapping(swMapMethod);
+      if (v) Log.d(TAG, "mapping = %s", mapping);
+      if (mapping == null) continue;
+      
+      Collection<SwitchSection> swSections = ss.getSwitchSections();
+      if (v) Log.d(TAG, "%d switch sections", swSections.size());
+      
+      for (SwitchSection swsec: swSections) {
+        for (CaseLabel label: swsec.getCaseLabels()) {
+          
+          Expression lblExpr = label.getExpression();
+          if (lblExpr.isNull() ||
+            !(lblExpr instanceof PrimitiveExpression)) continue;
+          
+          Object exprObjVal = lblExpr.getValue();
+          if (!(exprObjVal instanceof Number)) continue;
+          
+          String strVal = exprObjVal.toString();
+          Integer intValue = Integer.parseInt(strVal, 10);
+          String name = mapping.get(intValue);
+          
+          if (name == null) continue;
+          lblExpr.setLiteralValue(name);
+          success = true;
+        }
+      }
+      if (success) {
+        // xyz.ordinal
+        Expression targetExpr = ss.getExpression().getArgument().getTarget();
+        Expression replacement = 
+          (targetExpr instanceof MemberReferenceExpression && ("ordinal".equals(
+          ((MemberReferenceExpression) targetExpr).getMemberName())))
+            ? targetExpr.getTarget()
+            : targetExpr; // TODO: remove ternary if this one is not actually possible
+        
+        ss.getExpression().replaceWith(replacement);
+        ++rewrittenSwitchCount;
+      }
+    } catch (Throwable e) {
+      new RuntimeException(String.format(
+        "Error processing switch: %s", Reflector.getRootCause(e)
+      ), e).printStackTrace();
+    }
+  };
+  for (EntityDeclaration ed: 
+       CollectionUtil2.typeFilter(mdecl.getDescendants(), EntityDeclaration.class))
+  {
+    if (ed.getName().toUpperCase().startsWith("$SWITCH")) {
+      ed.remove();
+    }
+  }
+  return rewrittenSwitchCount;
+}
+
+
+public static MethodReference findSwitchMapInitializer(FieldReference innerFld) {
+  String TAG = "findSwitchMapInitializer";
+  TypeReference generatedTypeForEnum = innerFld.getDeclaringType();
+  Log.d(TAG, "generatedTypeForEnum: %s", generatedTypeForEnum);
+  TypeDefinition innerType = generatedTypeForEnum.resolve();
+  if (innerType == null) innerType = ProcyonUtil.getTypeDefinition(
+    ClassInfo.typeToName(generatedTypeForEnum.getErasedSignature())
+  );
+  if (innerType == null) throw new Error(String.format(
+    "Unable to resolve TypeDefinition for generatedTypeForEnum[@%08x]: %s",
+    System.identityHashCode(generatedTypeForEnum), generatedTypeForEnum
+  ));
+  
+  Log.d(TAG, "resolve() --> innerType: %s", innerType);
+  for (MethodDefinition mdef: innerType.getDeclaredMethods()) {
+    if ("<clinit>".equals(mdef.getName())) {
+      Log.d(TAG, "Found inner type static initializer for switch map: %s", mdef);
+      return mdef;
+    }
+  }
+  throw new Error(String.format(
+    "Unable to find static initializer corresponding to field[@%08x]: %s",
+    System.identityHashCode(innerFld), innerFld
+  ));
+}
+
+

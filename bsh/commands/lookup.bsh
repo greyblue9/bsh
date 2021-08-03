@@ -1,0 +1,14 @@
+public static sun.jvm.hotspot.debugger.Address lookup(String name) {
+  Object dbg = sun.jvm.hotspot.runtime.VM.getVM().getDebugger();
+  List<SharedObject> dsos = dbg.getLoadObjectList();
+  for (String dsoname : dsos.invokeAll("getName")) {
+    long result = dbg.lookupByName0(dsoname, name);
+    if (result != 0) {
+      System.err.printf("Found symbol \"%s\" in object \"%s\" at 0x%08x\n\n", name, dsoname, result);
+      return dbg.newAddress(result);
+    }
+  }
+  return null;
+}
+
+ 

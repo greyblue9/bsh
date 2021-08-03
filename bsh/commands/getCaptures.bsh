@@ -1,0 +1,3 @@
+
+public static Object getCaptures(String url, int year) { String sparkUrl = String.format("https://web.archive.org/__wb/calendarcaptures?url=%s&output=json&year=%d", java.net.URLEncoder.encode(url.replaceAll("^https?://", "")), year); URL surl = new URL(sparkUrl); String json = IOUtils.toString(surl); return json.charAt(0) == '{'? new org.json.JSONObject(json): new org.json.JSONArray(json); }
+

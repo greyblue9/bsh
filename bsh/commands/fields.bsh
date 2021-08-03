@@ -1,0 +1,92 @@
+
+
+printmstatic(p) { 
+  if (p == null) return;
+  clz = p instanceof java.lang.Class? p: p.getClass();
+  mlist = clz.getMethods(); 
+  for(i=0; i<mlist.length; i++) { 
+    if ((int)(mlist[i].getModifiers() & 8 ) <= 0) continue; 
+    print( mlist[i] ); 
+  }
+}
+
+
+getmstatic(clz) { 
+  if (p == null) return;
+  clz = p instanceof java.lang.Class? p: p.getClass();
+  mlist = clz.getMethods(); 
+  outlist = new ArrayList();
+  for(i=0; i<mlist.length; i++) { 
+    if ((int)(mlist[i].getModifiers() & 8 ) <= 0) continue; 
+    outlist.add( mlist[i] ); 
+  }
+  return outlist.getArray();
+}
+
+
+printfldvals(p) { 
+  if (p == null) return;
+  clz = p instanceof java.lang.Class? p: p.getClass();
+  flist = clz.getDeclaredFields(); 
+  for(i=0; i<flist.length; i++) {
+    ((java.lang.reflect.AccessibleObject) flist[i]).setAccessible(true); 
+    fval = (p instanceof java.lang.Class)? 
+      null: flist[i].get(p);
+    print( 
+      java.lang.String.format(
+        "%27s %s = %s",
+        "("+flist[i].getType().getSimpleName()+")",
+        flist[i].getName(), 
+        fval != null? fval.toString(): "<null>"
+      )
+    );
+  }
+}
+
+
+printflds(p) {
+  return printfldvals(p);
+}
+
+
+getflds(p) { 
+  if (p == null) return;
+  clz = p instanceof java.lang.Class? p: p.getClass();
+  flist = clz.getDeclaredFields(); 
+  outlist = new ArrayList();
+  for(i=0; i<flist.length; i++) {
+    ((java.lang.reflect.AccessibleObject) flist[i]).setAccessible(true); 
+    //fval = (p instanceof java.lang.Class)? 
+      //null: flist[i].get(p);
+    outlist.add( flist[i] ); 
+  }
+  return outlist.getArray();
+}
+
+
+getfldvals(p) { 
+  if (p == null) return;
+  clz = p instanceof java.lang.Class? p: p.getClass();
+  flist = clz.getDeclaredFields(); 
+  outlist = new ArrayList();
+  for(i=0; i<flist.length; i++) {
+    ((java.lang.reflect.AccessibleObject) flist[i]).setAccessible(true); 
+    fval = (p instanceof java.lang.Class)? 
+      null: flist[i].get(p);
+    outlist.add( fval ); 
+  }
+  return outlist.getArray();
+}
+
+
+getfldval(_o, _fname) { 
+  if (_o == null) return null; 
+  _fld = _o.getClass().getDeclaredField(_fname);
+  ((java.lang.reflect.AccessibleObject) _fld).setAccessible(true); 
+  _fldval = _fld.get(_o); 
+  return _fldval;   
+}
+
+
+
+

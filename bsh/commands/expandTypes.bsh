@@ -1,0 +1,24 @@
+public static String expandTypes(String methodString) {
+  com.github.javaparser.ast.Node ast = parseBsh(methodString, true);
+  String s = ast.toString();
+  List<ReferenceType> types = ObjectUtil.searchObject(ast, com.github.javaparser.ast.type.ReferenceType.class, false, 0, 17).sort().uniq().filter(Pattern.compile("^[A-Z]"));
+  String unqualifiedNameAlts = CollectionUtil2.join(types, "|");
+  String pkgPattern = "java|javax|com|org|sun|android";
+  String newSrc = new ArrayDeque(Arrays.asList(searchClassPath(String.format("^(?:%s)(?:.*\\.|)(%s)$", pkgPattern, unqualifiedNameAlts)).select(FunctionUtil.bind("return m -> { s = s.replaceAll(String.format(\"\\b%s\\b\", StringUtils.substringAfterLast(m.replace(\"$\", \".\"), \".\")), m); }")))).pollLast();
+  return newSrc;
+}
+
+ 
+
+public static String expandTypes(String methodString) {
+  com.github.javaparser.ast.Node ast = parseBsh(methodString, true);
+  String s = ast.toString();
+  List<ReferenceType> types = ObjectUtil.searchObject(ast, com.github.javaparser.ast.type.ReferenceType.class, false, 0, 17).sort().uniq().filter(Pattern.compile("^[A-Z]"));
+  String unqualifiedNameAlts = CollectionUtil2.join(types, "|");
+  String pkgPattern = "java|javax|com|org|sun|android";
+  StringBuilder sb = new StringBuilder(s);
+  String newSrc = new ArrayDeque(Arrays.asList(searchClassPath(String.format("^(?:%s)(?:.*\\.|)(%s)$", pkgPattern, unqualifiedNameAlts)).select(FunctionUtil.bind("return m -> { sb.replace(0, sb.length(), sb.toString().replaceAll(String.format(\"([^a-zA-Z0-9_$.])(%s)([^a-zA-Z0-9_$.])\", StringUtils.substringAfterLast(m.replace(\"$\", \".\"), \".\")), String.format(\"$1%s$3\", m)).replaceAll(\"([^a-zA-Z0-9_$.])final([^a-zA-Z0-9_$.])\", \"$1$2\")); return sb; }", "sb", sb)))).pollLast();
+  return newSrc.toString().replaceAll("(?<=^|\n)  ", "  ");
+}
+
+ 

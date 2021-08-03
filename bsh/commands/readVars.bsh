@@ -1,0 +1,84 @@
+import org.apache.commons.io.FilenameUtils;
+import org.apache.commons.io.input.AutoCloseInputStream;
+
+public static Map readVars(List<String> varNames) {
+  bsh.NameSpace.BindingMap readVars = new bsh.NameSpace.BindingMap();
+  
+  File dir = new File("/external_sd/_projects/__variables__/");
+  if (!dir.exists() && !dir.mkdirs()) {
+    throw dir.mkdirErrno();
+  }
+  
+  Map varNameToFileMap = new TreeMap();
+  for (String fileName: dir.list()) {
+    int firstDot = fileName.indexOf('.');
+    if (firstDot == 0) continue; // hidden file
+    if (firstDot == -1) continue; // no extension
+    int lastDot = fileName.lastIndexOf('.');
+    if (firstDot != lastDot) continue; // double ext (.xyz.bak), etc.
+    int len = fileName.length();
+    if (lastDot == len-1) continue; // dot at end (e.g. "abc."): avoid
+    String var = fileName.substring(0, lastDot);
+    CharSequence ext = fileName.subSequence(lastDot+1, len);
+    if (! varNames.contains(var)) continue;
+    File f = new File(dir, fileName);
+    File existingF = varNameToFileMap.get(var);
+    if (existingF == null || (f.lastModified() > existingF.lastModified())) {
+      varNameToFileMap.put(var, f);
+    }
+  }
+    
+  for (String vn : varNames) {
+    Object value = null; //CollectionUtil.getInterpreter().getu(vn);
+    File file = varNameToFileMap.get(vn);
+    String ext = FilenameUtils.getExtension(file.getPath());
+    if (ext.equals("txt")) {
+      value = IOUtils.toString(
+        new AutoCloseInputStream(new FileInputStream(file)),
+        java.nio.charset.StandardCharsets.ISO_8859_1
+      );
+      System.err.printf("read var: %s (length: %d)\n", vn,((String)value).length());
+      readVars.put(vn, value);
+    } else if (ext.equals("xml")) {
+      InputStream is = null, fis = null;
+      try {
+        is = new AutoCloseInputStream((fis = new FileInputStream(file)));
+        value = readXml(is, true);
+        IOUtils.closeQuietly(is);
+        IOUtils.closeQuietly(fis);
+        fis.close();
+        if (value != null) {
+          System.err.printf(
+            "read var: %1$s (object of type %3$s; length: %2$d bytes)\n",
+            vn, file.length(), ClassInfo.getSimpleName(
+              ClassInfo.typeToName(bsh.Factory.typeof(value).getName()))
+          );
+          readVars.put(vn, value);
+        } else {
+          System.err.printf(
+            "unable to read var: %s: xstream readXml returned null\n", vn
+          );
+        }
+      } catch (Throwable ex) {
+        IOUtils.closeQuietly(is);
+        IOUtils.closeQuietly(fis);
+        
+        System.err.printf(
+          "unable to read var: %s: xstream readXml threw exception: %s\n",
+          vn, Reflector.getRootCause(ex)
+        );
+        ex.printStackTrace();
+        Reflector.getRootCause(ex).printStackTrace();
+      }
+    } else {
+      continue;
+    }
+    if (value != null) {
+      CollectionUtil.getInterpreter().getNameSpace().setVariable(vn, value, false);
+    }
+  }
+  return readVars;
+}
+
+
+

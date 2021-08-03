@@ -1,0 +1,35 @@
+
+
+
+
+
+
+
+
+public static Map parseStackDump(String c) { Matcher m = Pattern.compile("(?<=^|\n)(^|\n\"[^\"]+\"[^\n]* [A-Z0-9_]+)((?:(?!\n\n\"[^\"]+\"[^\n]* [A-Z0-9_]+).)*)", Pattern.DOTALL).matcher(c);  Set al = new TreeSet(); while (m.find()) { al.add(Pair.of(m.group(1).trim(), m.group(2).trim())); }; return RealArrayMap.toMap(al); };
+
+
+
+
+
+
+
+public static Map parseStackDump(Iterable<String> args) { List<String> argsArr = new ArrayList(Arrays.asList(CollectionUtil.toArray(args))); argsArr.add(0, "pstk"); String c = PosixFileInputStream.pexecSync(argsArr.toArray(new String[0])); return parseStackDump(c); };
+
+
+
+
+
+
+
+public static Map parseStackDump() { int ownPid = org.d6r.PosixFileInputStream.getPid(); String executable = CommandParser.getCommand(ownPid).getKey(); System.err.printf("[INFO] parseStackDump(): Using own pid: %d (%s)\n", ownPid, executable); return parseStackDump(Arrays.asList("-p", Integer.toString(ownPid, 10))); };
+
+
+
+
+
+
+public static Map parseStackDump(String c) { Matcher m = Pattern.compile("(?<=^|\n)(^|\n\"[^\"]+\"[^\n]* [A-Z0-9_]+)((?:(?!\n\n\"[^\"]+\"[^\n]* [A-Z0-9_]+).)*)", Pattern.DOTALL).matcher(c);  Set al = new TreeSet(); while (m.find()) { al.add(Pair.of(m.group(1).trim(), m.group(2).trim())); }; if (al.size() == 1) { m.reset(c.replaceAll("\n\"", "\n\n\n\"")); al.clear(); while (m.find()) { al.add(Pair.of(m.group(1).trim(), m.group(2).trim())); }; }; Iterator<Pair> it = al.iterator(); Collection<Pair> pairsToAdd = new ArrayList(); while (it.hasNext()) { Pair p = it.next(); String key = p.getKey(); String value = p.getValue(); if (key.trim().length() == 0) { if (value.indexOf("dalvik.system.NativeStart.main") != -1 || value.indexOf("com.android.internal.util.WithFramework.main") != -1 || value.indexOf("com.android.internal.os.ZygoteInit.main") != -1) { it.remove(); pairsToAdd.add(Pair.of("\"main\" prio=10 tid=? ?", value)); continue; } else { it.remove(); pairsToAdd.add(Pair.of(String.format("\"unknown-%08x\"", value.trim().hashCode()), value)); continue; }; }; }; al.addAll(pairsToAdd); return RealArrayMap.toMap(al); };
+
+
+

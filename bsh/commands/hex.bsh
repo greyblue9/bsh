@@ -1,0 +1,1 @@
+public static String hex(Object inp) { return Long.toHexString((long) inp  & 0xFFFFFFFFL); }

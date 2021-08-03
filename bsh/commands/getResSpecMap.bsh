@@ -1,0 +1,230 @@
+
+
+if (! bsh.Capabilities.classExists("zhao.arsceditor.ResDecoder.ARSCDecoder"))
+{
+  appendClassPathFile("/external_sd/_projects/sdk/ares/ares.jar");
+  Log.d("getResSpecMap", "Checking class OK: %s", Class.forName(
+    "zhao.arsceditor.ResDecoder.ARSCDecoder",
+    false,
+    Thread.currentThread().getContextClassLoader()
+  ));
+}
+  
+  
+import zhao.arsceditor.ResDecoder.ARSCDecoder;
+import zhao.arsceditor.ResDecoder.ARSCDecoder.ARSCData;
+import zhao.arsceditor.ResDecoder.data.ResTable;
+import zhao.arsceditor.ResDecoder.data.ResType;
+import zhao.arsceditor.ResDecoder.data.ResResSpec;
+import zhao.arsceditor.ResDecoder.data.ResResource;
+import libcore.io.StructStat;
+import libcore.io.StructStatVfs;
+import org.apache.commons.io.input.AutoCloseInputStream;
+
+
+public static boolean isDefaultExtraDecode() {
+  return true;
+}
+
+
+public static Map getResSpecMap(byte[] apkOrArscBytes) {
+  return getResSpecMap(apkOrArscBytes, isDefaultExtraDecode());
+}
+
+
+public static Map getResSpecMap(byte[] apkOrArscBytes, boolean extraDecode) {
+  boolean isZip 
+    = (apkOrArscBytes[0] == (byte) 'P' && apkOrArscBytes[0] == (byte) 'K');
+  
+  byte[] arscBytes = (isZip)
+    ? ZipUtil.toByteArray(apkOrArscBytes, "resources.arsc")
+    : apkOrArscBytes;
+  
+  InputStream arscIn = new ByteArrayInputStream(arscBytes);
+  return getResSpecMap(arscIn, extraDecode);
+}
+
+
+public static Map getResSpecMap(String apkOrArscPath) {
+  return getResSpecMap(apkOrArscPath, isDefaultExtraDecode());
+}
+
+
+public static String getTypeConstName(long st_mode) {
+  int fmt = (int) (((int) st_mode) & PosixUtil.S_IFMT);
+  Map cm = ConstUtil.constantMap(PosixUtil.class, "S_IF", PosixUtil.S_IFMT);
+  String typeConstName = cm.get(Integer.valueOf(fmt));
+  return typeConstName;
+}
+
+public static String getTypeDescription(long st_mode) {
+  int ifmt = (int) (((int) st_mode) & PosixUtil.S_IFMT);
+  Map FILE_TYPE_CONST_MAP = ConstUtil.constantMap(
+    PosixUtil.class, "S_IF", PosixUtil.S_IFMT
+  );
+  String constName = (FILE_TYPE_CONST_MAP.containsKey(Integer.valueOf(ifmt)))
+    ? FILE_TYPE_CONST_MAP.get(Integer.valueOf(ifmt))
+    : "";
+  Map FILE_TYPE_NAMES_BY_CONST_NAME = RealArrayMap.toMap(
+    "S_IFIFO",  "named pipe (fifo)", 
+    "S_IFCHR",  "character special file", 
+    "S_IFDIR",  "directory", 
+    "S_IFBLK",  "block special file", 
+    "S_IFREG",  "regular file", 
+    "S_IFLNK",  "symbolic link", 
+    "S_IFSOCK", "socket",
+    "",         String.format(
+                  "weird file (ifmt: %xh / %dd; mode: %xh / %dd)",
+                  ifmt, ifmt, st_mode, st_mode
+                )
+  );
+  String fileTypeDescription = FILE_TYPE_NAMES_BY_CONST_NAME.get(constName);
+  return fileTypeDescription;
+}
+
+
+
+public static Map getResSpecMap(String apkOrArscPath, boolean extraDecode) {
+  FileDescriptor fd = PosixUtil.open(apkOrArscPath, PosixUtil.O_RDONLY, 0);
+  // long pos = PosixUtil.lseek(fd, 0, PosixUtil.SEEK_CUR);
+  
+  StructStat stat = PosixUtil.fstat(fd);
+  StructStatVfs statvfs = PosixUtil.fstatvfs(fd);
+  String fileType = getTypeConstName(stat.st_mode);
+  String fileTypeDesc = getTypeDescription(stat.st_mode);
+  String device = String.format(
+    "%02x/%02x (%xh / %dd)", 
+    0xFFL & (((0xFFL << 8) & stat.st_dev) >>> 8), 
+    0xFFL & (((0xFFL << 0) & stat.st_dev) >>> 0),
+    stat.st_dev, stat.st_dev
+  ); 
+  long fileSizeBytes = stat.st_size;
+  long blocks = (stat.st_blocks * stat.st_blksize) / statvfs.f_bsize;
+  
+  byte[] magic = new byte[4];
+  int bytesRead = PosixUtil.preadBytes(
+    fd, // FileDescriptor fd
+    magic, // Object buffer
+    0, // int bufferOffset
+    magic.length, // int byteCount
+    0L // offset (from underlying file?)
+  );
+  if (bytesRead != magic.length) {
+    throw Reflector.Util.sneakyThrow(new IOException(String.format(
+      "getResSpecMap(String,boolean): " +
+      "Short read of %d bytes from fd[%s]: " +
+      "opened from path: \"%s\"; " +
+      "requested a %d-byte read but got only %d bytes.",
+      bytesRead, fd, apkOrArscPath, magic.length, bytesRead
+    )));
+  }
+  Log.d("getResSpecMap", "magic: \n%s\n", HexDump.dump(magic));
+  boolean isZip = (magic[0] == (byte) 'P' && magic[1] == (byte) 'K');
+  
+  InputStream arscInputStream = null;
+  if (isZip) {
+    RandomAccessFile raf = Reflect.allocateInstance(RandomAccessFile.class); 
+    raf.fd = fd; 
+    raf.scratch = new byte[64];
+    raf.mode = (int) stat.st_mode;
+    raf.syncMetadata = true;
+    ZipFile zf = Reflect.allocateInstance(ZipFile.class);
+    zf.raf = raf;
+    zf.filename = PosixFileInputStream.getPath(fd);
+    zf.entries = new LinkedHashMap();
+    zf.readCentralDir();
+    ZipEntry arscEntry = zf.getEntry("resources.arsc");
+    arscInputStream
+      = new AutoCloseInputStream(zf.getInputStream(arscEntry));
+  } else {
+    byte[] arscBytes = new byte[(int) fileSizeBytes];
+    PosixUtil.preadBytes(
+      fd, // FileDescriptor fd
+      arscBytes, // Object buffer
+      0, // int bufferOffset
+      arscBytes.length, // int byteCount
+      0L // offset (from underlying file?)
+    );
+    arscInputStream
+      = new AutoCloseInputStream(new ByteArrayInputStream(arscBytes));
+  }
+  Map ret = getResSpecMap(arscInputStream, extraDecode);
+  PosixUtil.close(fd);
+  return ret;
+}
+
+
+public static Map getResSpecMap(InputStream arscInputStream) {
+  return getResSpecMap(arscInputStream, isDefaultExtraDecode());
+}
+
+
+public static Map getResSpecMap(InputStream arscInputStream,
+boolean extraDecode)
+{
+  String TAG = "getResSpecMap";
+
+  BufferedInputStream bufferedArscInputStream
+    = new BufferedInputStream(arscInputStream);
+  bufferedArscInputStream.mark(Integer.MAX_VALUE);
+  ResTable resTable = new ResTable();
+  
+  ARSCDecoder decoder = new ARSCDecoder(
+    bufferedArscInputStream,
+    resTable,
+    true // keepBroken
+  );
+  
+  ARSCDecoder.ARSCData ad = null;
+  if (extraDecode) {
+    bufferedArscInputStream.reset();
+    bufferedArscInputStream.mark(Integer.MAX_VALUE);
+    Log.d(
+      TAG, 
+      "calling decoder[%s].decode( \n" +
+      "  ARSCDecoder: %s, \n" +
+      "  InputStream: %s, \n" +
+      "  boolean: %s, \n" +
+      "  boolean: %s, \n" +
+      "  ResTable: %s \n" +
+      ")",
+      decoder, decoder, bufferedArscInputStream, true, true, resTable
+    );
+    ad = decoder.decode(
+      decoder, // ARSCDecoder decoder
+      bufferedArscInputStream, // InputStream arscStream
+      true, // boolean findFlagsOffsets
+      true, // boolean keepBroken
+      resTable // ResTable resTable
+    );
+    Log.d(TAG, "ad := decoder.decode(..) -> %s", ad);
+  }
+  
+  ResType resType = Reflect.getfldval(decoder, "mType");
+  // Map<ResResSpec, ResResource>
+  Map resources = Reflect.getfldval(resType, "mResources");
+  Set<ResResSpec> resSpecs = resources.keySet();
+  
+  
+  Map resSpecMap = RealArrayMap.toMap(
+    resSpecs.select(FunctionUtil.bind(
+      "return m -> { " +
+      "  Pair.of( " +
+      "    m.mId.id, " +
+      "    StringUtils.join( " +
+      "      Arrays.asList( " +
+      "        m.getPackage().getName(), " +
+      "        \"R\", " +
+      "        m.getType().getName(), " +
+      "        m.getName() " +
+      "      ), " +
+      "      \".\" " +
+      "    ) " +
+      "  ); " +
+      "} "
+    ))
+  );
+  return resSpecMap;
+}
+
+

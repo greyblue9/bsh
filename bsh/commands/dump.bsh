@@ -1,0 +1,107 @@
+public static void dump(java.lang.Object o) {
+  print(dump(o, false));
+}
+
+public static void dumpv(java.lang.Object o) {
+  print(dump(o, true));
+}
+
+public static java.lang.String dump(java.lang.Object o, boolean verbose) {
+  java.lang.Object obj = (o instanceof java.lang.Class)? null: o;
+  java.lang.Class cls = (o instanceof java.lang.Class)? o: o.getClass();
+  
+  return dump(cls, o, verbose);
+}
+
+public static java.lang.String dump(java.lang.Class cls, java.lang.Object obj, boolean verbose) {
+  java.lang.String lf 
+    = new java.lang.Character((char)0x0a).toString();
+  
+  java.lang.reflect.Field[] fields 
+    = cls.getDeclaredFields();
+  java.lang.reflect.Field field;
+  
+  java.lang.StringBuilder sb = new java.lang.StringBuilder(75);
+  sb.append("=== As "+cls.getName()+" ==="+lf);
+  
+  if (cls.isArray()) { 
+    sb.append(dumpArrayStr(obj, 2));
+  } else {
+    // not array
+    for (int n=0; n<fields.length; n++) {
+      field = fields[n];
+      java.lang.String name = field.getName();
+      
+      java.lang.String sig = verbose?
+        field.getType().getName()
+        : field.getType().getSimpleName();
+      
+      java.lang.String str;
+      if (obj != null) {
+        
+        ((java.lang.reflect.AccessibleObject) field) 
+          .setAccessible(true);
+        java.lang.Object val = field.get(obj);
+        boolean isArray = (val != null &&  val.getClass().isArray());
+        
+        java.lang.String sItem = "";
+        if (val == null) sItem = "<null>";
+        else if (isArray) sItem = dumpArrayStr(val, 2);
+        else {
+          try { 
+            sItem = val.toString();
+          } catch (java.lang.Throwable e) {
+            sItem = java.lang.String.format(
+              "%s@%s (toString() threw %s)",
+              val.getClass().getName(),
+              val.hashCode(),
+              e.getClass().getSimpleName()
+            );
+          }
+        }
+          
+        sb.append(java.lang.String.format(
+          "%20s = %s%c",
+          "("+sig+") " + name, 
+          sItem,
+          0x0A
+        ));
+        
+      } else {
+        sb.append(java.lang.String.format(
+          "%20s%c",
+          "("+sig+") " + name, 0x0A
+        ));
+      }  
+    } // foreach field
+    
+  } // if not array
+  
+  java.lang.Class superCls = cls.getSuperclass();
+  if (superCls != null && superCls != java.lang.Object.class) {
+    sb.append(lf);
+    sb.append(
+      dump(superCls, obj, verbose)
+    );
+  }
+  //sb.append(lf);
+  return sb.toString();
+}
+
+
+
+public static void dump(Object arr) {
+  if (!(arr.getClass().isArray())) {
+    arr = CollectionUtil.toArray(arr);
+  }
+  StringBuilder sb = new StringBuilder(76 * 10);
+  idx = 0;
+  sb.append(String.format("%s %c[1;30m (length=%d) {%c[0m\n\n", dumpMembers.colorize(arr.getClass().getCanonicalName(), "0;36"), 27, Array.getLength(arr), 27));
+  for (Object e : arr) {
+    sb.append(String.format("%c[1;30m  [%d] = (%s)%c[0m\n%s\n\n", 27, idx++, e.getClass().getCanonicalName(), 27, e.toString().replaceAll("(^|\n)", "$1  ")));
+  }
+  sb.insert(0, "\n\n");
+  sb.append(String.format("%c[1;30m}%c[0m\n", 27, 27));
+  System.out.println(sb.toString());
+}
+

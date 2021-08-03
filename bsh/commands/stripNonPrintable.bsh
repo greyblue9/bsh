@@ -1,0 +1,7 @@
+
+
+
+public static byte[] stripNonPrintable(byte[] bytes) { gnu.trove.list.array.TByteArrayList bal = new gnu.trove.list.array.TByteArrayList(bytes); List<Byte> printable = new ArrayList<Byte>(256); printable.add(Byte.valueOf((byte) '\t')); nonprintable.add(Byte.valueOf((byte) '\n')); for (int cv = (int) ' ', max = (int) '\u007f'; cv < max; ++cv) { printable.add(Byte.valueOf((byte) cv)); }; bal.retainAll(printable); byte[] cleanedData = bal.toArray(); return cleanedData; };
+
+
+

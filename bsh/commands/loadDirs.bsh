@@ -1,0 +1,162 @@
+
+import java.io.*;
+import java.util.*;
+import dalvik.system.*;
+
+
+public static List<Element> loadDirs(String path) { 
+  return loadDirs(new String[]{ path }); 
+}
+
+
+
+public static List<Element> loadDirs(String[] paths) { 
+  DexPathList dpl = null; 
+  
+  String entPath = "";
+  int idx=-1;
+  
+  boolean shownStackTrace = false;
+  
+  ArrayList dexPaths = new ArrayList();
+  
+  for (String path: paths) { 
+    idx++;
+    System.err.printf("[Processing dir %d of %d] %s\n", 1 + idx,paths.length, path);
+    System.err.println(path);
+    
+    
+    
+    File dir = new File(path);  
+    File[] dirEnts = StringCollectionUtil.toStringFilter(
+      dir.listFiles(),
+      "^.*\\.(?:dex|jar|apk)$"
+    );
+    
+
+    int fidx = -1;
+    for (File ent: dirEnts) {
+      fidx++;
+      
+      
+      //System.err.println(path);
+      
+      entPath = ent.getPath();
+      
+      /*if (entPath.indexOf(".jar") != entPath.length() - 4 
+       && entPath.indexOf(".dex") != entPath.length() - 4
+       && entPath.indexOf(".apk") != entPath.length() - 4) 
+      {
+        continue;
+      }*/
+      
+      try {
+        DexFile df = new DexFile(entPath);
+      } catch (Throwable ___e) {
+
+
+        if (!shownStackTrace) {
+          System.err.println("<<< Bad dex >>> " + entPath);
+          System.err.println(___e.toString());
+          System.err.println(
+            java.util.Arrays.toString(
+              ___e.getStackTrace()
+            ).replaceAll("^\\[(.*)\\]$", "  $1").replace(", ", "\n  ")
+          );
+          shownStackTrace = true;
+        }
+        continue;
+      }
+      
+      //try {
+      //try {
+      dexPaths.add(entPath);
+      System.err.printf("[%d : %d / %d] %s\n", 
+        1 + idx, 1 + fidx, dirEnts.length, entPath);
+      
+      /*} catch (Throwable e) {
+        System.out.println(
+          "[" + entPath + "]"
+          + e.getClass().getName() 
+          + ": " + e.getMessage()
+        ); 
+        
+      }*/
+    }
+  }
+  
+  dpl = appendClassPath(dexPaths.toArray(new String[0]));
+  Interpreter interp = this.interpreter;
+
+  updateLoaderPaths(
+    Thread.currentThread().getContextClassLoader()
+  );
+  Thread th = new Thread(new Runnable() { 
+    public void run() { 
+      Thread.sleep(2000);
+      interp.setShowResults(true);
+    }
+  });
+  try { 
+    th.start();
+  } catch (Throwable exc) {
+    interp.setShowResults(true);
+  }
+  return dpl; 
+}
+
+
+public static List<Element> loadDirs() {
+  return loadDirs(new String[]{ 
+    "/external_sd/_projects/sdk/lib", 
+    "/external_sd/_projects/sdk/bin", 
+    "/external_sd/_projects/sdk/dexed-jars", 
+    "/external_sd/_projects/sdk/d2j", 
+    "/data/media/0/files", 
+    "/data/media/0/beans"
+  });
+}
+
+
+
+public static File[] loadDirs(String path, int start, int end) { File[] files = findFiles.iterate(path, 0, ".*\\.(?:apk|dex|jar)").toArray(new File[0]); File[] subseq = Arrays.copyOfRange(files, start, files.length < end? files.length: end); (addClassPath(subseq, Thread.currentThread().getContextClassLoader(), true)).getClass(); return subseq; }
+
+public static Object loadDirs(String dirPath, int depth) {
+  List<Object> list = new ArrayList<Object>();
+  List<File> files = findFiles.iterate(new File(dirPath).getCanonicalFile().getAbsoluteFile(), depth, ".*\\.jar$");
+  int count = files.size(), i = 0;
+  for (File file : files) {
+    System.err.printf("[%4d / %4d] %s\n", ((i++) + 1), count, StringEscapeUtils.escapeJava(file.getPath()));
+    try {
+      list.add(ClassInfo.appendClassPathFile(file.getPath()));
+    } catch (Throwable t) {
+      t.printStackTrace();
+    }
+  }
+  return list;
+}
+
+ 
+
+public static Object loadDirs(String dirPath) {
+  return loadDirs(dirPath, 2);
+}
+
+ 
+
+public static Object loadDirs(String dirPath, int depth) {
+  List<Object> list = new ArrayList<Object>();
+  List<File> files = findFiles.iterate(new File(dirPath).getCanonicalFile().getAbsoluteFile(), depth, ".*\\.jar$");
+  int count = files.size(), i = 0;
+  for (File file : files) {
+    System.err.printf("[%4d / %4d] %s\n", ((i++) + 1), count, StringEscapeUtils.escapeJava(file.getPath()));
+    try {
+      list.add(ClassInfo.appendClassPathFile(file.getPath(), true));
+    } catch (Throwable t) {
+      t.printStackTrace();
+    }
+  }
+  return list;
+}
+
+ 

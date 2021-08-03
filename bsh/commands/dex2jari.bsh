@@ -1,0 +1,97 @@
+import java.util.Map.Entry;
+import com.googlecode.dex2jar.visitors.DexFileVisitor;
+import com.googlecode.dex2jar.visitors.DexClassVisitor;
+
+
+public static Map dex2jari(String[] classNames, Map byteMap) {
+  com.googlecode.dex2jar.v3.V3ClassAdapter v3ca = null;
+  Interpreter in = CollectionUtil.getInterpreter();
+  org.objectweb.asm3.ClassWriter cw = null;
+  Set clsNames = new TreeSet(Arrays.asList(classNames));
+  Set doneClsNamesInternal = new TreeSet();
+  List cnsInDex = null;
+  String crntClsName = null;
+  
+  dfv = new com.googlecode.dex2jar.visitors.DexFileVisitor() {
+    
+    public com.googlecode.dex2jar.visitors.DexClassVisitor
+    visit(int i1, String name, String superName,
+    String[] ifaceNames)
+    {
+      if (doneClsNamesInternal.contains(name)) return null;
+      String className = DexVisitor.typeToName(name);
+      if (! cnsInDex.contains(className)) return null;
+      
+      try {
+        if (crntClsName != null) {
+          System.err.print("  - ");
+          System.err.println(crntClsName);
+          byteMap.put(
+            crntClsName.replace('.', '/').concat(".class"),
+            cw.toByteArray()
+          );
+        }
+        crntClsName = className;
+        
+        v3cz = new
+          com.googlecode.dex2jar.v3.V3InnerClzGather.Clz(name);
+        cw = new org.objectweb.asm3.ClassWriter(3);
+         v3ca = new
+        com.googlecode.dex2jar.v3.V3ClassAdapter(
+          v3cz,
+          new com.googlecode.dex2jar.v3.DexExceptionHandlerImpl(),
+          cw, i1, name, superName, ifaceNames
+        );
+        return v3ca;
+      } finally {
+        doneClsNamesInternal.add(name);
+      }
+    }
+    public void visitEnd() {
+      //super.visitEnd();
+      System.err.println("visitEnd()");
+    };
+  };
+  
+  cnToDexMap = new HashMap();
+  this.interpreter.setu("cnToDexMap", cnToDexMap);
+  for (String cn: classNames) {
+    Class cls = Class.classForName(
+      cn, false, Thread.currentThread().getContextClassLoader()
+    );
+    com.android.dex.Dex dex = org.d6r.ClassInfo.getDex(cls);
+    List cnsInDex = null;
+    if ((cnsInDex = cnToDexMap.get(dex)) == null) {
+      cnToDexMap.put(dex, (cnsInDex = new ArrayList()));     
+    }
+    cnsInDex.add(cn);
+    System.err.printf(
+      "%s -> %s [%d classes]\n", dex, cn, cnsInDex.size()
+    );
+  }
+  
+  com.android.dex.Dex dex;
+  
+  for (Entry entry: cnToDexMap.entrySet()) {
+    dex = entry.getKey();
+    cnsInDex = entry.getValue();
+    System.err.printf("Loading dex: %s\n", dex);
+    byte[] dexBytes = dex.getBytes();
+    dfr = new
+      com.googlecode.dex2jar.reader.DexFileReader(dexBytes);
+    dfr.setApiLevel(18);
+    dfr.accept(dfv);
+    if (crntClsName != null) {     
+        byteMap.put(
+          crntClsName.replace('.', '/').concat(".class"),
+          cw.toByteArray()
+        );
+        System.err.println(crntClsName);
+        crntClsName = null;
+    }
+    System.err.printf("Finished processing dex: %s\n", dex);
+  }
+  return byteMap;
+}
+
+

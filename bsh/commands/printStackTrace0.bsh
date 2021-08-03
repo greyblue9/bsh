@@ -1,0 +1,167 @@
+
+
+import com.strobel.assembler.metadata.MethodDefinition;
+import com.strobel.decompiler.languages.java.ast.MethodDeclaration;
+
+
+public static void printStackTrace0(Throwable ex) { 
+  printStackTrace0(ex, 5);
+}
+
+
+public static void printStackTrace0(Throwable ex, int ctxSize) 
+{ 
+  
+  StackTraceElement[] stes = (ex.stackTrace != null)
+    ? ex.stackTrace
+    : ex.getStackTrace();
+  System.err.printf("stackTrace:\n\tat %s\n\n", StringUtils.join(stes, "\n\tat "));
+  
+  String[] IGNORED = {
+    "bsh.BSHAssignment.eval",
+    "bsh.BSHMethodInvocation.eval",
+    "bsh.BSHPrimaryExpression.eval",
+    "bsh.BSHPrimaryExpression.eval",
+    "bsh.Interpreter.main",
+    "bsh.Interpreter.run",
+    "bsh.Name.invokeMethod",
+    "bsh.Reflect.invoke",
+    "bsh.Reflect.invokeMethod",
+    "bsh.Reflect.invokeStaticMethod",
+    "com.android.internal.util.WithFramework.main",
+    "dalvik.system.NativeStart.main(Native Method)",
+    "dalvik.system.XClassLoader.main",
+    "java.lang.reflect.Method.invoke",
+    "java.lang.reflect.Method.invokeNative(Native Method)"
+  };
+  
+  for (StackTraceElement ste: stes) {
+    if (Arrays.binarySearch((Object[]) IGNORED, (Object) String.format("%s.%s", ste.getClassName(), ste.getMethodName())) >= 0) {
+      continue;
+    };
+    
+    Class steCls;
+    System.out.println(String.format("\u001b[1;33m%s\u001b[0m", ste));
+    
+    
+    int lineNumber = (ste.getLineNumber() < 0)
+      ? ((ste.getLineNumber() == -2)
+          ? -1
+          : (0 - ste.getLineNumber()))
+      : ste.getLineNumber();
+    if (lineNumber < 0) {
+      System.out.printf(
+        "\u001b[1;33m%s\u001b[0m:\n  %s\n", ste.toString(), Debug.ToString(ste)
+      );
+      continue; 
+    }
+    
+    try {
+      if (Capabilities.classExists(ste.getClassName())) {
+        steCls = DexVisitor.classForName(ste.getClassName()); 
+      } else {
+        steCls = ste.getClassName();
+      }
+    } catch (Throwable e) { 
+      e.printStackTrace();
+      steCls = ste.getClassName();
+    }
+    
+
+    System.out.printf(
+      "\n  %s\n\n", 
+      getContext(steCls, ste.lineNumber, ctxSize).replace("\n", "\n  ")
+    );      
+  }   
+}
+
+
+
+
+/*
+public static StackTraceElement[] trimStackTrace(StackTraceElement[] s)
+{
+  StackTraceElement[] invokeNatives = CollectionUtil2.filter(
+    s, "java.lang.reflect.Method.invokeNative"
+  );
+  if (invokeNatives.length > 0) { 
+    int inatIdx = ArrayUtils.indexOf(s, invokeNatives[0]); 
+    StackTraceElement[] trimmedStackTrace 
+      = Arrays.copyOfRange(s, 0, inatIdx);
+      return trimmedStackTrace;
+  } else return s;
+}
+*/
+/*
+public static Throwable trimStackTrace(Throwable ex) {
+  Throwable th2 = CollectionUtil.clone(ex, 1);
+  th2.stackTrace = trimStackTrace(ex.getStackTrace());
+  return th2;
+}
+*/
+
+
+
+
+/*
+public static Map printStackTrace0(Throwable ex, int start, int end) { StackTraceElement[] st = Arrays.copyOfRange(ex.getStackTrace(), start, Math.min(ex.getStackTrace().length, end)); StackTraceElement ste = null; com.strobel.assembler.metadata.MethodDefinition md = null; com.strobel.decompiler.languages.java.ast.MethodDeclaration mast = null; Map mmap = new RealArrayMap(); for (int i=0, len=st.length; i<len; ++i) { ste = st[i]; System.out.printf("\u001b[1;33m%s\u001b[0m\n", ste); md = getMethodDefinition(ste); mast = ProcyonUtil.transform(ProcyonUtil.decompileToAst(md)); text = decompileMethodLines(mast, ste.getLineNumber(), false); System.out.println(text); mmap.put(ste, Triple.of(md, mast, text)); }; mmap.entrySet().select(FunctionUtil.bind("return m -> { StringUtils.join(Arrays.asList(dumpMembers.colorize(m.getKey().toString(), '1;33'), m.getValue().getRight()), String.valueOf(Character.toChars(0x0A)[0])); }")).print(); Runnable r = new Runnable() { public void run() { Thread.sleep(1000); CollectionUtil.getInterpreter().setShowResults(true); } }; new Thread(r).start(); CollectionUtil.getInterpreter().setShowResults(false); return mmap; };
+*/
+
+
+public static Pair printStackTrace0(Throwable ex, int start, int end) {
+  StackTraceElement[] stackTrace = ex.getStackTrace();
+  int stackTraceLength = stackTrace.length;
+  
+  StackTraceElement[] st
+    = Arrays.copyOfRange(stackTrace, start, Math.min(stackTraceLength, end));
+  StackTraceElement ste = null;
+  MethodDefinition md = null; 
+  MethodDeclaration mast = null;
+  Map mmap = new RealArrayMap();
+  Set<StackTraceElement> failed = new HashSet<StackTraceElement>();
+  for (int i=0, len=st.length; i<len; ++i) {
+    ste = st[i];
+    System.out.printf("\u001b[1;33m%s\u001b[0m\n", ste);
+    try {
+      MethodDefinition md = getMethodDefinition(ste);
+      MethodDeclaration mast = ProcyonUtil.decompileToAst(md);
+      String text = decompileMethodLines(
+        mast, 
+        (ste.getLineNumber() < 0)
+          ? ((ste.getLineNumber() == -2)
+              ? -2
+              : (0 - ste.getLineNumber()))
+          : ste.getLineNumber(),
+        false
+      ); 
+      System.out.println(text);
+      mmap.put(ste, Triple.of(md, mast, text));      
+    } catch (Throwable e2) {
+      System.err.println(Reflector.getRootCause(e2));
+      failed.add(ste);
+      continue;
+    };
+  };
+  String stackTraceString = StringUtils.join(
+    mmap.entrySet().select(FunctionUtil.bind(StringUtils.join(Arrays.asList(
+      "return m -> { ",
+      "  StringUtils.join(Arrays.asList(",
+      "    dumpMembers.colorize(m.getKey().toString(), '1;33'),",
+      "    m.getValue().getRight()",
+      "  ), ",
+      "  String.valueOf(Character.toChars(0x0A)[0]));",
+      "}"
+    ), "\n"))), "\n"
+  );
+  System.out.println(stackTraceString);
+  Runnable r = new Runnable() {
+    public void run() {
+      Thread.sleep(1000); 
+      CollectionUtil.getInterpreter().setShowResults(true);
+    }
+  };
+  new Thread(r).start(); 
+  CollectionUtil.getInterpreter().setShowResults(false);
+  return Pair.of(mmap, stackTraceString);
+}
+

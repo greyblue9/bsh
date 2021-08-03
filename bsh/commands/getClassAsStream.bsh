@@ -1,0 +1,102 @@
+import java.util.Map.Entry;
+
+import com.android.dex.Dex;
+import com.android.dex.ClassDef;
+import java.net.JarURLConnection;
+
+
+public static InputStream getClassAsStream(ClassLoader classLoader, String className) {
+  String clsResPath = className.replace('.', '/') + ".class";
+  System.err.printf("clsResPath = %s\n", clsResPath);
+  
+  // better pre-cache all methods otherwise this content 
+  // will be loaded
+  // multiple times
+  InputStream asStream;
+  try {
+    asStream = classLoader.getResourceAsStream(clsResPath);
+  } catch (Throwable e) {
+    asStream = null;
+    System.err.printf("getResourceAsStream() threw: %s\n",
+      e.toString());
+  }
+  if (asStream == null) {
+    try {
+      Class/*<?>*/ cls 
+        = Class.forName(className, false, classLoader);
+      System.err.printf("cls = %s\n", cls);       
+      Dex dex = org.d6r.ClassInfo.getDex(cls); 
+      System.err.printf("dex = %s\n", dex);
+      String[] names = dex.typeNames().toArray(new String[0]);
+      System.err.printf("names = %s (length = %d)\n",
+        names != null? names.getClass().getCanonicalName():
+          "null", names != null? names.length: 0);
+      ClassDef firstDef = dex.classDefs().iterator().next();
+      int firstTypeIndex = firstDef.getTypeIndex();
+      String firstTypeId = names[firstTypeIndex];
+      String firstTypeName 
+        = firstTypeId.substring(1).replace(";", "").replace('/', '.');
+      System.err.printf("firstTypeName = %s\n",
+        firstTypeName);
+      PathInfo pi = null; 
+      for (Entry entry: DexUtil.lookupDexMap.entrySet()) {
+        if (! firstTypeName.equals(entry.getValue())) { 
+          continue; 
+        }
+        System.err.printf("entry = %s\n", entry.toString());
+        String urlStr = entry.getKey().toString();
+        System.err.printf("urlStr = %s\n", urlStr);
+        pi = PathInfo.getPathInfo(urlStr);
+        break;
+      }
+      String jarPath;
+      if (pi != null) {
+        jarPath = (pi.jarPath != null)? pi.jarPath: pi.path;
+        String urlModStr = String.format(
+          "jar:file://%s!/%s", jarPath, clsResPath
+        );
+        URL modUrl = new URL(urlModStr);
+        JarURLConnection urlConn 
+          = (JarURLConnection) modUrl.openConnection();
+        // should point to the !/x/y/Z.class fragment
+        asStream = urlConn.getInputStream();
+      }
+    } catch (Throwable e) { 
+      e.printStackTrace();
+    }
+    
+  }
+  
+  return asStream;
+}
+/*
+ 
+   ;; };; 
+      String firstClsName = names[
+          dex.classDefs().iterator().next().getTypeIndex()
+        ].replace('/', '.').substring(1).replace(";", "");
+        PathInfo pi = null; 
+        for (Entry<String, String> entry
+           : DexUtil.lookupDexMap.entrySet()) 
+        { 
+          if (entry.getValue().equals(firstClsName)) { 
+            pi = PathInfo.getPathInfo(entry.getKey()); 
+            break;
+          }
+        } 
+        ZipFile zf = new ZipFile(new File(pi.jarPath));
+        ZipEntry ze = zf.getEntry(
+          className.replace('.', '/').concat(".class"));
+        InputStream is = zf.getInputStream(ze);
+        asStream = is;
+      } catch (Throwable e) { 
+        e.printStackTrace();
+      } 
+    }
+    
+    if (asStream == null) {
+      asStream = BytecodeReadingParanamer.class.getResourceAsStream(name);
+    }
+    return asStream;
+  }
+*/

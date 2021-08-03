@@ -1,0 +1,1 @@
+public static File[] getBshCommands() { return expandGlob("/data/media/0/bsh/commands/[a-z]*.bsh").toArray(new String[0]).to(File).sort(); }

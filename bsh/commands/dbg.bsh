@@ -1,0 +1,107 @@
+
+
+public static Object dbg(String fmt) {
+    return dbg(fmt, new Object[0]);
+}
+
+public static Object dbg(String fmt, Object[] args) {
+
+    PrintStream err = System.err;
+    int len = fmt.length();
+    char last = fmt.charAt(len-1);
+    int pctCount = 0;
+    int pos = -1;
+    StringBuilder spec = new StringBuilder(5);
+    spec.append('%');
+    char type;
+    StringBuffer text = new StringBuilder();
+    int start = 0, end = 0;
+    List<Object> tokens = new ArrayList<Object>();
+    int lastpos = -2;
+    int idx1, idx2, idx;
+    do {
+      idx1 = fmt.indexOf('%', pos);
+      idx2 = fmt.indexOf('{', pos);
+      idx = Math.min(
+        (idx1 != -1? idx1: Integer.MAX_VALUE), 
+        (idx2 != -1? idx2: Integer.MAX_VALUE)
+      );
+      if (idx == Integer.MAX_VALUE) {
+        idx = -1;
+        pos = -1;
+        break;
+      }
+      
+      pos = idx;
+      if (pos == lastpos) {
+        System.err.printf("bailing out: pos = %d, char = '%c'\n",
+          pos, fmt.charAt(pos));
+        break;
+      }
+      lastpos = pos;
+      if (pos > end) {
+        // text.append("[" +fmt.substring(end, pos) + "]");
+        text.append(fmt.substring(end, pos));
+      }
+      spec.delete(0, spec.length());
+      spec.append(type = fmt.charAt(pos));
+      char ch;
+      if (type == '%') {
+        while (
+          ((ch = fmt.charAt(++pos)) >= '0' && ch <= '9')
+          || ch == '-' || ch =='.')
+        {
+          spec.append(ch);
+        }
+      } else {
+        while ((ch = fmt.charAt(++pos)) != '}') {
+          spec.append(ch);
+        }
+      }
+      spec.append(ch);
+      end = pos + 1;
+      tokens.add("<"+spec+">");
+      
+      if (args.length >= tokens.size()) {
+        Object arg = args[tokens.size()-1];
+        
+        if (spec.charAt(0) == '{') {
+          if (spec.toString().equals("{c}")) {
+            text.append(ClassInfo.typeToName(
+             bsh.Factory.typeof(arg).getName()
+            ));
+            continue; 
+          }
+        }
+        if (spec.charAt(0) == '%' && spec.length() > 2) {
+          try {
+            text.append(String.format(
+              spec.toString(), args[tokens.size() - 1]
+            ));
+            continue;
+          } catch (Throwable ex) {
+            System.err.printf(
+              "\n  "
+              + "[WARN] format string caused %s:\n  "
+              + "  \"%s\"\n  "
+              + "  at argument %d, with format specifier '%s':\n  "
+              + "%s\n\n",
+              Reflector.getRootCause(ex).getClass().getSimpleName(),
+              fmt.replace("\n", "\\n"), 
+              tokens.size(), spec, Reflector.getRootCause(ex).getMessage()
+            );
+          }
+        }
+        text.append(args[tokens.size() - 1]);
+        continue;        
+      } else {
+        text.append(spec);
+      }
+    } while (true);
+    if (end < fmt.length()) {
+      text.append(fmt.substring(end , fmt.length()));
+    }
+    return text;
+}
+
+

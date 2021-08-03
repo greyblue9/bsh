@@ -1,0 +1,5 @@
+import java.util.Map.Entry;
+
+
+public static Map getClassCounts() { String[] classNames = getLoadedClasses(); Map counts = new HashMap(); for (String className: classNames) { Class cls = Class.forName(className, false, Thread.currentThread().getContextClassLoader()); long count = dalvik.system.VMDebug.countInstancesOfClass(cls, true); counts.put(className, Long.valueOf(count)); } ArrayList ents = new ArrayList(counts.entrySet()); Collections.sort(ents, new Comparator() { public int compare(Object a, Object b) { Entry ea = (Entry) a; Entry eb = (Entry) b; Long va = (Long) ea.getValue(); Long vb = (Long) eb.getValue(); return va.compareTo(vb); } public boolean equals(Object other) { return other == this; } }); return RealArrayMap.toMap(ents.toArray(new Entry[0])); }
+

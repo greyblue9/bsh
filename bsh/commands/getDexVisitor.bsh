@@ -1,0 +1,64 @@
+
+
+public static DexVisitor getDexVisitor(Class cls) {
+  /*Collection srcDes = findClassSource(cls.getName());
+  
+  if (srcDes.size() == 0) { 
+    System.err.printf(
+      "Could not find source dexElement(s) for class %s\n",
+      cls.getName()
+    ); 
+    return new DexVisitor();    
+  }
+  
+  DexPathList.Element srcDe = srcDes[0];
+  if (srcDe.zipFile == null) {   
+    System.err.printf(
+      "DexPathList.Element.zipFile is null for %s\n", 
+      srcDe
+    );
+    return new DexVisitor();
+  }
+  
+  ZipFile czf = srcDe.zipFile;
+  System.err.println(czf);
+  ZipEntry cze = czf.entries.get("classes.dex");
+  System.err.println(cze);
+  
+  InputStream zis;
+  byte[] bytes = IOUtils.toByteArray(
+    zis = czf.getInputStream(cze)
+  );  
+  zis.close();*/
+  Map resolvedDexBytes 
+    = this.interpreter.get("resolvedDexBytes");
+  if (resolvedDexBytes == null) {
+    resolvedDexBytes = new HashMap();
+    this.interpreter.set(
+      "resolvedDexBytes", resolvedDexBytes
+    );
+  }
+  com.android.dex.Dex dex = org.d6r.ClassInfo.getDex(cls);  
+  byte[] dexBytes = resolvedDexBytes.get(dex);
+  if (dexBytes == null) {
+    dexBytes = dex.getBytes();
+    resolvedDexBytes.put(dex, dexBytes);
+  }
+  
+  DexVisitor dv = DexVisitor.from(dexBytes, cls.getName());
+  //System.err.println(dv);
+  try { 
+    return dv;
+  } finally { 
+    dv = null; 
+    bytes = null; 
+    czf = null; 
+    cze = null; 
+    dv = null; 
+    zis = null; 
+    cls = null; 
+    srcDes = null; 
+    srcDe = null;
+  }
+}
+

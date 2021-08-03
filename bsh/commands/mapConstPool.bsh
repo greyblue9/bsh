@@ -1,0 +1,17 @@
+
+ public static Map mapConstPool(javassist.CtClass ctc) {
+   Map cmap = new RealArrayMap();
+   javassist.bytecode.ConstPool cstp = ctc.getClassFile().getConstPool();
+   for (int i = 0, len = cstp.getSize(); ++i < len; ) {
+     javassist.bytecode.ConstInfo item = cstp.getItem(i);
+     if (item != null) {
+       cmap.put(Integer.valueOf(i), item);
+       try {
+         sb.append("\u001b[0;36m%4d\u001b[1;34m:\u001b[1;32m %12s %s\n", i, StringUtils.substringBeforeLast(item.getClass().getSimpleName(), "Info"), "\u001b[0m".concat(StringUtils.substringBetween(Debug.ToString(item), "{", "\u001b[1;33mindex\u001b")).concat("\u001b[0m\n"));
+       } catch (Throwable exc) {
+         System.err.println(exc.detailMessage);
+       }
+     }
+   }
+   return cmap;
+ }

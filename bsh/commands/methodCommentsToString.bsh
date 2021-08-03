@@ -1,0 +1,7 @@
+
+public static String methodCommentsToString(Map mp) {
+
+  return StringUtils.join(mp.entrySet().select(FunctionUtil.eval("""return m -> {  m.getValue() + dumpMembers.colorize(m.getKey()).toString(); }""")), "\n\n\n\n\n").replaceAll("(^|\n)([^\\x1b])", "$1  $2").replaceAll("</?[a-z]+[1-6]?>","");
+
+}
+

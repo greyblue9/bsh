@@ -1,0 +1,59 @@
+import com.github.antlrjavaparser.api.visitor.DumpVisitor;
+import org.apache.commons.io.FileUtils;
+import libcore.io.IoUtils; 
+
+import org.antlr.v4.runtime.CharStream; 
+import org.antlr.v4.runtime.ANTLRInputStream;
+import org.antlr.v4.runtime.Lexer;
+import javafile.Java7Lexer; 
+import org.antlr.v4.runtime.TokenSource; 
+import org.antlr.v4.runtime.TokenStream;
+import org.antlr.v4.runtime.CommonTokenStream;
+import javafile.Java7Parser;
+
+/**
+/external_sd/_projects/sdk/javafile/java_antlr.jar
+/external_sd/_projects/sdk/javafile/lib/antlr-4.5.3-complete-1.jar
+*/
+public static Java7Parser getParser(String pathOrSource) {  
+  String source = null;
+  File file = null;
+  if (pathOrSource.length() > 255 
+  || !(new File(pathOrSource).exists())) {
+    source = pathOrSource;
+    //File tempDir = PosixFileInputStream.createTemporaryDirectory("fmtjava"); 
+    //file = File.createTempFile("src", ".java", tempDir);
+    //FileUtils.writeStringToFile(file, source);
+  } else {
+    // path
+    file = new File(pathOrSource);
+    source = FileUtils.readFileToString(file);
+  }
+  return getSourceParser(source);
+}
+/*
+{
+  JavaFile jf = new JavaFile(path);
+  DumpVisitor dv = new DumpVisitor();
+  jf.cu.accept(dv, Void);
+  String code = Reflect.getfldval(dv, "printer").toString(); 
+  if (code != null && code.length() > 100) {
+    return code;
+  } else {
+    System.err.printf(
+      "[WARN] DumpVisitor.printer.toString() returned %s\n",
+      code == null? "<null>": code
+    );
+  }
+  return null;
+}*/
+
+public static Java7Parser getSourceParser(String source) {
+  CharStream charStream = new ANTLRInputStream(source); 
+  Lexer lex = new Java7Lexer(charStream);
+  TokenStream tokStream = new CommonTokenStream(lex);
+  Java7Parser parser = new Java7Parser(tokStream);
+  return parser;
+}
+
+

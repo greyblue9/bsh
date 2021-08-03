@@ -1,0 +1,2 @@
+public static Class[] searchClassPath(Object o, String regex) { ArrayList<Throwable> al = new ArrayList<Throwable>(); Class[] arr = searchClassPath.invoke(null, null, al, new String[]{ regex }); System.err.printf("%d matches; sorting ...\n", arr.length); Comparator clsComp = new Comparator() { public int compare(Class a, Class b){ return a.getName().compareTo(b.getName()); } }; Arrays.sort(arr, clsComp); if (arr.length <= 400) { CollectionUtil.print(arr); }; return arr; }
+

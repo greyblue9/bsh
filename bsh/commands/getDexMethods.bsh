@@ -1,0 +1,63 @@
+
+public static Map getDexMethods(String clsName) { Map mp = new TreeMap(new ToStringComparator()); import com.android.dex.*; String binName = new StringBuilder(clsName.length() + 2).append('L').append(clsName.replace('.', '/')).append(';').toString(); Maomp = new HashMap(); dex = Interpreter.class.getDex(); int strIdx = ArrayUtils.indexOf(CollectionUtil.toArray(dex.strings()), "Lorg/d6r/TextUtil;");  int typeIdx = ArrayUtils.indexOf(CollectionUtil.toArray(dex.typeIds()), strIdx);  int cdIdx = dex.findClassDefIndexFromTypeIndex(typeIdx), cdidx = cdIdx; cd = dumpDexMethods2.getClassDef(dex, cdIdx);  toc = dex.getTableOfContents(); com.android.dex.ProtoId[] protoids = CollectionUtil.toArray(dex.protoIds()); com.android.dex.MethodId[] methodids = CollectionUtil.toArray(dex.methodIds()); String[] strings = CollectionUtil.toArray(dex.strings()); Integer[] wtypeids = CollectionUtil.toArray(dex.typeIds()); int[] typeids = ArrayUtils.toPrimitive(wtypeids); cdatoffs = cd.getClassDataOffset(); sec = toc.classDatas; s = dex.open(sec.off); pos = s.getPosition(); tgtpos = cdatoffs; skip = tgtpos - pos; s.skip(skip); cdat = s.readClassData(); cdms = cdat.getDirectMethods(); tls = dex.open(pos = toc.typeLists.off); for (int d=0; d<cdms.length; d+=1) { cdm = cdms[d]; midx = cdm.getMethodIndex(); codeoffs = cdm.getCodeOffset(); acc = cdm.getAccessFlags(); mid = methodids[midx]; name = strings[mid.getNameIndex()]; proto = protoids[mid.getProtoIndex()]; rettidx = proto.getReturnTypeIndex(); rettype = DexVisitor.typeToName(strings[typeids[rettidx]]).replace("[]", "\u001b[1;37m[]\u001b[0m");  paroffs = proto.getParametersOffset(); String[] ptypes; if (paroffs != 0) { if (tls.getPosition() > paroffs) tls = dex.open(toc.typeLists.off); tls.skip(paroffs - tls.getPosition()); ptl = tls.readTypeList();  short[] typeidxs = ptl.getTypes(); ptypes = new String[typeidxs.length]; for (int i=0; i<typeidxs.length; i+=1) { int typeidx = typeidxs[i]; typeid = typeids[(int)typeidx]; ptypes[i] = DexVisitor.typeToName(strings[typeid]).replace("[]", "\u001b[1;37m[]\u001b[0m"); }; } else ptypes = new String[0]; mp.put(String.format("%s(%s)%s", name, StringUtils.join(ptypes,","), rettype), String.format("\u001b[1;30m%s\u001b[0m%s\u001b[1;36m%s \u001b[1;33m%s\u001b[0m(\u001b[1;32m%s\u001b[0m);\n", Modifier.toString(acc), acc != 0? " ": "", rettype, name, StringUtils.join(ptypes, "\u001b[0m, \u001b[1;32m"))); }; return mp; }
+
+
+
+public static Map getDexMethods(String clsName) {
+  Map mp = new TreeMap(new ToStringComparator());
+  String binName = new StringBuilder(clsName.length() + 2).append('L').append(clsName.replace('.', '/')).append(';').toString();
+  Map mp = new HashMap();
+  dex = org.d6r.ClassInfo.getDex(DexVisitor.classForName(clsName));
+  int strIdx = ArrayUtils.indexOf(CollectionUtil.toArray(dex.strings()), "Lorg/d6r/TextUtil;");
+  int typeIdx = ArrayUtils.indexOf(CollectionUtil.toArray(dex.typeIds()), strIdx);
+  int cdIdx = dex.findClassDefIndexFromTypeIndex(typeIdx), cdidx = cdIdx;
+  cd = dumpDexMethods2.getClassDef(dex, cdIdx);
+  toc = dex.getTableOfContents();
+  com.android.dex.ProtoId[] protoids = CollectionUtil.toArray(dex.protoIds());
+  com.android.dex.MethodId[] methodids = CollectionUtil.toArray(dex.methodIds());
+  String[] strings = CollectionUtil.toArray(dex.strings());
+  Integer[] wtypeids = CollectionUtil.toArray(dex.typeIds());
+  int[] typeids = ArrayUtils.toPrimitive(wtypeids);
+  cdatoffs = cd.getClassDataOffset();
+  sec = toc.classDatas;
+  s = dex.open(sec.off);
+  pos = s.getPosition();
+  tgtpos = cdatoffs;
+  skip = tgtpos - pos;
+  s.skip(skip);
+  cdat = s.readClassData();
+  cdms = cdat.getDirectMethods();
+  tls = dex.open(pos = toc.typeLists.off);
+  for (int d = 0; d < cdms.length; d += 1) {
+    cdm = cdms[d];
+    midx = cdm.getMethodIndex();
+    codeoffs = cdm.getCodeOffset();
+    acc = cdm.getAccessFlags();
+    mid = methodids[midx];
+    name = strings[mid.getNameIndex()];
+    proto = protoids[mid.getProtoIndex()];
+    rettidx = proto.getReturnTypeIndex();
+    rettype = DexVisitor.typeToName(strings[typeids[rettidx]]).replace("[]", "[1;37m[][0m");
+    paroffs = proto.getParametersOffset();
+    String[] ptypes;
+    if (paroffs != 0) {
+      if (tls.getPosition() > paroffs) {
+        tls = dex.open(toc.typeLists.off);
+        tls.skip(paroffs - tls.getPosition());
+        ptl = tls.readTypeList();
+        short[] typeidxs = ptl.getTypes();
+        ptypes = new String[typeidxs.length];
+        for (int i = 0; i < typeidxs.length; i += 1) {
+          int typeidx = typeidxs[i];
+          typeid = typeids[(int) typeidx];
+          ptypes[i] = DexVisitor.typeToName(strings[typeid]).replace("[]", "[1;37m[][0m");
+        }
+      } else
+        ptypes = new String[0];
+      mp.put(String.format("%s(%s)%s", name, StringUtils.join(ptypes, ","), rettype), String.format("[1;30m%s[0m%s[1;36m%s [1;33m%s[0m([1;32m%s[0m);\n", Modifier.toString(acc), acc != 0 ? " " : "", rettype, name, StringUtils.join(ptypes, "[0m, [1;32m")));
+    }
+  }
+  return mp;
+}
+
+ 

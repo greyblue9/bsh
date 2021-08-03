@@ -1,0 +1,7 @@
+
+
+
+public static String ocrImage(File imageFile) { Object dexElement1, dexElement2; if (! bsh.Capabilities.classExists("com.googlecode.tesseract.android.TessBaseAPI")) { dexElement1 = appendClassPathFile("/external_sd/_projects/sdk/tesseract/com.thesimplest.ocrpro.apk"); /* dexElement2 = appendClassPathFile("/external_sd/_projects/sdk/tesseract/com.thesimplest.copypaste.apk"); */ dexElement1.maybeInit(); /* dexElement2.maybeInit(); */ byte[] zipBytes1 = IOUtils.toByteArray(new org.apache.commons.io.input.AutoCloseInputStream(ZipUtil.toInputStream(dexElement1.zipFile))); Map nls = loadNativeLibrariesFromApk(zipBytes1); }; com.googlecode.tesseract.android.TessBaseAPI t = new com.googlecode.tesseract.android.TessBaseAPI(); t.nativeSetDebug(true); t.init("/external_sd/_projects/sdk/tesseract/data", null); t.setImage(imageFile != null? imageFile: new File("/data/media/0/Pictures/Screenshots/IMG_edited/2016-11-04-07-57-17.png")); t.getInitLanguagesAsString(); String txt = t.nativeGetUTF8Text(); return txt; }
+
+
+

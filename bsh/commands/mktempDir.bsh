@@ -1,0 +1,19 @@
+import libcore.io.IoUtils;
+import java.util.Random;
+
+public static File mktempDir(String prefix) {
+   File outdir = PosixFileInputStream.createTemporaryDirectory(String.format(
+     "%s.%010x", 
+     prefix,
+     ((long) (System.currentTimeMillis() << 37)) ^ (long) (
+       (new Random().nextLong() 
+         ^ System.currentTimeMillis() * new Random().nextLong())) >> 1
+  ));  
+  if (!outdir.exists()) outdir.mkdirs(); 
+  return outdir;
+}
+
+public static File mktempDir() {
+  return mktempDir("tmp");
+}
+

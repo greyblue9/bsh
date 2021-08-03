@@ -1,0 +1,13 @@
+
+public static Class loadRtClass8(String className) {
+
+  byte[] bytes = ZipUtil.toByteArray(
+    "/external_sd/_projects/sdk/openjdk8/usr/lib/jvm/java-8-openjdk-armel/jre/lib/rt.jar",
+    className.replace('.', '/').concat(".class")
+  );
+
+  Class cls = loadRtClass(bytes, Thread.currentThread().getContextClassLoader());
+  return cls;
+
+}
+

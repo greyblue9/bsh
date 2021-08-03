@@ -1,0 +1,173 @@
+import com.android.dex.ClassData;
+import com.android.dex.ClassData.Field;
+import com.android.dex.ClassData.Method;
+import com.android.dex.Code;
+import com.android.dex.Code.CatchHandler;
+import com.android.dex.Code.Try;
+import com.android.dex.DexException;
+import com.android.dex.DexFormat;
+import com.android.dex.EncodedValue;
+import com.android.dex.EncodedValueCodec;
+import com.android.dex.FieldId;
+import com.android.dex.MethodId;
+import com.android.dex.ProtoId;
+import com.android.dex.TableOfContents;
+import com.android.dex.TypeList;
+import com.android.dex.util.ByteArrayByteInput;
+import com.android.dex.util.ByteInput;
+import com.android.dex.util.ByteOutput;
+import com.android.dex.util.ExceptionWithContext;
+import com.android.dex.util.Unsigned;
+
+import jadx.api.JadxDecompiler;
+import jadx.api.JavaClass;
+import jadx.api.JavaMethod;
+import jadx.core.dex.info.MethodInfo;
+import jadx.core.dex.nodes.ClassNode;
+import jadx.core.dex.nodes.DexNode;
+import jadx.core.dex.nodes.RootNode;
+
+public static Object jadxDecompile(String className) {
+  // appendClassPathFile("/external_sd/_projects/sdk/jadx/jadx.jar");
+  
+  Dex dex = getDex(className);
+  ClassDef classDef = getClassDef(className, dex);
+  ClassData cdat = getClassData(classDef);
+  ClassData.Method cdms = cdat.getDirectMethods();
+  Dex.Section s = dex.open(dex.getTableOfContents().codes.off);
+  ClassData.Method[] cdms = cdat.getDirectMethods();
+  
+  /** @type List<Pair<MethodId, Pair<Integer, Code>> */
+  List<Pair> pairs = new ArrayList<Pair>();
+  for (int i=0, len=cdms.length; i<len; ++i) {
+    ClassData.Method cdm = cdms[i];
+    int codeOffset = cdm.getCodeOffset();
+    int methodIndex = cdm.getMethodIndex();
+    s.data.position(codeOffset);
+    Code code = s.readCode();
+    MethodId method = dex.methodIds().get(methodIndex);
+    pairs.add(Pair.of(
+      method,
+      Pair.of(Integer.valueOf(methodIndex), code)
+    ));
+    System.err.printf(
+      "Read %s@%08x for method: %s\n",
+      code.getClass().getSimpleName(), System.identityHashCode(code), method
+    );
+  }
+  
+  /** @type Map<String, Object> */
+  Map jadxVars = RealArrayMap.toMap(getJadx(dex.getBytes()).values());
+  // workaround for 'ClassInfo' name conflict with 'org.d6r.ClassInfo'
+  jadx.core.dex.info.ClassInfo ClassInfo_
+    = Reflect.allocateInstance(jadx.core.dex.info.ClassInfo.class);
+  
+  DexNode dexNode = jadxVars.get("dexNode");
+  dexNode.loadClasses();
+  
+  ClassNode classNode
+    = dexNode.resolveClass(ClassInfo_.fromName(dexNode, className));
+  
+  MethodInfo methodInfo
+    = MethodInfo.fromDex(dexNode, pairs[0].getValue().getKey().intValue());
+  MethodNode methodNode = classNode.searchMethod(methodInfo);
+  /**
+  class JadxDecompiler {
+    private static final org.slf4j.Logger LOG;
+    private final jadx.api.IJadxArgs args;
+    private List<jadx.api.JavaClass> classes;
+    private Map<ClassNode, jadx.api.JavaClass> classesMap;
+    private jadx.core.codegen.CodeGen codeGen;
+    private Map<FieldNode, jadx.api.JavaField> fieldsMap;
+    private final List<jadx.core.utils.files.InputFile> inputFiles;
+    private Map<MethodNode, jadx.api.JavaMethod> methodsMap;
+    private java.io.File outDir;
+    private List<jadx.core.dex.visitors.IDexTreeVisitor> passes;
+    private List<jadx.api.ResourceFile> resources;
+    private RootNode root;
+    private jadx.core.xmlgen.BinaryXMLParser xmlParser;
+  }
+  */
+  JadxDecompiler dc = jadxVars.get("dc");
+  File outDir = Reflect.getfldval(dc, "outDir");
+  if (Reflect.getfldval(dc, "inputFiles") == null ||
+      Reflect.getfldval(dc, "inputFiles").getClass().getName().equals(
+        "java.util.Arrays$ArrayList"))
+  {
+    Reflect.setfldval(dc, "inputFiles", new ArrayList<Object>());
+  }
+  List<InputFile> beforeLoad
+    = new ArrayList<InputFile>(Reflect.getfldval(dc, "inputFiles"));
+  dc.loadFile(new File(outDir, "classes.dex"));
+  List<InputFile> afterLoad
+    = new ArrayList<InputFile>(Reflect.getfldval(dc, "inputFiles"));
+  afterLoad.removeAll(beforeLoad);
+  InputFile inputFile = afterLoad.firstOrDefault();
+  
+  LazyMember
+    jc_classNode = LazyMember.of("cls", JavaClass.class),
+    classNode_info = LazyMember.of("clsInfo", ClassNode.class), 
+    info_clsName = LazyMember.of("jadx.core.dex.info.ClassInfo", "fullName");
+  
+  Map jcsByName = RealArrayMap.toMap(
+    dc.getClasses().select(FunctionUtil.bind(StringUtils.join(Arrays.asList(
+      "return m -> { ",
+      "  Pair.of(",
+      "    info_clsName.getValue(",
+      "      classNode_info.getValue(",
+      "        jc_classNode.getValue(m)",
+      "      )",
+      "    ),",
+      "    m",
+      "  );",
+      " }"), "\n"
+      ),
+      "jc_classNode", jc_classNode,
+      "classNode_info", classNode_info,
+      "info_clsName", info_clsName
+    ))
+  );
+  
+  JavaClass jclazz = jcsByName.get(className);
+  String TAG = this.namespace.getName();
+  Log.d(TAG, "jclazz = %s", Debug.ToString(jclazz));
+  
+  Log.d(TAG, "temporarily nulling-out field `codeGen' on `dc'@%08x ...",
+    System.identityHashCode(dc));
+  Object codeGen = Reflect.getfldval(dc, "codeGen");
+  Reflect.setfldval(dc, "codeGen", null);
+  
+  /*Log.d(TAG, "calling dc.processClass(%s@%08x (\"%s\")) ...",
+    jclazz.getClass().getName(), System.identityHashCode(jclazz),
+    javaClassName(jclazz));
+  dc.processClass(jclazz);*/
+  
+  Log.d(TAG, "calling jclazz.decompile ...");
+  jclazz.decompile();
+  
+  Log.d(TAG, "restoring value of field `codeGen' on `dc'@%08x ...",
+    System.identityHashCode(dc));
+  Reflect.setfldval(dc, "codeGen", codeGen);
+  
+  return Pair.of(dc, jclazz);
+}
+
+
+public static String javaClassName(jadx.api.JavaClass javaClass) {
+  /*
+  LazyMember
+    jc_classNode = LazyMember.of("cls", JavaClass.class),
+    classNode_info = LazyMember.of("clsInfo", ClassNode.class), 
+    info_clsName = LazyMember.of("jadx.core.dex.info.ClassInfo", "fullName");
+  return info_clsName.getValue(
+    classNode_info.getValue(jc_classNode.getValue(javaClass))
+  );
+  */
+  return (String) Reflect.get(javaClass, "cls", "clsInfo", "fullName");
+}
+
+
+
+
+
+

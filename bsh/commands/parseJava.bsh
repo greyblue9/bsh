@@ -1,0 +1,139 @@
+import com.github.javaparser.Provider;
+import com.github.javaparser.StreamProvider;
+import com.github.javaparser.ParserConfiguration;
+import com.github.javaparser.JavaParser;
+import com.github.javaparser.CommentsInserter;
+import com.github.javaparser.ParseStart;
+import com.github.javaparser.ParseResult;
+import java8.util.Optional;
+import com.github.javaparser.Problem;
+import com.github.javaparser.printer.PrettyPrinterConfiguration;
+import com.github.javaparser.printer.PrettyPrintVisitor;
+import com.github.javaparser.ast.CompilationUnit;
+
+public static Object parseJava(Object srcUrlPathFileOrString) {
+  return parseJava(srcUrlPathFileOrString, false);
+}
+
+// returns:
+//     CompilationUnit (arg2: true)
+// -OR-:
+// Quad<JavaParser,  
+//     ParseResult,
+//     CompilationUnit -OR- Collection<Problem>,
+//     Pair<TreeSet<Comment>,
+//     StringBuilder>
+//     >         // // FIXME: Change to String!)
+//
+public static Object parseJava(Object srcUrlPathFileOrString,
+boolean retRawCompUnit) 
+{
+  boolean DEBUG_THIS = false;
+  StringBuilder colorBuilder = new StringBuilder(640); 
+  InputStream srcIn = null;
+  if (String.valueOf(srcUrlPathFileOrString).length() < 255) {
+    if (new File(srcUrlPathFileOrString.toString()).exists()) {
+      srcIn = IOStream.from(
+        new File(srcUrlPathFileOrString.toString())
+      );
+    }
+  }
+  if (srcIn == null) {
+    srcIn = new ByteArrayInputStream(
+      srcUrlPathFileOrString.toString().getBytes("UTF-8")
+    );
+  }
+  
+  Provider srcProvider = new StreamProvider(srcIn, "UTF-8"); 
+  ParserConfiguration parseConf = new ParserConfiguration(); 
+  if(DEBUG_THIS)System.err.printf("parseConf: %s\n", parseConf);
+  
+  parseConf.setAttributeComments(true); 
+  parseConf.setDoNotAssignCommentsPrecedingEmptyLines(false); 
+  parseConf.setDoNotConsiderAnnotationsAsNodeStartForCodeAttribution(
+    false);
+  parseConf.setTabSize(2); 
+  JavaParser.setStaticConfiguration(parseConf);
+  
+  // Create parser here
+  JavaParser jp = new JavaParser(parseConf);
+  if(DEBUG_THIS)
+    System.err.printf("jp = %s\n",bsh.Factory.typeof(jp).getName());
+  
+  CommentsInserter commentsInserter;
+  jp.commentsInserter
+    = (commentsInserter = new CommentsInserter(parseConf));
+  
+  ParseResult pr = jp.parse(ParseStart.COMPILATION_UNIT, srcProvider);
+  Optional opt = null; 
+  TreeSet comments = (opt = pr.getCommentsCollection()).isPresent()
+    ? opt.get().getComments()
+    : new TreeSet(new ToStringComparator());
+  
+  boolean ok = pr.getResult().isPresent();
+  if(DEBUG_THIS) System.err.printf("ok = %s\n", Boolean.valueOf(ok));
+  
+  Collection<Problem> problems = (ok)
+     ? Collections.emptyList()
+     : pr.getProblems();
+  
+  
+  if (retRawCompUnit) {
+    Optional<CompilationUnit> maybeCompUnit = pr.getResult();
+    if (maybeCompUnit.isPresent()) {
+      CompilationUnit cu = maybeCompUnit.get();
+      return cu;
+    } else {
+      Collection<Problem> problems = pr.getProblems();
+      Throwable parseError 
+        = problems.iterator().next().getCause().get();
+      parseError.printStackTrace();
+      parseError.print();
+      throw Reflector.Util.sneakyThrow(parseError);
+    }
+    return pr;
+  }
+  
+  
+  Quad jpq = Quad.of(
+    jp, 
+    pr, 
+    ok? pr.getResult().get(): problems,
+    Pair.of(comments, colorBuilder.toString())
+  );
+  // ===> pretty print <===
+  PrettyPrinterConfiguration prettyConf 
+    = new PrettyPrinterConfiguration(); 
+  prettyConf.printComments = true;
+  prettyConf.indent = "  ";
+  if(DEBUG_THIS) System.err.printf("prettyConf = %s\n", prettyConf);
+  
+  // Function<PrettyPrinterConfiguration, PrettyPrintVisitor>
+  java8.util.function.Function visitorFactory
+    = (java8.util.function.Function) Reflect.getfldval(
+        prettyConf, "visitorFactory"
+      );
+  PrettyPrintVisitor v = visitorFactory.apply(prettyConf); 
+  // CompilationUnit 
+  if (ok) {
+    jpq.getNext().accept(v, null);
+    
+    colorBuilder.append(
+      Pattern.compile(
+        "(//[^\n]*|/\\*(?:[^\\*]|\\*[^/])+?\\*/)",
+        Pattern.CASE_INSENSITIVE 
+        | Pattern.DOTALL 
+        | Pattern.MULTILINE 
+        | Pattern.UNIX_LINES
+      ).matcher(
+        v.getSource().toString()
+      ).replaceAll(dumpMembers.colorize("$1", "1;30"))
+    );
+  };
+  return Quad.of(
+    jp, 
+    pr, 
+    ok? pr.getResult().get(): problems,
+    Pair.of(comments, colorBuilder.toString())
+  );
+}

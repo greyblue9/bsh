@@ -1,0 +1,4 @@
+
+
+public static String formatJavaWhitespace(String src) { Matcher mchr = Pattern.compile("\n   ?\\}", Pattern.CASE_INSENSITIVE | Pattern.DOTALL | Pattern.MULTILINE | Pattern.UNIX_LINES).matcher(""); boolean hasWideIndent = ! mchr.reset(src).find(); String fmtsrc = src; if (hasWideIndent) { fmtsrc = fmtsrc.replaceAll("    ", "  ").replaceAll("\n( +) \\*( |(?=\n))", "\n$1").replaceAll("\n( +) \\*/", "\n$1*/"); }; fmtsrc = fmtsrc.replaceAll("\n \\*( |(?=\n))", "\n").replaceAll("\n \\*/", "\n*/"); return fmtsrc; }
+

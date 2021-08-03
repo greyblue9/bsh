@@ -1,0 +1,2 @@
+public static Class getListClass(java.util.AbstractCollection l) { try { Object o = l.toArray(new Float[]{  }); } catch (Throwable e) { String msg = e.getMessage(); return  ClassResolveUtils.findInnerClass(msg.substring(msg.indexOf("of type ")+("of type ").length(), msg.indexOf(" cannot")));  } return null; }
+

@@ -1,0 +1,17 @@
+
+public static int[] scanMedia() { 
+
+  File[] audioFiles = findFiles.iterate("/system/media/audio", 2, "/system/media/audio/.*\\.(mp3|aac|mp4|m4a|wav|ogg|flac|ac3)").toArray(new File[0]); 
+  int[] results = new int[audioFiles.length];
+
+  int idx = -1; 
+  while (++idx < audioFiles.length) {
+    File file = audioFiles[idx];
+    int iScanResult = scanFile(file.getPath()); 
+    results[idx] = iScanResult;
+    System.err.printf("[ %d ] %s\n", iScanResult, file);
+  }
+
+  return results;
+}
+

@@ -1,0 +1,214 @@
+
+
+import com.strobel.decompiler.ast.AstBuilder;
+import com.strobel.assembler.metadata.FieldReference;
+import com.strobel.assembler.metadata.MethodBody;
+import com.strobel.assembler.flowanalysis.ControlFlowNode;
+import com.strobel.assembler.flowanalysis.ControlFlowGraph;
+import com.strobel.assembler.flowanalysis.ControlFlowGraphBuilder;
+import com.strobel.assembler.ir.Instruction;
+import com.strobel.assembler.ir.OpCode;
+import com.strobel.assembler.ir.StackBehavior;
+
+
+public static Map<Integer__String> getEnumMapping(MethodDefinition switchMapMd) {
+  String TAG = "getEnumMapping";
+  MethodBody body = switchMapMd.getBody();
+  AstBuilder builder = new AstBuilder();
+  builder._body = body;
+  builder._optimize = false;
+  builder._context = ProcyonUtil.getDecompilerContext();
+  builder._instructions = AstBuilder.copyInstructions(body.getInstructions());
+  Collection oldInstructions = body.getInstructions();
+  Collection newInstructions = builder._instructions;
+  builder._originalInstructionMap = new IdentityHashMap();
+  for (int i=0, nsz=newInstructions.size(); i<nsz; ++i) {
+    builder._originalInstructionMap.put(
+      newInstructions.get(i), oldInstructions.get(i)
+    );
+  }
+  
+  // clean up exception ranges
+  builder._exceptionHandlers = AstBuilder.remapHandlers(
+    body.getExceptionHandlers(), builder._instructions
+  );
+  Collections.sort(builder._exceptionHandlers);
+  builder.pruneExceptionHandlers();
+  
+  // generate CFG
+  ControlFlowGraph cfg = (builder._cfg = ControlFlowGraphBuilder.build(
+    builder._instructions, builder._exceptionHandlers
+  ));
+  
+  // extract enum mapping
+  return ("<clinit>".equals(switchMapMd.getName()))
+    ? getJavacEnumMapping(cfg)
+    : getEclipseEnumMapping(cfg);
+}
+
+public static Map<Integer__String> getEclipseEnumMapping(ControlFlowGraph cfg) {
+  String TAG = "getEclipseEnumMapping";
+  SortedMap<Integer__String> map = new TreeMap();
+  
+  for (ControlFlowNode cfnode: cfg.getNodes()) {
+    
+    Instruction firstInsn = null;
+    try {
+      firstInsn = cfnode.getStart();
+      
+      try {
+        if (firstInsn == null) continue;
+        OpCode opcode = null;
+        opcode = firstInsn.getOpCode();
+        // Log.d(TAG, "firstInsn.opcode = %s\n", opcode);
+        if (opcode != OpCode.ALOAD_0) continue;
+      } catch (Throwable t0) {
+        try { dumpMembers(cfg); } catch (Throwable x) { System.err.println(x); };
+        t0.printStackTrace();
+        System.err.printf(
+          "cfnode = %s:\n  %s\n\n", cfnode, Debug.ToString(cfnode));
+        System.err.printf(
+          "firstInsn = %s:\n  %s\n\n", firstInsn, Debug.ToString(firstInsn));
+      }
+    } catch (Throwable t) {
+      try { dumpMembers(cfg); } catch (Throwable x) { System.err.println(x); };
+      t.printStackTrace();
+      Log.d(TAG, "cfnode = %s:\n  %s\n\n", cfnode, Debug.ToString(cfnode));
+    }
+    
+    
+    Instruction next = firstInsn.getNext();
+    if (next.getOpCode() != OpCode.GETSTATIC ||
+      !(next.getOperand(0) instanceof FieldReference)) continue;
+      
+    FieldReference enumField = (FieldReference) next.getOperand(0);
+    TypeReference enumType = enumField.getDeclaringType();
+    String enumName = enumField.getName();
+    
+    Instruction callOrdInsn = next.getNext();
+    if (callOrdInsn == null ||
+        callOrdInsn.getOpCode() != OpCode.INVOKEVIRTUAL) continue;
+    
+    Instruction pushInsn = callOrdInsn.getNext();
+    if (pushInsn == null) continue;
+    OpCode op = pushInsn.getOpCode();
+    Number value = null;
+    
+    if (op == OpCode.BIPUSH) {
+      value = Integer.valueOf(
+        (int) ((Number) pushInsn.getOperand(0)).longValue()
+      );
+    }
+    else if (op == OpCode.ICONST_1) value = Integer.valueOf(1);
+    else if (op == OpCode.ICONST_2) value = Integer.valueOf(2);
+    else if (op == OpCode.ICONST_3) value = Integer.valueOf(3);
+    else if (op == OpCode.ICONST_4) value = Integer.valueOf(4);
+    else if (op == OpCode.ICONST_5) value = Integer.valueOf(5);
+    else continue;
+    
+    String strVal = value.toString();
+    Integer intValue = Integer.parseInt(strVal, 10);
+    map.put(intValue, enumName);
+  }
+  // System.err.println(map);
+  return map;
+}
+
+
+
+
+public static Map<Integer__String> getJavacEnumMapping(ControlFlowGraph cfg) {
+  String TAG = "getJavacEnumMapping";
+  SortedMap<Integer__String> mapping = new TreeMap();
+  
+  TypeReference enumType = null; // optional
+  String enumTypeName = null, enumTypeSimpleName = null; // optional
+  
+  for (ControlFlowNode node: cfg.getNodes()) {
+    List<Instruction> insns = Arrays.asList(CollectionUtil.toArray(
+      IteratorUtils.asIterable(node.getInstructions().iterator())
+    ));
+    String enumName = null;
+    Number enumValue = null;
+    for (Instruction insn : insns) {
+      OpCode opcode = insn.getOpCode();
+      if (opcode == OpCode.GETSTATIC) {
+        FieldReference fr = insn.getOperand(0);
+        TypeReference fldType = fr.getFieldType();
+        if (fldType.isArray()) continue; // skip references to int[] field
+        
+        enumName = insn.getOperand(0).getName();
+        if (enumType == null) { // optional info for nicer logging
+          enumType = insn.getOperand(0).getDeclaringType();
+          enumTypeName = ClassInfo.typeToName(enumType.getErasedSignature());
+          enumTypeSimpleName = ClassInfo.getSimpleName(enumTypeName);
+          Log.d(TAG, "building map for enum %s", enumTypeName);
+        }
+      } else if (insn.getOpCode().getStackBehaviorPush() == StackBehavior.PushI4) {
+        Number value = 
+          (insn.getOperandCount() != 0 && ((Object)
+          (insn.getOperand(0))) instanceof Number)
+            ? ((Number) insn.getOperand(0)).intValue()
+            : (insn.getOpCode().name().startsWith("ICONST_"))
+                ? Integer.parseInt(insn.getOpCode().name().subSequence(7, 8), 10)
+                : null;
+        if (value == null) continue;
+        
+        enumValue = value;
+      }
+    } // for insn: insns
+    if (enumValue == null || enumName == null) continue; // Not enough info in block
+    
+    mapping.put(enumValue, enumName);
+    Log.d(
+      TAG, "New mapping:  %4d -> %s.%s\n", enumValue, enumTypeSimpleName, enumName
+    );
+  } // for node: cfg.getNodes()
+  
+  return mapping;
+}
+
+
+
+
+
+
+/*
+public static Map getEnumMapping(MethodDefinition switchMapMd) {
+  com.strobel.assembler.metadata.MethodBody body = switchMapMd.getBody();
+  com.strobel.decompiler.ast.AstBuilder builder = new com.strobel.decompiler.ast.AstBuilder();
+  builder._body = body;
+  builder._optimize = false;
+  builder._context = ProcyonUtil.getDecompilerContext();
+  (builder._instructions = com.strobel.decompiler.ast.AstBuilder.copyInstructions(body.getInstructions())).size();
+  Collection oldInstructions = body.getInstructions(), newInstructions = builder._instructions;
+  builder._originalInstructionMap = new java.util.IdentityHashMap();
+  for (int i = 0, nsz = newInstructions.size(); i < nsz; ++i2) {
+    builder._originalInstructionMap.put(newInstructions.get(i), oldInstructions.get(i));
+  }
+  java.util.Collections.sort(builder._exceptionHandlers = com.strobel.decompiler.ast.AstBuilder.remapHandlers(body.getExceptionHandlers(), builder._instructions));
+  builder.removeGetClassCallsForInvokeDynamic();
+  builder.pruneExceptionHandlers();
+  builder.inlineSubroutines();
+  com.strobel.decompiler.ast.AstBuilder.FinallyInlining.run(builder._body, builder._instructions, builder._exceptionHandlers, builder._removed);
+  builder._cfg = com.strobel.assembler.flowanalysis.ControlFlowGraphBuilder.build(builder._instructions, builder._exceptionHandlers);
+  com.strobel.assembler.flowanalysis.ControlFlowGraph cfg = builder._cfg;
+  SortedMap map = new TreeMap();
+  for (com.strobel.assembler.flowanalysis.ControlFlowNode cfnode : cfg.getNodes()) {
+    Instruction firstInsn = cfnode.getStart();
+    if (firstInsn == null || firstInsn.getOpCode() != OpCode.ALOAD_0)
+      continue;
+    Instruction next = firstInsn.getNext();
+    if (next.getOpCode() != OpCode.GETSTATIC)
+      continue;
+    com.strobel.assembler.metadata.FieldReference enumField = next.getOperand(0);
+    String name = enumField.getName();
+    insn = next;
+    if (next.getNext() == null || next.getNext().getOpCode() != OpCode.INVOKEVIRTUAL || next.getNext().getNext() == null || next.getNext().getNext().getOpCode() != OpCode.BIPUSH)
+      continue;
+    Integer value = next.getNext().getNext().getOperand(0);
+    map.put(value, name);
+  }
+  return map;
+}
+*/

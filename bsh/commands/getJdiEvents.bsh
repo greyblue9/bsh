@@ -1,0 +1,20 @@
+public static List<Event> getJdiEvents() {
+  List<EventSet> eventSets = Env.vm().eventQueue.eventSets;
+  List<Event> evts = new ArrayList(Iterables.concat(eventSets).toList());
+  Collections.sort(evts, FunctionUtil.delegate(Comparator.class, "(a, b) -> { var ea = Reflector.invokeOrDefault(a, \"eventName\"); var ba = Reflector.invokeOrDefault(b, \"eventName\"); var res = ((ea != null) ? ea.compareTo(ba): ((ba != null) ? (0 - ba.compareTo(ea)) : 0)); if (res != 0 || a == null || b == null) return res; return String.compare(String.format(\"%s\", Reflect.get(a, \"location\")), String.format(\"%s\", Reflect.get(b, \"location\"))); }"));
+  return evts;
+}
+
+ 
+
+public static List<Event> getJdiEvents(String eventName) {
+  String eventClass = String.format("com.sun.jdi.event.%sEvent", StringUtils.substringBefore(eventName, "Event"));
+  String[] eventNames = new String[] { "AccessWatchpointEvent", "BreakpointEvent", "ClassPrepareEvent", "ClassUnloadEvent", "Event", "ExceptionEvent", "LocatableEvent", "MethodEntryEvent", "MethodExitEvent", "ModificationWatchpointEvent", "MonitorContendedEnterEvent", "MonitorContendedEnteredEvent", "MonitorWaitEvent", "MonitorWaitedEvent", "StepEvent", "ThreadDeathEvent", "ThreadStartEvent", "VMDeathEvent", "VMDisconnectEvent", "VMStartEvent", "WatchpointEvent" };
+  if (ArrayUtils.indexOf(eventNames, StringUtils.substringBefore(eventName, "Event").concat("Event")) != -1) {
+    evtClass = DexVisitor.classForName(eventClass);
+    return CollectionUtil2.typeFilter(getJdiEvents(), evtClass);
+  }
+  throw new Error(String.format("Valid event names: \n  %s\n", StringUtils.join(eventNames, "\n  ")));
+}
+
+ 

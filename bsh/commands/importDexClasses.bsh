@@ -1,0 +1,162 @@
+import java.util.Map.Entry;
+
+
+public static byte[] importDexClasses(/*;*/ String className) {
+  
+  byte[] selDexBytes = DexRemix.remixDex(
+    null, 
+    DexRemix.getDexBackedDexFile(
+      new ByteArrayInputStream(
+        DexVisitor.classForName(className).getDex().getBytes()
+      )
+    ),
+    Pattern.compile(
+      className.replace("$", "\\$"), 
+      Pattern.CASE_INSENSITIVE
+    ).matcher("")
+  );
+  
+  byte[] jarBytes = Dex2Java2.dex2jar(selDexBytes);
+  ZipByteArrayClassPath zbacp = null;
+  
+  CollectionUtil.getClassPool().insertClassPath(
+    (zbacp = new ZipByteArrayClassPath(jarBytes))
+  );
+  return jarBytes;
+}
+
+
+
+
+
+
+
+
+
+
+public static Map importDexClasses(String apkPath, String pattern) {
+  Matcher mchr = Pattern.compile(pattern).matcher("");
+  byte[] dexBytes = ZipUtil.toByteArray(apkPath, "classes.dex");
+  if (dexBytes == null)
+    dexBytes = FileUtils.readFileToByteArray(new File(apkPath));
+  DexUtil dexUtil = new DexUtil(new com.android.dex.Dex(dexBytes));
+  Map zm = Dex2Java.dex2jari(Arrays.asList(dexBytes), dexUtil.getClassNames().filter(mchr));
+  Comparator cmp = FunctionUtil.delegate(Comparator.class, "(a,b) -> { Integer.compare(b.getKey().length(),a.getKey().length()); }");
+  Set tm = new TreeSet(cmp);
+  tm.addAll(zm.entrySet());
+  Map cm = new HashMap();
+  int oldCount = -1, newCount = 0;
+  for (int i = 0; i < 20 && oldCount != newCount && !tm.isEmpty(); ++i) {
+    System.err.printf("pass %d, count = %d, remaining = %d\n", i + 1, newCount, tm.size());
+    oldCount = newCount;
+    Class c = null;
+    for (Entry e : tm.toArray(new Entry[0])) {
+      try {
+        c = UnsafeUtil.getUnsafe().defineClass(StringUtils.substringBeforeLast(e.getKey(), ".class").replace('/', '.'), e.getValue(), 0, e.getValue().length, Interpreter.class.getClassLoader(), Interpreter.class.getProtectionDomain());
+        tm.remove(e);
+        System.err.println(c.getName());
+        cm.put(c.getName(), c);
+        ++newCount;
+      } catch (Throwable e) {
+        if (new StringBuilder().append(Reflector.getRootCause(e).getMessage()).toString().indexOf("duplicate") != -1) {
+          try {
+            c = Class.forName(ClassInfo.getClassName(e.getValue()), false, Interpreter.class.getClassLoader());
+            tm.remove(e);
+            System.err.println(c.getName());
+            cm.put(c.getName(), c);
+            ++newCount;
+          } catch (Throwable e) {
+          }
+        }
+      }
+    }
+  }
+  return cm;
+}
+
+ 
+
+public static Map importDexClasses(String apkPath, String pattern) {
+  Matcher mchr = Pattern.compile(pattern).matcher("");
+  byte[] dexBytes = ZipUtil.toByteArray(apkPath, "classes.dex");
+  if (dexBytes == null)
+    dexBytes = FileUtils.readFileToByteArray(new File(apkPath));
+  DexUtil dexUtil = new DexUtil(new com.android.dex.Dex(dexBytes));
+  Map zm = Dex2Java.dex2jari(Arrays.asList(dexBytes), dexUtil.getClassNames().filter(mchr));
+  Comparator cmp = FunctionUtil.delegate(Comparator.class, "(a,b) -> { Integer.compare(b.getKey().length(),a.getKey().length()); }");
+  Set tm = new TreeSet(cmp);
+  tm.addAll(zm.entrySet());
+  Map cm = new HashMap();
+  int oldCount = -1, newCount = 0;
+  for (int i = 0; i < 20 && oldCount != newCount && !tm.isEmpty(); ++i) {
+    System.err.printf("pass %d, count = %d, remaining = %d\n", i + 1, newCount, tm.size());
+    oldCount = newCount;
+    Class c = null;
+    for (Entry e : tm.toArray(new Entry[0])) {
+      try {
+        c = UnsafeUtil.getUnsafe().defineClass(ClassInfo.getClassName(e.getValue()), e.getValue(), 0, e.getValue().length, Interpreter.class.getClassLoader(), Interpreter.class.getProtectionDomain());
+        tm.remove(e);
+        System.err.println(c.getName());
+        cm.put(c.getName(), c);
+        ++newCount;
+      } catch (Throwable e) {
+        if (new StringBuilder().append(Reflector.getRootCause(e).getMessage()).toString().indexOf("duplicate") != -1) {
+          try {
+            c = Class.forName(ClassInfo.getClassName(e.getValue()), false, Interpreter.class.getClassLoader());
+            tm.remove(e);
+            System.err.println(c.getName());
+            cm.put(c.getName(), c);
+            ++newCount;
+          } catch (Throwable e) {
+          }
+        }
+      }
+    }
+  }
+  return cm;
+}
+
+ 
+
+public static Map importDexClasses(String apkPath, String pattern) {
+  Matcher mchr = Pattern.compile(pattern).matcher("");
+  byte[] dexBytes = ZipUtil.toByteArray(apkPath, "classes.dex");
+  if (dexBytes == null)
+    dexBytes = FileUtils.readFileToByteArray(new File(apkPath));
+  DexUtil dexUtil = new DexUtil(new com.android.dex.Dex(dexBytes));
+  Map zm = Dex2Java.dex2jari(Arrays.asList(dexBytes), dexUtil.getClassNames().filter(mchr));
+  Comparator cmp = FunctionUtil.delegate(Comparator.class, "(a,b) -> { b.getKey().length() != a.getKey().length()? Integer.compare(b.getKey().length(), a.getKey().length()): b.getKey().compareTo(a.getKey()); }");
+  Set tm = new TreeSet(cmp);
+  tm.addAll(zm.entrySet());
+  Map cm = new HashMap();
+  int oldCount = -1, newCount = 0;
+  for (int i = 0; i < 20 && oldCount != newCount && !tm.isEmpty(); ++i) {
+    System.err.printf("pass %d, count = %d, remaining = %d\n", i + 1, newCount, tm.size());
+    oldCount = newCount;
+    Class c = null;
+    for (Entry e : tm.toArray(new Entry[0])) {
+      try {
+        c = UnsafeUtil.getUnsafe().defineClass(ClassInfo.getClassName(e.getValue()), e.getValue(), 0, e.getValue().length, Interpreter.class.getClassLoader(), Interpreter.class.getProtectionDomain());
+        tm.remove(e);
+        System.err.println(c.getName());
+        cm.put(c.getName(), c);
+        ++newCount;
+      } catch (Throwable e) {
+        if (new StringBuilder().append(Reflector.getRootCause(e).getMessage()).toString().indexOf("duplicate") != -1) {
+          System.err.println("possible duplicate: " + Reflector.getRootCause(e).getMessage());
+          try {
+            c = Class.forName(ClassInfo.getClassName(e.getValue()), false, Interpreter.class.getClassLoader());
+            tm.remove(e);
+            System.err.println(c.getName());
+            cm.put(c.getName(), c);
+            ++newCount;
+          } catch (Throwable e) {
+          }
+        }
+      }
+    }
+  }
+  return cm;
+}
+
+ 

@@ -1,0 +1,20 @@
+public static List<URLClassPath> cleanClasspath() {
+  Enumeration en = Thread.currentThread().getContextClassLoader().getResources("classes.dex");
+  List ucps = ObjectUtil.searchObject(en, sun.misc.URLClassPath.class, false, 0, 5);
+  for (sun.misc.URLClassPath ucp : ucps) {
+    System.err.printf("processing %s ...\n", ucp);
+    Collection toRemove = (Collection) ucp.path.filter("framework/core|local_policy|/classes($|[^a-zA-Z0-9_.$/])|sunrsasign|jre/lib/rt.jar");
+    System.err.printf("Removing elements: %s ...\n", toRemove);
+    ucp.path.removeAll(toRemove);
+    Set<Entry> ents = ucp.lmap.entrySet().filter("framework/core|local_policy|/classes|sunrsasign|jre/lib/rt.jar");
+    for (java.util.Map.Entry e : ents) {
+      ucp.lmap.remove(e.getKey());
+    }
+    for (java.util.Map.Entry e : ents) {
+      ucp.loaders.remove(e.getValue());
+    }
+  }
+  return ucps;
+}
+
+ 

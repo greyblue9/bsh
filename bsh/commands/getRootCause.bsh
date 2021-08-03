@@ -1,0 +1,42 @@
+import bsh.EvalError;
+import bsh.ReflectError;
+import bsh.UtilEvalError;
+
+
+
+public static Throwable getRootCause(Throwable someEx) {
+    Throwable lastEx;
+    do {
+      lastEx = someEx; 
+      Throwable tgtEx = invokeOrDefault(
+        someEx, "get.*[Tt]arget.*", new Object[0], someEx);
+      if (tgtEx == someEx) { 
+        tgtEx = Reflect.getfldval(tgtEx, "cause"); 
+        if (tgtEx != null && tgtEx != someEx) {
+          someEx = tgtEx; 
+        } else {
+          // No target or cause
+          return someEx;
+        }
+      } else {
+        someEx = tgtEx; 
+      } 
+    } while (someEx != null && lastEx != someEx);
+    return someEx;
+  }
+  
+
+
+
+
+public static Throwable getRootCause(Throwable ex) { Throwable root = Reflector.getRootCause(ex); StackTraceElement first = root.getStackTrace()[0]; List stes = new ArrayList(Arrays.asList(root.getStackTrace())); Iterator it = stes.iterator(); while (it.hasNext()) { ste = it.next(); if (ste.getClassName().equals(first.getClassName())) continue; break; };System.out.println(String.format("\n    \u001b[1;31m  ===>  %s \u001b[0m\n    %s . \u001b[1;33m%s\u001b[0m() \u001b[1;30m on line \u001b[1;36m%s\u001b[0m\n  \n", ste.getClassName(), ste.getClassName(), ste.getMethodName(), String.valueOf(ste.getLineNumber()))); return root; }
+
+
+
+
+public static java.lang.Throwable getRootCause(java.lang.Throwable ex) { java.lang.Throwable cex = ex; java.util.Set<Throwable> visited = new org.d6r.IdentityHashSet<Throwable>(); while (cex != null && cex.cause != null && !(cex instanceof java.lang.reflect.InvocationTargetException) && !visited.contains(cex.cause))  { visited.add(cex.cause); cex = cex.cause; }; if (cex instanceof java.lang.reflect.InvocationTargetException) { return cex.getTargetException(); }; return org.d6r.Reflector.getRootCause(ex); }
+
+
+
+
+public static java.lang.Throwable getRootCause(java.lang.Throwable ex) { while (ex instanceof bsh.ReflectError) { try { ex = ex.getData().get("throwables").firstOrDefault(); if (ex instanceof TargetError) ex = ((bsh.TargetError) ex).getTarget(); } catch (Throwable e) { System.err.println(Reflector.getRootCause(e)); break; }; }; java.lang.Throwable cex = ex; java.util.Set<Throwable> visited = new org.d6r.IdentityHashSet<Throwable>(); while (cex != null && cex.cause != null && !(cex instanceof java.lang.reflect.InvocationTargetException) && !visited.contains(cex.cause))  { visited.add(cex); if (cex instanceof ReflectError && Reflect.getfldval(cex, "cause") == cex) { Map data = ((ReflectError) cex).getData(); data.entrySet().print(); Throwable cex_ex = data.get("exception"); dumpMembers(cex_ex); if (cex_ex instanceof TargetError) { cex_ex = ((TargetError) cex_ex).getTarget(); }; cex = cex_ex != null? cex_ex: cex.cause; } else { cex = cex.cause; }; if (cex instanceof java.lang.reflect.InvocationTargetException) { return cex.getTargetException(); }; while (ex.getClass().getName().startsWith("bsh.")) ex = Reflect.getfldval(ex, "cause"); return (ex instanceof InvocationTargetException)? ((InvocationTargetException)ex).getTargetException(): ex; }; };

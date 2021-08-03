@@ -1,0 +1,154 @@
+import java.util.Map.Entry;
+
+import com.sun.source.tree.Tree;
+
+
+
+
+public static Map/*<Integer, Object>*/ getEndPosMap(Tree tree) {
+  Object endPosObj = Reflect.getfldval(tree, "endPositions");
+  // javac v7 and below
+  if (endPosObj instanceof Map) {
+    return (Map/*<Integer, Object>*/) endPosObj;
+  }
+  // javac v9
+  Object jcObjIntMap = Reflect.getfldval(endPosObj, "endPosMap");
+  
+  Map endPosMap = (Map/*<Integer, Object>*/) CollectionUtil.toMap(
+    (Object[])  Reflect.getfldval(jcObjIntMap, "objs"),
+    (Integer[]) ArrayUtils.toObject(
+        (int[]) Reflect.getfldval(jcObjIntMap, "ints")
+    )
+  );
+  
+  assert(endPosMap instanceof Map);
+  for (Entry entry: endPosMap.entrySet()) {
+    assert(entry.getValue() instanceof Integer);
+    assert(! entry.getKey().getClass().isPrimitive());
+    break;
+  }
+  return endPosMap;
+}
+
+/*
+public static String getImports(Object classOrIdentifier) {
+  if (classOrIdentifier instanceof Tree) {
+    return getImports((Tree) classOrIdentifier);
+  }
+  
+  return StringUtils.join(
+    CollectionUtil.selectLines(
+      IOUtils.toString(SourceUtil.findSource(classOrIdentifier)),
+      "^(import |package )"
+    ), "\n" //;
+  ).replaceAll(
+    "package ([^\n /\\*\t\r;]*)[^\r\n]*[\r\n]*",
+    "import $1.*;\n"
+  );
+}
+*/
+
+
+public static String getImports(Tree t) {
+  Collection classNames = getEndPosMap(t).keySet().where(
+    "m => m.getClass().getName().indexOf(\"Ident\") != -1"
+  ).select("""m => m.toString()""").sort().uniq().select(
+     StringUtils.join(Arrays.asList(
+       "m => BSHAmbiguousName ban = new BSHAmbiguousName(0); ",
+       "Reflect.setfldval(ban, \"text\", m); ",
+       "try { ",
+       "  return ban.toClass(",
+       "    new CallStack(",
+       "      CollectionUtil.getInterpreter().getNameSpace()",
+       "    ), ",
+       "    CollectionUtil.getInterpreter()",
+       "  ).getName();",
+       "} catch (Throwable e) {",
+       "} ",
+       "return m; "
+     ), "")
+   );
+   StringCollectionUtil.removeMatching(
+     classNames, "^java\\.lang\\.([^.$]*)$"
+   );
+   return StringUtils.join(classNames.select(
+     """m => String.format("import %s;", new Object[]{ m });"""
+   ).filter(
+     Pattern.compile("^[A-Z][^.]*$|.*\\..*")
+   ).sort().uniq(), "\n"
+  );
+}
+
+
+
+public static String getImports(String src) {
+  byte[] srcBytes = src.getBytes(
+    java.nio.charset.Charset.forName("UTF-8")); 
+  System.err.printf(
+    "Parsing java source code (%d bytes) ...\n", srcBytes.length); 
+  JavaFile jf = new JavaFile(new ByteArrayInputStream(srcBytes)); 
+  System.err.printf(
+    "Traversing syntax tree (%d type found) ...\n", 
+    jf.cu.getTypes().size()); 
+    
+  JavaVisitor jv = new JavaVisitor(); 
+  jf.cu.accept(jv, null);
+  System.err.printf("Processing results ...\n");
+  
+  List names = new LinkedList();
+  HashSet __seen = new HashSet();
+  Set<Object> items = jv.visited;
+  System.err.println(items);
+  System.err.println(__seen);
+  Collection<Type> clsTypes 
+    = (Collection) items.typeFilter(javafile.api.type.Type.class);
+  ArrayDeque<Type> __que = new ArrayDeque(clsTypes);
+  
+  while (! __que.isEmpty()) { 
+    javafile.api.type.Type __type = __que.pollFirst();
+    System.err.println(__type);
+    String __typestr = __type.toString();
+    if (
+     /*__type instanceof javafile.api.type.WildcardType
+     || __type instanceof javafile.api.type.PrimitiveType
+     || __type instanceof javafile.api.type.VoidType
+     || */
+     __type instanceof javafile.api.TypeParameter) continue;
+    
+    int lbktidx = __typestr.indexOf('<');
+    __typestr
+      = (lbktidx != -1)? __typestr.substring(0, lbktidx): __typestr;
+    names.add(__typestr);
+    if (__seen.contains(__typestr)) continue;
+        
+    __seen.add(__typestr);
+
+    if (__type instanceof javafile.api.type.ReferenceType) {
+      __que.offerLast(__type.getType());
+    }
+    
+    names.add(__typestr);
+  };
+  
+  names.removeAll(names.filter("\\[\\]")); System.err.println(names);
+  
+  String finalImports = new StringBuilder("import ") //;
+    .append(
+      StringUtils.join(
+        ClassPathUtil.searchClassPath(
+          Pattern.compile(
+            new StringBuilder(
+              "^((?!com.android.s).)*?[$.](?:"
+            ).append(
+              StringUtils.join(names, '|').replaceAll("[$./]", "[\\$.]")
+            ).append(")$").toString().replaceAll("(?<=\\|)\\?", "")
+            .replace("?:?","?:")
+          )
+        ).sort().uniq(),
+        ";\nimport " //;
+      )
+    ).append(";\n").toString().replace("$", ".");
+  
+  return finalImports;
+}
+

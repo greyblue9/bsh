@@ -1,0 +1,76 @@
+
+import org.apache.commons.io.output.TeeOutputStream;
+import org.apache.commons.io.output.NullOutputStream;
+
+public static Triple captureEval(String evalStr, boolean isTee) {
+  Object evalObj = Void.TYPE; // Reflect.allocateInstance(Void.class);
+  
+  PrintStream origOut = System.out;
+  PrintStream origErr = System.err;
+  
+  ByteArrayOutputStream outBaos = new ByteArrayOutputStream();
+  ByteArrayOutputStream errBaos = new ByteArrayOutputStream();
+  
+  OutputStream outTeeOs = (isTee)
+    ? new TeeOutputStream(outBaos, origOut)
+    : outBaos;
+  OutputStream errTeeOs = (isTee)
+    ? new TeeOutputStream(errBaos, origErr)
+    : errBaos;
+  
+  PrintStream outPs = new PrintStream(outTeeOs);
+  PrintStream errPs = new PrintStream(errTeeOs);
+   
+  List<Throwable> exs = new LinkedList<Throwable>();
+
+  
+  System.setOut(outPs);
+  System.setErr(errPs);
+  
+   try {
+     if (origErr != null) {
+       origErr.println("Capturing stdout + stderr"); 
+       origErr.flush();
+     };
+     evalObj = org.d6r.CollectionUtil.getInterpreter().eval(evalStr);
+   } catch (Throwable e) {
+     exs.add(e);
+     e.printStackTrace();
+   }
+   outPs.flush();
+   errPs.flush();
+   outTeeOs.flush();
+   errTeeOs.flush();
+   outBaos.flush();
+   errBaos.flush();
+   outBaos.close();
+   errBaos.close();
+   
+   byte[] outBytes = outBaos.toByteArray();
+   byte[] errBytes = errBaos.toByteArray();
+    
+      Object rv = Triple.of(
+        outBytes.length != 0
+          ? new String(outBytes, "UTF-8"): "",
+        errBytes.length != 0
+          ? new String(errBytes, "UTF-8"): "",
+        evalObj
+      );
+    
+    
+     System.setOut(origOut);
+     System.setErr(origErr);
+    
+    
+    for (Throwable exc: exs) {
+      exc.printStackTrace();
+      // CollectionUtil.getInterpreter().setu("$_ex", exc);
+    }
+  
+    return rv;
+}
+
+public static Triple captureEval(String evalStr) {
+  return captureEval(evalStr, true);
+}
+

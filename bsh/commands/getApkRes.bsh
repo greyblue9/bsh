@@ -1,0 +1,177 @@
+import java.util.Map.Entry;
+import org.jf.dexlib2.immutable.value.ImmutableIntEncodedValue;
+import org.jf.dexlib2.dexbacked.DexBackedClassDef;
+import org.jf.dexlib2.dexbacked.DexBackedField;
+import java.nio.charset.StandardCharsets;
+import org.jsoup.select.Elements;
+
+
+public static String getSimpleAndroidManifestXml(String apkPath) {
+  byte[] manifestBytes = ZipUtil.toByteArray(apkPath, "AndroidManifest.xml");
+  String xmlstr = execCmdFilter(
+    new String[]{ "AxmlPrinter", "-" },
+    manifestBytes
+  ).toString().replace(" >", "");
+  return xmlstr;
+};
+
+
+
+public static Map getApkRes(String path) {
+  return getApkRes(path, false);
+}
+
+public static Map getApkRes(String path, boolean loadDocuments) {
+  Map allmap = new TreeMap();
+  System.err.println("Reading AndroidManifest.xml ...");
+  String mfStr = getSimpleAndroidManifestXml(path);
+  
+  StringBuilder mfStrSb = new StringBuilder((int) (mfStr.length() * 1.5));
+  mfStrSb.append(mfStr);
+  
+  byte[] arscBytes = ZipUtil.toByteArray(path, "resources.arsc");
+  
+  System.err.println("Decompiling resource XML files ...\n");
+  Map/*<String,byte[]>*/ resMap 
+    = getResources(new ByteArrayInputStream(arscBytes));
+  
+  Collection<Entry> resEntriesLocal = CollectionUtil2.filter(
+    resMap.entrySet(), Pattern.compile("^res/values(-en(-r?US)?)?/.+s\\.xml")
+  );
+  
+  Collection<String> resKinds = new ArrayList<String>();
+  System.err.println("Computing typed resource maps ...");
+  
+  for (Entry e : resEntriesLocal.toArray(new Map.Entry[0])) {
+    System.err.printf(
+      "Top of loop: for (Entry e [%s]: resEntriesLocal)\n",
+      e
+    );
+    
+    String resEntryName = e.getKey();
+    String resKind = StringUtils.substringBefore(
+      StringUtils.substringAfterLast(resEntryName, "/"),
+      "s.xml"
+    );
+    System.err.printf("Resource kind: %s ...\n", resKind);
+    resKinds.add(resKind);
+    
+    String strResXml
+      = IOUtils.toString(e.getValue(), StandardCharsets.UTF_8.name());
+    
+    Document doc = (loadDocuments)
+      ? null // Jsoup.parse(strResXml)
+      : null;
+    
+    Map fmap = new TreeMap(),
+        hmap = new TreeMap();
+    Map smap = new TreeMap(),
+       hsmap = new TreeMap();
+    
+    
+    /*Collection<DexBackedClassDef> classDefs = parts.get("ClassDefs");
+    
+    System.err.printf(
+      "classDefs = %s\n", CollectionUtil.toString(classDefs)
+    );
+    
+    Collection<DexBackedClassDef> kindClassDefs = CollectionUtil2.filter(
+      classDefs, String.format("[^a-zA-Z0-9]%s?$", resKind)
+    );
+    
+    System.err.printf(
+      "kindClassDefs = %s\n", CollectionUtil.toString(kindClassDefs)
+    );
+    
+    if (kindClassDefs.isEmpty()) {
+      System.err.printf("[INFO] No class found: R.%s(s)\n", resKind);
+    } else {
+      System.err.printf(
+        "[INFO] %d matching classes found: R.%s(s): %s\n",
+        kindClassDefs.size(), resKind,
+        kindClassDefs
+      );
+      
+      for (DexBackedClassDef classDef: kindClassDefs) {
+      
+        for (DexBackedField fld : classDef.getFields()) {
+          System.err.printf(
+            "Processing field: %s->%s",
+            classDef.getType(), fld.getName()
+          );
+          
+          String name = fld.getName();
+          Object initialVal = fld.getInitialValue();
+          if (!(initialVal instanceof ImmutableIntEncodedValue)) {
+            System.err.printf(
+              "Skipping field [%s] due to initialVal [%s]" +
+                " (not ImmutableIntEncodedValue; instance is a %s)\n",
+              fld, initialVal,
+              (initialVal != null)
+                ? initialVal.getClass().getName()
+                : "<null>"
+            );
+            continue;
+          }
+          ImmutableIntEncodedValue encVal
+            = (ImmutableIntEncodedValue) initialVal;
+          int typeId = encVal.getValueType();
+          int intValue = encVal.getValue();
+          System.err.printf(
+            "[value from classDef: %s]: R.%s.%s = 0x%08x;\n",
+            classDef, simpleName, name, intValue
+          );
+          
+          fmap.put(Integer.valueOf(intValue), name);
+          hmap.put(Integer.toHexString(intValue), name);
+
+        } // fld: classDef.getFields()
+      } // classDef: kindClassDefs
+    } // end if ! kindClassDefs.isEmpty()
+    
+    */
+    
+    
+    Map kmap = null;
+    if (allmap.containsKey(resKind)) {
+      kmap = allmap.get(resKind);
+    } else {
+      allmap.put(resKind, (kmap = new TreeMap()));
+    }
+    System.err.printf("kmap [resKind: %s] = %s\n", resKind, kmap);
+    System.err.printf(
+      "Adding all %d [resKind: %s] hmap entries to kmap [size = %d]: %s\n",
+      hmap.size(), resKind, kmap.size(), hmap
+    );
+    kmap.putAll(hmap);
+    
+    System.err.printf(
+      "Bottom of loop: for (Entry e [%s]: resEntriesLocal)\n",
+      e
+    );
+  }
+  System.err.printf(
+    "After loop: for (Entry e: resEntriesLocal)\n"
+  );
+  
+  for (Entry e: resEntriesLocal) {
+    System.err.printf(
+      "Adding (%s, %s) to allmap [size = %d]\n",
+      e.getKey(), e.getValue(),
+      allmap.size()
+    );
+    allmap.put(e.getKey(), e.getValue());
+  }
+  
+  allmap.put("AndroidManifest.xml", mfStr); //Sb.toString());
+  allmap.put("kinds", resKinds);
+  // allmap.put("parts", parts);
+  
+  System.err.printf(
+    "returning allmap (size = %d)\n", allmap.size()
+  );
+  
+  
+  return allmap;
+}
+

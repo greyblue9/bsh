@@ -1,0 +1,30 @@
+
+public static boolean checkEncoding(String encoding) { 
+
+  boolean idempotent = true;
+  byte[] b = new byte[256];
+  for (int i=0; i<256; i+=1) b[i] = (byte) i;
+  String testStrWithAllByteValues = new String(b, encoding);
+  char[] c = testStrWithAllByteValues.toCharArray();
+  boolean eq;
+  PrintStream _out = System.out; 
+  for (int i=0; i<256; i+=1) { 
+    eq = b[i] == (byte) c[i]; 
+    _out.println(dumpMembers.colorize(
+      String.format(
+        "b[%d] = %d\tb2[%d] = %d\tbequal? %s\t0x%x\t0%x", 
+        i, b[i], 
+        i, (byte) c[i], 
+        eq, 
+        b[i],
+        (byte) c[i]
+      ), 
+      !eq? "1;31": "0"
+    ));  
+
+    idempotent &= eq;
+  }
+  return idempotent;
+}
+
+

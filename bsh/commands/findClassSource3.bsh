@@ -1,0 +1,4 @@
+
+public static java8.util.Optional<Element> findClassSource3(Class cls) { com.android.dex.Dex dex = org.d6r.ClassInfo.getDex(cls); long dexSize = (long) ((java.nio.ByteBuffer) Reflect.getfldval(dex, "data")).limit(); Object[] dexElements = Thread.currentThread().getContextClassLoader().pathList.dexElements.select(String.format("m => java.lang.Object result = (Object) (((long) ((java.util.zip.ZipFile) org.d6r.Reflect#getfldval(m, \"zipFile\")).getEntry(\"classes.dex\").getSize()) == ((long) %d) ? (Object)m: (Object)null); return result;", dexSize)); return dexElements.length > 0? java8.util.Optional.of(dexElements[0]): java8.util.Optional.empty(); }
+
+public static java8.util.Optional<Element> findClassSource3(ClassIdentifier ci) { return findClassSource3((Class) ((bsh.ClassIdentifier) ci).getTargetClass()); }

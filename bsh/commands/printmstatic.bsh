@@ -1,0 +1,9 @@
+printmstatic(p) { 
+  if (p == null) return;
+  clz = p instanceof java.lang.Class? p: p.getClass();
+  mlist = clz.getMethods(); 
+  for(i=0; i<mlist.length; i++) { 
+    if ((int)(mlist[i].getModifiers() & 8 ) <= 0) continue; 
+    print( mlist[i] ); 
+  }
+}

@@ -1,0 +1,17 @@
+
+
+
+
+
+
+public static String fixXmlForXstream(String inputXml) { String prev = "", xmlesc = inputXml; while (!prev.equals(xmlesc)) { prev = xmlesc; xmlesc = xmlesc.replaceAll("(</?)\\[", "$1__2").replaceAll(";(/? ?>)", "__3$1").replaceAll("<(/?_[^>]*)\\.", "<$1_"); }; prev = ""; while (!prev.equals(xmlesc)) { prev = xmlesc; xmlesc = xmlesc.replaceAll("<([^>]*[^_]|)__([^_]|>)", "<$1____$2"); }; prev = ""; while (!prev.equals(xmlesc)) { prev = xmlesc; xmlesc = xmlesc.replaceAll("<([^>]*[^_]|)_([^_]|>)", "<$1__$2"); }; return xmlesc; };
+
+
+
+
+
+
+public static boolean fixXmlForXstream(File file) { String path = file.getPath(); String xml = fixXmlForXstream(readstring(path));  if (writeFile(path+".bak", readstring(path))) { boolean ok = writeFile(path, xml); System.err.printf("[ %s ] %s\n", ok? "OK": "ERROR", path); return ok; }; System.err.printf("[ FAIL ] Failed to write backup to %s.bak; aborted.", path); return false; };
+
+
+

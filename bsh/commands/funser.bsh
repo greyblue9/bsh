@@ -1,0 +1,7 @@
+
+
+
+public static Map funser(Object files) { return RealArrayMap.toMap(Arrays.asList((files instanceof Object[]? files: CollectionUtil.toArray(files))).select(FunctionUtil.eval("return m -> { Pair.of(m, new(ObjectInputStream, new(ByteArrayInputStream, FileUtils.readFileToByteArray(new(File, PosixFileInputStream.resolve(m.toString()))))).readObject()); }"))); };
+
+
+

@@ -1,0 +1,4 @@
+
+public static List<Class> resolveTypeNames(Iterable<Object> types) { return types.select(FunctionUtil.eval("return m -> { var cs = new(CallStack); cs.push(CollectionUtil.getInterpreter().getNameSpace()); var tstr = m.toString(); return Character.isUpperCase(tstr.charAt(0))? new(Class.forName(\"bsh.BshAmbigName\"), tstr, 0).toClass(cs, CollectionUtil.getInterpreter()): ClassUtils.getClass(tstr); }")); }
+
+

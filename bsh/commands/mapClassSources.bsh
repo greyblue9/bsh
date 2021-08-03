@@ -1,0 +1,3 @@
+
+public static Map mapClassSources(String[] cns, Map byteMap) { for (String cn: cns) { String clsresName = cn.replace('.', '/').concat(".class"); String srcresName = cn.replace('.', '/').concat(".java"); for (String resName: new String[]{ clsresName, srcresName }) { URL res = Thread.currentThread().getContextClassLoader().findResource(resName); if (res == null) continue; URLConnection uc = res.openConnection(); uc.setUseCaches(false); InputStream is = uc.getInputStream(); byte[] bytes  = IOUtils.toByteArray(is); is.close(); byteMap.put(resName, bytes); System.out.println(resName); }; }; return byteMap; }
+

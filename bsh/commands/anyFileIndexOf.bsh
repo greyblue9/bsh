@@ -1,0 +1,4 @@
+
+
+public static Pair anyFileIndexOf(Pair bytePair, Iterable fileByteArrays) {   int fdno = 0; Pair p = bytePair; List fdatas = Arrays.asList(CollectionUtil.toArray(fileByteArrays)); for (byte[] fdata: fdatas) { ++fdno;  if (ByteUtil.indexOf(fdata, p.getLeft()) == -1 && ByteUtil.indexOf(fdata, p.getRight()) == -1) continue;   System.err.printf("%s in file data # %d   (b%d):  indexOf(left): %d   indexOf(right): %d  !\n\n", dumpMembers.colorize("MATCH Detected", "1;32"), fdno, fdno, ByteUtil.indexOf(fdata, p.getLeft()), ByteUtil.indexOf(fdata, p.getRight())); return Pair.of(fdno, fdata); }; };
+

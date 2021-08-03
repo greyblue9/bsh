@@ -1,0 +1,6 @@
+public static com.strobel.assembler.metadata.MetadataSystem setTypeLoader(com.strobel.assembler.metadata.ITypeLoader typeLoader) {
+  Reflect.setfldval(com.strobel.assembler.metadata.MetadataSystem.class, "_instance", ProcyonUtil.metadataResolver = new com.strobel.assembler.metadata.MetadataSystem(ProcyonUtil.typeLoader = (com.strobel.assembler.metadata.MetadataSystem.instance()._typeLoader = (ProcyonUtil.typeLoader = typeLoader))));
+  return com.strobel.assembler.metadata.MetadataSystem.instance();
+}
+
+ 

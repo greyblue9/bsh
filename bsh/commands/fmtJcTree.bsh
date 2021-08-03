@@ -1,0 +1,19 @@
+public static String fmtJcTree(
+  com.sun.tools.javac.tree.JCTree.JCCompilationUnit cu)
+  {
+    if (cu == null) {
+      throw new IllegalArgumentException("cu cannot be null.");
+    }
+
+    return cu.toString().replaceAll("  ", "  ").replaceAll("\\(([^\\)]{40,})\\) *\\{", "(\n  $1)\n  {").replaceAll("( *)([^\\{]*)(class|interface) ([^ ]+)( (?:implements|extends)[^\\{]*|) *\\{", "$1$2$3 $4\n$1  $5\n$1  {").replaceAll("(class|interface)([^\\{]*)\n *\n *", "$1$2\n").replaceAll("\\(([^ ]+) ([^ ]+) = ([0-9]+); ([^ ]+) *([<>!=]) *([^;]*);", "($1 $2=$3; $4$5$6;").replaceAll("\n([^a-zA-Z;]+)\n( {0,2})\\}", "\n$1\n\n$2}\n");
+  }
+
+  public static String fmtJcTree(com.sun.tools.javac.tree.JCTree tree) {
+    if (tree == null) {
+      throw new IllegalArgumentException("tree cannot be null.");
+    }
+
+    return tree.toString().replaceAll("  ", "  ").replaceAll("\\(([^\\)]{40,})\\) *\\{", "(\n  $1)\n  {").replaceAll("( *)([^\\{]*)(class|interface) ([^ ]+)( (?:implements|extends)[^\\{]*|) *\\{", "$1$2$3 $4\n$1  $5\n$1  {").replaceAll("(class|interface)([^\\{]*)\n *\n *", "$1$2\n").replaceAll("\\(([^ ]+) ([^ ]+) = ([0-9]+); ([^ ]+) *([<>!=]) *([^;]*);", "($1 $2=$3; $4$5$6;").replaceAll("\n([^a-zA-Z;]+)\n( {0,2})\\}", "\n$1\n\n$2}\n");
+  }
+
+

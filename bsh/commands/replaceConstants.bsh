@@ -1,0 +1,12 @@
+public static String replaceConstants(String src, Class cls) {
+  String className = ClassInfo.typeToName(cls.getName());
+  for (java.util.Map.Entry me : ConstUtil.constantMap(cls, -1).entrySet()) {
+    Matcher mchr = Pattern.compile(String.format("(?<=[^a-zA-Z0-9_$.]|^)(?:%s)(?=[^a-zA-Z0-9_$.]|$)", Integer.toString(me.getKey(), 10)), Pattern.DOTALL).matcher(src);
+    if (mchr.find()) {
+      src = mchr.replaceAll(String.format("%s.%s", className, me.getValue()));
+    }
+  }
+  return src;
+}
+
+ 

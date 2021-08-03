@@ -1,0 +1,25 @@
+
+import java.lang.reflect.Constructor;
+
+
+public static java.lang.ClassLoader getDexClassLoader(java.lang.String classPath) {
+  
+  return getDexClassLoader(
+    classPath, 
+    this.caller.namespace.getClass().getClassLoader()
+  );
+}
+
+
+public static java.lang.ClassLoader getDexClassLoader(java.lang.String classPath, java.lang.ClassLoader parent) {
+  
+  java.lang.String odexDir = "/data/media/0/cache";
+  java.lang.String libPath = "/system/vendor/lib:/system/lib";
+  
+  return java.lang.ClassLoader.getSystemClassLoader().loadClass("dalvik.system.DexClassLoader").getDeclaredConstructors()[0]
+    .newInstance(classPath, odexDir, libPath, parent);
+}
+
+
+
+

@@ -1,0 +1,3 @@
+
+public static List findRawResources(DexPathList.Element[] elems, String resPath) { unset("o"); List al = new ArrayList(); for (DexPathList.Element elem: elems) { if (elem.file.getPath().indexOf(resPath) != -1) { al.add(elem.file); continue; } if (elem.zipFile == null) continue; zf = elem.zipFile; Object o = null; if (zf.entries != null) { try { o = zf.entries.get("resPath"); if (o != null) { al.add(Pair.of(elem.zipFile, o)); continue; } } catch (Throwable e) { ; }; }  try { o = elem.zipFile.getEntry(resPath); if (o != null) { al.add(Pair.of(elem.zipFile, o)); continue; } } catch (Throwable e) { ;; } } return al; }
+

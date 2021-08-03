@@ -1,0 +1,94 @@
+import java.io.Closeable;
+import java.io.File;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
+
+shellexec (java.lang.String[] command, File workingDirectory, java.lang.String shell) {
+        if (command == null || command.length == 0)
+            return false;
+
+        OutputStream out = null;
+        InputStream in = null;
+        InputStream err = null;
+
+        try {
+            if (shell == null || (shell = shell.trim()).length() == 0)
+                return false;
+            java.lang.String exit = "exit\n";
+
+            if (workingDirectory == null)
+                workingDirectory = new File("/");
+
+            java.lang.Runtime runtime = Runtime.getRuntime();
+            java.lang.Process process = runtime.exec(shell, null, workingDirectory);
+
+            // java.lang.ProcessBuilder builder = new java.lang.ProcessBuilder(command);
+            // builder.directory(workingDirectory);
+            // builder.redirectErrorStream(true);
+            // java.lang.Process process = builder.start();
+
+            final int INTERVAL = 200; // 200ms
+            final int WAIT_TIME = 20 * 60 * 1000; // 20min
+
+            out = process.getOutputStream();
+            for (java.lang.String cmd : command) {
+                if (cmd != null && cmd.length() > 0)
+                    out.write(cmd.endsWith("\n") ? cmd.getBytes() : (cmd + "\n").getBytes());
+            }
+            out.write(exit.getBytes());
+
+            java.lang.StringBuffer inString = new java.lang.StringBuffer();
+            java.lang.StringBuffer errString = new java.lang.StringBuffer();
+
+            in = process.getInputStream();
+            err = process.getErrorStream();
+
+            int exitValue = -1;
+
+            int pass = 0;
+            while (pass <= WAIT_TIME) {
+                try {
+                    while (in.available() > 0)
+                        inString.append((char) in.read());
+                    while (err.available() > 0)
+                        errString.append((char) err.read());
+
+                    exitValue = -1;
+                    exitValue = process.exitValue();
+                    break;
+                } catch (java.lang.IllegalThreadStateException itex) {
+                    try {
+                        Thread.sleep(INTERVAL);
+                        pass += INTERVAL;
+                    } catch (java.lang.InterruptedException e) {
+                        Log.e("#ERROR#", "execute command error: " + command, e);
+                    }
+                }
+            }
+
+            if (pass > WAIT_TIME)
+                process.destroy();
+
+            return (exitValue == 0);
+        } catch (IOException e) {
+            Log.e("#ERROR#", "execute command failed: " + command + e.getMessage(), e);
+        } finally {
+            closeStream(out);
+            closeStream(in);
+            closeStream(err);
+        }
+
+        return false;
+    }
+
+
+    closeStream(Closeable closeable) {
+        if (closeable != null) {
+            try {
+                closeable.close();
+            } catch (java.lang.Exception e) {
+            }
+        }
+    }
+    

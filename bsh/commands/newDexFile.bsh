@@ -1,0 +1,64 @@
+  
+  
+import dalvik.system.*;
+import libcore.io.Libcore;
+
+public static DexFile newDexFile(String fileName){
+  DexFile df = getUnsafe().allocateInstance(DexFile.class);
+  
+  Method m = DexFile.class.getDeclaredMethod("openDexFile", 
+    new Class[]{ String.class, String.class, Integer.TYPE }
+  );
+  m.setAccessible(true);
+  int cookie = m.invoke(df, new Object[] { fileName, null, 0 });
+  setfldval(df, "mCookie", cookie);
+  setfldval(df, "mFileName", fileName);
+  String optFp = String.format("/data/data/de.robv.android.xposed.mods.tutorial/classes/%d.odex", cookie);
+  setfldval(df, "guard", CloseGuard.get());
+  setfldval(df, "mCookie", cookie);
+
+  
+  setfldval(df, "mFileName", fileName);
+  getfldval(df, "guard").open("close");
+//  getfldval(df, "guard").close("close");
+  
+  /*if (outputName != null) {
+    String parent = new File(outputName).getParent();
+    boolean ownsDir 
+      = (Libcore.os.getuid() == Libcore.os.stat(parent).st_uid);
+  }
+  invokeMethod(df, "openDexFile", new Object[]{ 
+    sourceName, outputName, flags
+  });
+  int cookie = getfldval(df, "mCookie");
+  //setfldval(df, "mCookie", cookie);
+  setfldval(df, "mFileName", sourceName);
+  
+  //      setfldval(df, "mFileName = sourceName;
+  getfldval(df, "guard").open("close");*/
+  return df;
+}
+
+
+
+
+/**
+Old value: null
+New value: dalvik.system.CloseGuard@96aad798
+class java.lang.Object
+// Error: 
+// Uncaught Exception: 
+     bsh.TargetError: 
+     Typed variable declaration at Line: 16: 
+     
+       int cookie = invokeMethod ( df , "openDexFile" , new Object [ ] {
+
+     Called from method: newDexFile at Line 8:
+       
+       newDexFile ( "/data/data/de.robv.android.xposed.mods.tutorial/classes/dog3.dex" , "/data/system/dog3.odex" , 0 )
+       
+Target exception: 
+  java.lang.ClassCastException: 
+  
+  Cannot cast Null value to primitive type:int
+*/ //;

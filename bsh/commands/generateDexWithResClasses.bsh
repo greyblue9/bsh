@@ -1,0 +1,209 @@
+import java.util.Map.Entry;
+/*
+import com.android.dx.merge.DexMerger;
+import com.android.dx.merge.CollisionPolicy;
+*/
+import d2jcd9.com.android.dx.io.DexBuffer;
+import d2jcd9.com.android.dx.merge.DexMerger;
+import d2jcd9.com.android.dx.merge.CollisionPolicy;
+import d2jcd9.com.android.dx.util.ExceptionWithContext;
+
+
+public static byte[] generateDexWithResClasses(String path) {
+  Pair result = generateDexWithResClasses(
+    path, // apKPath
+    true // mergeWithOriginalClassesDex
+  );
+  byte[] dexBytes = result.getLeft();
+  return dexBytes;
+}
+
+public static Pair/*<byte[], ZipFile>*/ generateDexWithResClasses(
+String path, boolean mergeWithOriginalClassesDex)
+{
+  String TAG = "generateDexWithResClasses";
+  if (!mergeWithOriginalClassesDex) {
+    ZipFile zip = new ZipFile(path);
+    byte[] dexBytes = ZipUtil.toByteArray(zip, "classes.dex");
+    return Pair.of(dexBytes, zip);
+  }
+  
+  File genResJarFile = new File(
+    new File(path).getParentFile(),
+    String.format(
+      "%s.__generated_res_classes.%s.jar",
+      ((new File(path).getName().indexOf('.') > 0)
+        ? StringUtils.substringBeforeLast(new File(path).getName(), ".")
+        : new File(path).getName()),
+      Long.toString(Math.abs(new Random(System.nanoTime()).nextLong()), 32)
+    )
+  );
+  try {
+    genResJarFile.createNewFile();
+  } catch (Throwable e) { 
+    Throwable cause = Reflector.getRootCause(e);
+    RuntimeException rex = new RuntimeException(String.format(
+      "Cannot write to output file: [%s] (absolute: [%s]): %s",
+      genResJarFile.getPath(),
+      genResJarFile.getAbsolutePath(),
+      cause
+    ), cause);
+    rex.addSuppressed(e);
+    rex.printStackTrace();
+    throw rex;
+  }
+  String genResJarPath = genResJarFile.getAbsolutePath();
+  System.err.printf(
+    "Note: Generated classes will be saved as a '.jar' file (pre-dex) to:\n%s\n",
+    genResJarPath
+  );
+  
+  Log.v(TAG, "Opening zip file \"%s\" ...", path);
+  ZipFile zf = new ZipFile(new File(path));
+  
+  Log.v(TAG, "Looking up zip entry 'resources.arsc' ...", "resources.arsc");
+  ZipEntry ze = (zf != null) ? zf.getEntry("resources.arsc"): null;
+  
+  
+  InputStream arscInRaw = null;
+  int arscSize = -1;
+  if (ze == null) {
+    Log.v(TAG, "Using placeholder for \"resources.arsc\" ...");
+    String TINY_ARSC_GZ = "vhc4000000000006li6vglghg233buhmh1o70sjmio70l2165o70k2s0l25u0029592onuogi21enoo8voanl2q8tejrgnofefprpf14b803n608451ro89cunobpq09auntqngj6p8iv3rj2etoq3ld662ckp4tb6av40h61jkujfegq8u673ggp1830s5qc60ioike048hnai0ob5j2olu96lkksqsoit49jfvqtpvl9h1pe2mdg1mldhjngchfo9gqrfmdrlm4lpocb8mumj4i3tucu26vvshgp9emvde6d2n7h8nbldeq6bnbrrjrmd0cpcdem42jtnvg9dgma6t5fk09bd6af8s04000";
+    byte[] arscBytes = tinyDecode(TINY_ARSC_GZ);
+    arscInRaw = new ByteArrayInputStream(arscBytes);
+    arscSize = arscBytes.length;
+  } else {
+    Log.v(TAG, "Opening InputStream for ZipEntry(%s) ...", ze.getName());
+    arscInRaw = zf.getInputStream(ze);    
+    arscSize = ze.getSize();
+  }
+  
+  
+  Log.v(TAG,
+    "Opening BufferedInputStream for %s(\"%s\" [size: %d bytes]) ...",
+    ClassInfo.getSimpleName(ClassInfo.typeToName(arscInRaw.getClass())),
+    "resources.arsc", arscSize
+  );
+  BufferedInputStream arscIn = new BufferedInputStream(arscInRaw);
+  arscIn.mark((int) (arscSize + 1));
+  
+  
+  
+  String contextBefore = String.format(
+    "Calling Map<String,byte[]> generateResClasses(arscIn: %s)\n",
+    bsh.Factory.typeof(arscIn).getName()
+  );
+  
+  Log.v(TAG, contextBefore);
+  Map rcm = null;
+  try {
+    rcm = generateResClasses(arscIn);
+  } catch (Throwable e) {
+    e.printStackTrace();
+  }
+  Map dcm = new TreeMap();
+  for (Entry entry: rcm.entrySet()) {
+    // NOTE: was 'entry.toString().toLowerCase()'
+    String strEntry = entry.getKey().toLowerCase();
+    System.err.println(strEntry);
+    if (strEntry.indexOf("public") != -1 || strEntry.indexOf("id") == 0) continue; 
+    String className = ClassInfo.typeToName(
+      StringUtils.substringBeforeLast(entry.getKey(), ".class")
+    );
+    byte[] classBytes = entry.getValue();
+    dcm.put(ClassInfo.classNameToPath(className, "class"), classBytes);
+  };
+  
+  System.err.printf(
+    "Note: Writing pre-dexed jar file with generated classes to:\n  %s\n",
+    genResJarFile
+  );
+  
+  ZipFile resJarZipFile = writeZip(genResJarFile, dcm);
+  System.err.printf(
+    "Note: Wrote pre-dexed jar file with generated classes to:\n  %s [%d bytes]\n",
+    genResJarFile, new File(genResJarPath).length() 
+  );
+  
+  Log.v(TAG, "Dexing new resource classes in %s ...", genResJarFile);
+  Pair dd = dexZip(resJarZipFile);
+  byte[] dexedResClasses = dd.getLeft();
+  Log.v(TAG, "  - resulting dex is %d bytes.", dexedResClasses.length);
+  dcm.put("classes.dex", dexedResClasses);
+  Log.v(TAG, "Writing %s with classes.dex added ...", genResJarFile);
+  resJarZipFile = writeZip(genResJarFile, dcm);
+  
+
+  
+  byte[] dexBytes = null;
+  byte[] mainDexBytes = ZipUtil.toByteArray(path, "classes.dex");
+  
+  
+
+  if (mergeWithOriginalClassesDex) {
+    Log.v(TAG, "mergeWithOriginalClassesDex == true");
+    
+    Deque ad = new ArrayDeque(Arrays.asList(
+      dexedResClasses, mainDexBytes
+    ));
+    
+    byte[] dexA = null, dexB = null, lastOutput = null;
+    DexBuffer bufA = null, bufB = null;
+    
+    try {
+     while (! ad.isEmpty()) {
+    
+      dexA = (lastOutput != null)
+        ? lastOutput
+        : ad.pollLast();
+      byte[] dexB = ad.pollLast();
+      // Dex bufA = new Dex(dexA);
+      // Dex bufB = new Dex(dexB);
+      DexBuffer bufA = new DexBuffer(dexA);
+      Log.v(TAG, "DexBuffer bufA = %s", bufA);    
+      DexBuffer bufB = new DexBuffer(dexB);
+      Log.v(TAG, "DexBuffer bufB = %s", bufB);    
+      DexMerger dm = new DexMerger(bufA, bufB, CollisionPolicy.KEEP_FIRST); 
+      System.err.printf(
+        "merging dexA [%d bytes] with dexB [%d bytes]...\n",
+        dexA.length, dexB.length
+      );
+      Dex outBuffer = dm.merge();
+      lastOutput = outBuffer.getBytes();
+      System.err.printf("  - merged result: (dexA, dexB) -> (dexC [%d bytes])\n", 
+        lastOutput.length);
+     };
+     
+
+    String oldMagic = HexDump.dump(Arrays.copyOfRange(lastOutput, 0, 7), 0L).delete(0, 10).delete(31,32).toString();
+    lastOutput[6] = (byte) '5';
+    String newMagic = HexDump.dump(Arrays.copyOfRange(lastOutput, 0, 7), 0L).delete(0, 10).delete(31,32).toString();
+    System.err.printf("Fixing output dex version magic\n  - old: %s\n  - new: %s\n",
+      oldMagic, newMagic);
+    // Result is merged with original classes.dex
+    dexBytes = lastOutput;	
+
+   } catch (Exception ex) {
+     Log.e("generateDexWithResClasses", ex);
+     lastOutput = mainDexBytes;
+     dexBytes = mainDexBytes;
+   };
+    
+
+  } else {
+    // Not merged
+     lastOutput = mainDexBytes;
+    dexBytes = mainDexBytes;
+  }
+  
+  System.err.printf(
+    "Note: Wrote pre-dexed jar file with generated classes to:\n  %s [%d bytes]\n",
+    genResJarFile, new File(genResJarPath).length() 
+  );
+  
+  return Pair.of(dexBytes, resJarZipFile);
+}
+
+
+ 

@@ -1,0 +1,4 @@
+
+
+public static org.apache.commons.lang3.text.translate.CharSequenceTranslator getEscapeRegex() { org.apache.commons.lang3.text.translate.CharSequenceTranslator ESCAPE_REGEX = new org.apache.commons.lang3.text.translate.AggregateTranslator(new org.apache.commons.lang3.text.translate.CharSequenceTranslator[] { new org.apache.commons.lang3.text.translate.LookupTranslator(new CharSequence[][]{ { "$", "\\$" }, { "+", "\\+" }, { "\\", "\\\\" }, { "(", "\\(" }, { ")", "\\)" }, { "{", "\\{" }, { "}", "\\}" }, { "[",  "\\[", }, { "]", "\\]" }, { "*", "\\*" }, { ".", "\\." }, { "|", "\\|" } }) }); return ESCAPE_REGEX; }
+

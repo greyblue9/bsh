@@ -1,0 +1,93 @@
+
+
+
+public static List<Thread> allThreads() {
+  // find root group
+  ThreadGroup last = null,
+              group = Thread.currentThread().getThreadGroup();
+  while ((group = ((last = group).getParent())) != null); // { ... }
+  ThreadGroup rootGroup = last;
+  
+  // find all child threads in depth-first search
+  List<Thread> allThreads = new ArrayList<Thread>();
+  Deque<Object> groups = new ArrayDeque<Object>();
+  groups.offer(new Object()); // sentinel
+  groups.offer(rootGroup);
+  
+  // reusable arrays
+  Thread[] threadArr = new Thread[256];
+  ThreadGroup[] groupArr = new ThreadGroup[256];
+  
+  while ((group = groups.pollLast()) instanceof ThreadGroup) {
+    int groupCount = group.enumerate(groupArr, false);
+    for (int i = 0; i < groupCount; ++i) {
+      groups.offer(groupArr[i]);
+    }
+    int threadCount = group.enumerate(threadArr, false);
+    for (int i = 0; i < threadCount; ++i) {
+      allThreads.add(threadArr[i]);
+    }
+  }
+  return allThreads;
+}
+
+
+
+public static List<Thread> allThreads(boolean dumpTree) {
+  // find root group
+  ThreadGroup last = null,
+              group = Thread.currentThread().getThreadGroup();
+  while ((group = ((last = group).getParent())) != null); // { ... }
+  ThreadGroup rootGroup = last;
+  
+  // find all child threads in depth-first search
+  List<Thread> allThreads = new ArrayList<Thread>();
+  Deque<Object> groups = new ArrayDeque<Object>();
+  groups.offer(new Object()); // sentinel
+  groups.offer(rootGroup);
+  
+  // reusable arrays
+  Thread[] threadArr = new Thread[256];
+  ThreadGroup[] groupArr = new ThreadGroup[256];
+  
+  // for dumpTree
+  Deque<Integer> depths = (dumpTree) ? new ArrayDeque<Integer>() : null;
+  if (dumpTree) depths.offer(0);
+  Integer depthObj = null;
+  StringBuilder sb = (dumpTree) ? new StringBuilder() : null;
+  String indentTok = "    ";
+  
+  while ((((!dumpTree) || ((depthObj = depths.pollLast()) != null)) &&
+         (group = groups.pollLast()) instanceof ThreadGroup))
+  {
+    int depth = (dumpTree) ? depthObj.intValue(): 0;
+    StringBuilder indent = null;
+    if (dumpTree) {
+      indent = new StringBuilder(depth * indentTok.length());
+      for (int j=0; j<depth; ++j) indent.append(indentTok);
+      sb.append(indent).append("|").append('\n').append(indent).append("*==").append(group).append('\n');
+    }
+    
+    int groupCount = group.enumerate(groupArr, false);
+    for (int i = 0; i < groupCount; ++i) {
+      groups.offer(groupArr[i]);
+      if (dumpTree) depths.offer(depth+1);
+    }
+    int threadCount = group.enumerate(threadArr, false);
+    for (int i = 0; i < threadCount; ++i) {
+      Thread thread = threadArr[i];
+      allThreads.add(thread);
+      if (dumpTree) {
+        if (i == 0) {
+          sb.append(indent).append(indentTok).append("|  ").append('\n');
+        }
+        sb.append(  indent).append(indentTok).append("+--").append(thread).append('\n');
+      }
+    }
+  }
+  if (dumpTree) System.err.println(sb);  
+  return allThreads;
+};
+
+
+

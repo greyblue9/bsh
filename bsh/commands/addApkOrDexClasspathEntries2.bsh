@@ -1,0 +1,73 @@
+
+
+  
+import com.strobel.assembler.metadata.ITypeLoader;
+import com.strobel.assembler.metadata.ArrayTypeLoader;
+import com.strobel.assembler.metadata.ClasspathTypeLoader;
+import com.strobel.assembler.metadata.CompositeTypeLoader;
+import com.strobel.assembler.metadata.JarTypeLoader;
+import com.strobel.assembler.metadata.MetadataSystem;
+import org.apache.commons.io.FilenameUtils;
+
+import d2jcd9.com.googlecode.d2j.dex.Dex2jar;
+import d2jcd9.com.googlecode.d2j.dex.DexExceptionHandler;
+import d2jcd9.com.googlecode.dex2jar.tools.BaksmaliBaseDexExceptionHandler;
+import d2jcd9.com.googlecode.d2j.reader.DexFileReader;
+import d2jcd9.com.googlecode.d2j.reader.MultiDexFileReader;
+import d2jcd9.com.github.marschall.com.sun.nio.zipfs.ZipPath;
+import d2jcd9.com.github.marschall.com.sun.nio.zipfs.ZipFileSystem;
+import d2jcd9.com.github.marschall.com.sun.nio.zipfs.ZipFileSystemProvider;
+import javassist.ClassPool;
+import javassist.ClassPoolTail;
+import java.nio.charset.StandardCharsets;
+
+{
+  public static boolean DEBUG = false;
+  public static String TAG = "addApkOrDexClasspathEntries";
+  // insert supporting/standalone functions here
+  // define a static function "script_main()" as entry point
+  
+  public static List<JarFile> addApkOrDexClasspathEntries() {
+    return org.d6r.JarDecompiler.addApkOrDexClasspathEntries();
+  }
+  
+  
+  public static List<JarFile> addApkOrDexClasspathEntries(List<File> apkFiles) {
+    return org.d6r.JarDecompiler.addApkOrDexClasspathEntries(apkFiles);
+  }
+  
+  
+  
+  public static void script_main() {
+    org.d6r.JarDecompiler.script_main();
+  }
+  
+
+
+  Object invtype = getBshInvocationTypeId();
+  if (DEBUG) Log.d(TAG, "invtype_id = [%s]\n", invtype.getValue());
+  if (invtype == INVTYPE_SCRIPT) {
+    // if inside "main" script, like ` if __NAME__ == "main": ` in python
+    script_main(); 
+  }
+  
+  void;
+};
+
+/*
+DexFileReader mdfr = d2jcd9.com.googlecode.d2j.reader.MultiDexFileReader.open(FileUtils.readFileToByteArray(new File("/system/app/ViPER4Android_FX_A4.x.apk")));  d2j = d2jcd9.com.googlecode.d2j.dex.Dex2jar.from(mdfr); d2jcd9.com.github.marschall.com.sun.nio.zipfs.ZipFileSystem zfs = new d2jcd9.com.github.marschall.com.sun.nio.zipfs.ZipFileSystemProvider().newFileSystem(new URI("zipfs:".concat(new File("/tm/tmpzip.jar").toURI().toString())), RealArrayMap.toMap("create", "true")); d2jcd9.com.github.marschall.com.sun.nio.zipfs.ZipPath rootzp = zfs.getRootDirectories()[0];  d2j.to(rootzp);   d2j_ = d2j.optimizeSynchronized(false).printIR(false).skipDebug(false).topoLogicalSort(true).noCode(false).reUseReg(false);
+
+
+
+
+
+(d2j = d2jcd9.com.googlecode.d2j.dex.Dex2jar.from((mdfr = d2jcd9.com.googlecode.d2j.reader.MultiDexFileReader.open(FileUtils.readFileToByteArray(new File("/system/app/ViPER4Android_FX_A4.x.apk"))))).optimizeSynchronized(false).printIR(false).skipDebug(false).topoLogicalSort(true).noCode(false).reUseReg(false)).to((rootzp = (d2jcd9.com.github.marschall.com.sun.nio.zipfs.ZipPath) ((zfs = new d2jcd9.com.github.marschall.com.sun.nio.zipfs.ZipFileSystemProvider().newFileSystem(new URI(String.format("zipfs:%s", new File("/tm/tmpzip.jar").toURI())), RealArrayMap.toMap("create", "true")))).getRootDirectories().iterator().next()));
+ 
+zfs.sync();
+
+URL jarUrl = new URL(String.format("jar:%s", new URL(new File(zfs.toString()).getCanonicalFile().getAbsoluteFile().toURL(), "#!/").toString().replace("#", "")));
+
+((URLClassLoader) Thread.currentThread().getContextClassLoader()).addURL(jarUrl);
+
+
+*/

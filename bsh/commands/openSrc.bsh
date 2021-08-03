@@ -1,0 +1,26 @@
+
+
+public static String openSrc(Class __cls) {
+  
+  String __path 
+    = "/data/media/0/"
+    + ((Class) __cls).getName().replaceAll("^.*\\.([^.]*)$", "$1").replaceAll("\\$", ".")
+    + ".java";
+  File __file = new File(__path);
+  
+  String __src = IOUtils.toString(SourceUtil.findSource((Class) __cls)).replaceAll("    ",  "  ").replaceAll("(^|\n)[\t ]*\\*([\t ]+|$)[\t ]*", "$1  ");
+  
+  if (writeFile(__file.getPath(), __src)) {
+    opena(__file.getPath());   
+    return __src;
+  }
+
+}
+
+
+public static String openSrc(bsh.ClassIdentifier __ci) { 
+  return openSrc(
+    (Class) ((bsh.ClassIdentifier) __ci).getTargetClass()
+  );
+}
+

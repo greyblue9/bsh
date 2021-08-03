@@ -1,0 +1,3 @@
+
+public static String[] importJsoupClasses() { String[] cns = ClassPathUtil.searchClassPath(Pattern.compile("^org.jsoup[^$]*[^$0-9]$")); for (String cn: cns) { CollectionUtil.getInterpreter().getNameSpace().importClass(cn);   }; return cns; };
+

@@ -1,0 +1,57 @@
+
+
+public static String getApkManifestXml(String apkPath) {
+  byte[] manifestBytes = ZipUtil.toByteArray(apkPath, "AndroidManifest.xml");
+  return getApkManifestXml(manifestBytes, apkPath);
+};
+
+
+public static Object getApkManifestXml(byte[] mfbytes, String apkPath) {
+  diff.rednaga.AXMLPrinter axmlp = new diff.rednaga.AXMLPrinter(mfbytes); 
+  String xmlstr = axmlp.getXml(); 
+  
+  //   List<Node> docNodes = org.jsoup.parser.Parser.parseXmlFragment(xmlstr, "http://schemas.android.com/apk/res/android");
+  //   org.jsoup.nodes.Node manifNode = CollectionUtil.firstOrDefault(docNodes.filter("manifest")); 
+  //   Collection<Node> nodes = manifNode.select("*");
+  //   for (org.jsoup.nodes.Node node: nodes) {
+  //     if (node.attributes() == null || node.attributes().size() == 0) continue; 
+  //     for (Map.Entry e: node.attributes().toMap().entrySet().toArray(new Map.Entry[0]))
+  //     { 
+  //       newKey = String.format(
+  //         "android:%s", StringUtils.substringAfter(e.getKey(), ":")); 
+  //       node.attributes().remove(e.getKey());
+  //       node.attributes().put(newKey, e.getValue());
+  //     };
+  //   };
+  //   xmlstr = StringUtils.join(docNodes, "\n"); 
+  
+  if (apkPath != null) {
+    Map refMap = getApkResRefMap(new File(apkPath).getAbsolutePath());
+    String newXml = replaceAndroidManifestXmlResRefs(xmlstr, refMap);
+    return newXml;
+  }
+  return xmlstr;
+}
+
+
+Object invtype = getBshInvocationTypeId();
+String TAG = "getApkManifestXml";
+Log.d(TAG, "invtype_id = [%s]\n", invtype.getValue());
+  // if inside "main" script, like ` if __NAME__ == "main": ` in python
+if (invtype == INVTYPE_SCRIPT) {
+  Log.INSTANCE.enabledLevels = Integer.parseInt(
+    System.getProperty("log.level", "254")
+  );
+  try {
+    System.out.println(
+      getApkManifestXml( System.getProperty("input.path") )
+    );
+  } catch (Throwable e) {
+    while (e != null) {
+      e.printStackTrace();
+      e = e.getCause();
+    }
+  }
+}
+
+

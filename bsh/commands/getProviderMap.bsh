@@ -1,0 +1,11 @@
+public static Map getProviderMap() {
+  return RealArrayMap.toMap(CollectionUtil.toArray(zdirs.select(FunctionUtil.bind("return m -> { var pair = Pair.of(m.mZipFile.getName(), FunctionUtil.select(m.getFiles(), FunctionUtil.bind(\"return f -> { Pair.of(f, CollectionUtil2.filter(Arrays.asList(StringUtils.split(TextUtil.toString(IOUtils.toByteArray(m.getFileInput(f))), String.valueOf('\\u000a'))), '^[^ #]*((?!#).)*$')); }\", \"m\", m))); return pair.getValue().isEmpty()? null: Pair.of(pair.getKey(), pair.getValue()); }"))));
+}
+
+ 
+
+public static Map getProviderMap() {
+  return RealArrayMap.toMap(CollectionUtil.toArray(zdirs.select(FunctionUtil.bind("return m -> { var pair = Pair.of(m.mZipFile.getName(), FunctionUtil.select(m.getFiles(), FunctionUtil.bind(\"return f -> { Pair.of(f, CollectionUtil2.filter(Arrays.asList(StringUtils.split(TextUtil.toString(IOUtils.toByteArray(m.getFileInput(f))), String.valueOf('\\\\u000a'))), '^[^ #]*((?!#).)*$')); }\", \"m\", m))); return pair.getValue().isEmpty()? null: Pair.of(pair.getKey(), pair.getValue()); }"))));
+}
+
+ 

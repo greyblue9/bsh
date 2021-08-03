@@ -1,0 +1,43 @@
+
+
+
+public static String toCamelCase(String stringWithUnderscores) {
+  Matcher mchr = Pattern.compile("((?:_|^)[a-z])").matcher("");
+  String str = stringWithUnderscores.toLowerCase();
+  int last = -1;
+  do {
+    mchr.reset(str);
+    if (!mchr.find())
+      break;
+    if (mchr.start() == last) {
+      System.err.printf("infinite loop starting at: %d\n", last);
+      break;
+    } else
+      last = mchr.start(1);
+    str = StringUtils.join(new String[] { str.substring(0, mchr.start(1)), str.substring(mchr.start(1) + (mchr.end(1) - mchr.start(1) - 1), mchr.end(1)).toUpperCase(), str.substring(mchr.end(1)) }, "");
+  } while (true);
+  return str;
+}
+
+
+public static String[] toCamelCase(String[] str) {
+  String[] ret = new String[str.length];
+  int i = -1, len = str.length;
+  while (++i < len) {
+    ret[i] = toCamelCase(str[i]);
+  }
+  return ret;
+}
+
+
+public static List<String> toCamelCase(Iterable it) {
+  Object[] objs = CollectionUtil.toArray(it);
+  String[] ret = new String[objs.length];
+  int i = -1, len = objs.length;
+  while (++i < len) {
+    ret[i] = toCamelCase(String.valueOf(objs[i]));
+  }
+  return new ArrayList(Arrays.asList(ret));
+}
+
+

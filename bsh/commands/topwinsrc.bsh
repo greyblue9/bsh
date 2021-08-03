@@ -1,0 +1,112 @@
+
+
+import org.d6r.JarDecompiler;
+import org.d6r.DexRemix;
+import org.jf.dexlib2.iface.MultiDexContainer;
+import org.jf.dexlib2.dexbacked.DexBackedDexFile;
+import java.util.regex.Matcher;
+
+/*
+public static MultiDexContainer<DexBackedDexFile>
+  getDexBackedDexFile(InputStream dexOrZipStream, 
+    @Nullable CharSequence pathForExceptionMessage);
+
+public static byte[] remixDex(MultiDexContainer<?> mdc, Matcher keepMchr);
+*/
+
+
+
+String cmdoutput = PosixFileInputStream.pexecSync(new String[]{ "topwin" });
+System.err.printf("command output: [%s]\n", cmdoutput);
+
+String name = StringUtils.substringAfter(cmdoutput, "\t");
+
+String apkPath = PosixFileInputStream.pexecSync("topwinapk").trim();
+File apkFile = new File(apkPath);
+if (!apkFile.exists()) {
+  System.err.printf(
+    "Trouble getting APK for top window: path from 'topwinapk' output " +
+    "(\"%s\"), is not an existing file. Aborting.",
+    org.apache.commons.lang3.StringEscapeUtils.escapeJava(apkPath)
+  );
+  exit(1);
+}
+
+
+MultiDexContainer<DexBackedDexFile> mdc = DexRemix.getDexBackedDexFile(apkPath);
+
+String nameBeforeDollar = StringUtils.substringBefore(name, "$");
+Matcher mchr = Pattern.compile(
+  String.format(
+    "^L?(?:%s)(?:[$./].*|);?$", 
+    nameBeforeDollar
+  ),
+  Pattern.DOTALL
+).matcher("");
+
+byte[] dexBytes = DexRemix.remixDex(mdc, mchr);
+
+File temp = File.createTempFile("tmpdex", ".jar");
+System.err.println(temp);
+
+FileUtils.writeByteArrayToFile(temp, dexBytes);
+PosixFileInputStream.pexecSync("ll", temp.getPath());
+
+
+System.err.println(JarDecompiler.class);
+System.err.printf("temp = %s\n", Debug.ToString(temp));
+
+JarDecompiler.addApkOrDexClasspathEntries(
+  Arrays.asList(new File(temp))
+);
+
+System.err.printf("class name = \"%s\"\n", name);
+
+td = ProcyonUtil.getTypeDefinition(name);
+
+
+if (td == null) {
+  System.err.printf(
+    "td == null; name = \"%s\"\n",
+    org.apache.commons.lang3.StringEscapeUtils.escapeJava(name)
+  );
+  exit(1);
+}
+
+
+  Object cu = ProcyonUtil.decompileToAst(td);
+  System.out.println(cu.getText());
+  
+  String internalName = td.getInternalName();
+  System.err.printf("internalName = %s\n", internalName);
+  String className = ClassInfo.typeToName(internalName);
+  Matcher escMchr
+    = Pattern.compile("([^a-zA-Z0-9_.-]+)", Pattern.DOTALL).matcher(className);
+  String classNameEsc = (escMchr.find())
+    ? escMchr.replaceAll("__")
+    : className;
+  System.err.printf("classNameEsc = %s\n", classNameEsc);
+  String fileName = String.format(
+    "topwinsrc__%s__%08x.java",
+    classNameEsc,
+    System.nanoTime()
+  );
+  System.err.printf("fileName = %s\n", fileName);
+  
+  File outputFile = new File(new File("/data/media/0"), fileName);
+  System.err.printf("Saving source to: \"%s\"\n", outputFile);
+  FileUtils.writeStringToFile(
+    outputFile,
+    cu.getText()
+  );
+
+
+System.err.println("Wrote file successfully!");
+exit(0);
+
+
+
+
+
+
+

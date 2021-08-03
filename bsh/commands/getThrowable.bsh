@@ -1,0 +1,140 @@
+
+public static Throwable getThrowable(String str, Class exCls, String msg) 
+{ 
+  Pattern ptrn = Pattern.compile(
+    "\\.?at ([^\\n]+)\\.([^\\n.(]+)\\(([^(\\n]*)\\)",
+    Pattern.CASE_INSENSITIVE
+      | Pattern.DOTALL 
+      | Pattern.MULTILINE 
+      | Pattern.UNIX_LINES
+  ); 
+  Matcher mchr = ptrn.matcher(str);
+  ArrayList al = new ArrayList(); 
+  
+  while (mchr.find()) { 
+    MatchResult mr = mchr.toMatchResult(); 
+    String clsName = mr.group(1); 
+    String methodName = mr.group(2); 
+    String srcInfo = mr.group(3); 
+    int colonIndex = srcInfo.lastIndexOf(':');
+    String fileName = colonIndex != -1
+      ? srcInfo.substring(0, colonIndex)
+      : srcInfo.length() > 0
+          ? srcInfo
+          : null;
+    int lno = 0;
+    StringBuilder mchrSb = new StringBuilder();
+    for (int i=0; i<mr.groupCount(); ++i) {
+      if (i > 0) mchrSb.append(", ");
+      mchrSb.append(String.format(
+        "%d: %s", i,
+        mr.group(i) != null
+          ? String.format("\"%s\"", StringEscapeUtils.escapeJava(mr.group(i)))
+          : null
+      ));
+    }
+    Log.d("matcher: %s", mchrSb);
+    if (fileName != null && fileName.indexOf("Native Method") != -1) {
+      fileName = null;
+      lno = -2;
+    } else if (fileName != null && fileName.indexOf("Unknown Source") != -1) {
+      fileName = null;
+      lno = lineNoStr.length() > 0? Integer.parseInt(lineNoStr, 10): -1;
+    } else {
+      String lineNoStr = colonIndex != -1
+      ? srcInfo.substring(colonIndex+1).replaceAll("[^0-9][^0-9]*", "")
+      : "-1";
+      lno = lineNoStr.length() > 0? Integer.parseInt(lineNoStr, 10): -1;
+    }
+    
+    al.add(new StackTraceElement(
+      clsName, methodName,
+      fileName,
+      lno
+    ));
+  }
+  
+  StackTraceElement[] st 
+    = al.toArray(new StackTraceElement[0]); 
+  Throwable ex = exCls.newInstance();
+  if (!(ex instanceof Throwable)) {
+    ex = new java.lang.UnknownError();
+  }
+  org.d6r.Reflect.setfldval(ex, "detailMessage", msg);
+  ex.setStackTrace(st); 
+  
+  String cn = StringUtils.substringBefore(msg, ": "); 
+  if (cn != null && ! cn.isEmpty() 
+  && Capabilities.classExists(cn)) 
+  { 
+    Throwable ex2 = null;
+    try { 
+      ex2 = ClassPathUtil2.getUnsafe().allocateInstance(
+        Class.forName(cn, false,
+        Thread.currentThread().getContextClassLoader())
+      ); 
+      Reflect.setfldval(
+        ex2, "detailMessage",
+        StringUtils.substringAfter(msg, ": ")
+      );
+      Reflect.setfldval(
+        ex2, "stackTrace", ex.getStackTrace()
+      );
+      
+    } catch (Throwable e) {; };
+    if (ex2 != null) return ex2;
+  }
+  
+  return ex;
+}
+
+public static String getMessage(String text) {
+  Pattern msgPtrn = Pattern.compile(
+    "^(.*?)([\\n\\s]*\\.?at [^\\r\\n]+\\(.*)$",
+    Pattern.CASE_INSENSITIVE 
+      | Pattern.DOTALL
+      | Pattern.MULTILINE
+      | Pattern.UNIX_LINES
+  ); 
+  Matcher mchr = msgPtrn.matcher(text); 
+  if (mchr.find()) { 
+    MatchResult mr = mchr.toMatchResult(); 
+    String msg = mr.group(1).trim();
+    return msg;
+  }
+  return "???";
+}
+
+public static Throwable getThrowable(String str, Class exCls) { 
+  return getThrowable(str, exCls, getMessage(str));
+}
+
+public static Throwable getThrowable(String str) { 
+  return getThrowable(str, Error.class);
+}
+
+public static Throwable getThrowable() { 
+  return getThrowable(getClip());
+}
+
+
+public static Throwable getThrowable(String str, Class exCls) { 
+  String str2 = str.trim().replace("at .", "at ").replace(":~", ":");
+  return getThrowable(str, exCls, getMessage(str));
+}
+
+
+public static Throwable getThrowable(String str, Class exCls) {
+  String message = getMessage(str);
+  if (message != null && message.trim().length() == 0) message = null;
+  Throwable ex = getThrowable(str, exCls, message);
+  if (ex.detailMessage != null && (
+      ex.detailMessage.trim().equals(ex.getClass().getName().trim()) ||
+      ex.detailMessage.replace(":", "").trim().length() == 0))
+  {
+    ex.detailMessage = null;
+  }
+  return ex;
+}
+
+

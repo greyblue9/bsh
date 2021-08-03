@@ -1,0 +1,1 @@
+public static Collection findVar(String vname) { Collection all = CollectionUtil.flatten(Arrays.asList(NameSpaceFactory.INSTANCE.nsMap.values(), BlockNameSpaceFactory.INSTANCE.nsMap.values())); Collection allvars = CollectionUtil.flatten(all.select("""m => m.variables.values()""")); return StringCollectionUtil.toStringFilter(allvars, "^([^ ]* )?".concat(vname).concat("\\b")); }

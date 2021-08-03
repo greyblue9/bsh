@@ -1,0 +1,62 @@
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+public static Map getMemoryMap() { Map map = new TreeMap(); List<List> segments = libcore.io.IoUtils.readFileAsString(PosixFileInputStream.procfs("maps")).matchLines("^([0-9a-f]{8})-([0-9a-f]{8}) (....) ([0-9a-f]{8}) ([0-9a-f]{2}):([0-9a-f]{2}) +([0-9]+)\\s+([\\s].*|)$"); for (List segment: segments) { Object[] elems = new Object[8]; elems[2] = segment.get(2); elems[6] = segment.get(6); elems[7] = segment.get(7); for (int i=0; i<8; ++i) { if (elems[i] != null) continue; elems[i] = (segment.get(i).length() > 7)? Long.parseLong(segment.get(i), 16): Integer.parseInt(segment.get(i), 16); }; Range range = Range.closedOpen(elems[0], elems[1]-1).setFormat("%x"); map.put(range, Arrays.asList(elems).subList(2, elems.length)); }; return map; };
+
+
+
+
+
+
+
+
+
+
+
+
+
+public static Map getMemoryMap() { Range.pushFormat(Long.class, "0x%08x"); try { Map map = new TreeMap(); List<List> segments = libcore.io.IoUtils.readFileAsString(PosixFileInputStream.procfs("maps")).matchLines("^([0-9a-f]{8})-([0-9a-f]{8}) (....) ([0-9a-f]{8}) ([0-9a-f]{2}):([0-9a-f]{2}) +([0-9]+)\\s+([\\s].*|)$"); for (List segment: segments) { Object[] elems = new Object[8]; elems[2] = segment.get(2); elems[6] = segment.get(6); elems[7] = segment.get(7); for (int i=0; i<8; ++i) { if (elems[i] != null) continue; elems[i] = (segment.get(i).length() > 7)? Long.parseLong(segment.get(i), 16): Integer.parseInt(segment.get(i), 16); }; Range range = Range.closedOpen(elems[0], elems[1]-1).setFormat("%x"); map.put(range, Arrays.asList(elems).subList(2, elems.length)); }; int slen = (map.toString()).length(); return map; } finally { Range.popFormat(Long.class); }; }
+
+
+
+
+
+
+
+
+
+
+
+
+public static Map getMemoryMap() { Range.pushFormat(Long.class, "0x%08x"); try { Map map = new TreeMap(); List<List> segments = libcore.io.IoUtils.readFileAsString(PosixFileInputStream.procfs("maps")).matchLines("^([0-9a-f]{8})-([0-9a-f]{8}) (....) ([0-9a-f]{8}) ([0-9a-f]{2}):([0-9a-f]{2}) +([0-9]+)\\s+([\\s].*|)$"); for (List segment: segments) { Object[] elems = new Object[8]; elems[2] = segment.get(2); elems[6] = segment.get(6); elems[7] = segment.get(7); for (int i=0; i<8; ++i) { if (elems[i] != null) continue; elems[i] = (segment.get(i).length() > 7)? Long.parseLong(segment.get(i), 16): Integer.parseInt(segment.get(i), 16); }; Range range = Range.closed(elems[0], elems[1]); map.put(range, Arrays.asList(elems).subList(2, elems.length)); }; int slen = (map.toString()).length(); return map; } finally { Range.popFormat(Long.class); }; }
+
+
+
+
+
+
+
+
+
+public static Map getMemoryMap() { Range.pushFormat(Long.class, "%08x"); try { Map map = new TreeMap(); List<List> segments = libcore.io.IoUtils.readFileAsString(PosixFileInputStream.procfs("maps")).matchLines("^([0-9a-f]{8})-([0-9a-f]{8}) (....) ([0-9a-f]{8}) ([0-9a-f]{2}):([0-9a-f]{2}) +([0-9]+)\\s+([\\s].*|)$"); for (List segment: segments) { Object[] elems = new Object[8]; elems[2] = segment.get(2); elems[6] = segment.get(6); elems[7] = segment.get(7); for (int i=0; i<8; ++i) { if (elems[i] != null) continue; elems[i] = (segment.get(i).length() > 7)? Long.parseLong(segment.get(i), 16): Integer.parseInt(segment.get(i), 16); }; Range range = Range.closed(elems[0], elems[1]); map.put(range, Arrays.asList(elems).subList(2, elems.length)); }; int slen = (map.toString()).length(); return map; } finally { Range.popFormat(Long.class); }; }
+
+
+
+
+
+
+public static Map getMemoryMap(String mappingRegex) { Range.pushFormat(Long.class, "%08x"); try { Map map = new TreeMap(); List<List> segments = libcore.io.IoUtils.readFileAsString(PosixFileInputStream.procfs("maps")).matchLines(String.format("^([0-9a-f]{8})-([0-9a-f]{8}) (....) ([0-9a-f]{8}) ([0-9a-f]{2}):([0-9a-f]{2}) +([0-9]+)\\s+(%s)\\s*$", mappingRegex)); for (List segment: segments) { Object[] elems = new Object[8]; elems[2] = segment.get(2); elems[6] = segment.get(6); elems[7] = segment.get(7); for (int i=0; i<8; ++i) { if (elems[i] != null) continue; elems[i] = (segment.get(i).length() > 7)? Long.parseLong(segment.get(i), 16): Integer.parseInt(segment.get(i), 16); }; Range range = Range.closed(elems[0], elems[1]); map.put(range, Arrays.asList(elems).subList(2, elems.length)); }; int slen = (map.toString()).length(); return map; } finally { Range.popFormat(Long.class); }; }
+
+
+

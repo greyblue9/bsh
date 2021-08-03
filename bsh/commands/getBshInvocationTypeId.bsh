@@ -1,0 +1,91 @@
+{
+  
+  
+  
+  public static org.apache.commons.lang3.tuple.Pair
+    // <Thread__StackTraceElements>
+    getMainThreadWithStack()
+  {
+    java.util.Map threadStacks = java.lang.Thread.getAllStackTraces();
+    java.lang.Thread guess = null;
+    java.lang.Thread thread = null;
+    for (thread: threadStacks.keySet()) {
+      if (! thread.getName().equals("main")) continue;
+      else guess = thread;
+      if (thread.getThreadGroup().getName().equals("main")) {
+        return org.apache.commons.lang3.tuple.Pair.of(
+          thread, threadStacks.get(thread)
+        );
+      }
+    }
+    return (guess != null)
+      ? org.apache.commons.lang3.tuple.Pair.of(
+          guess, threadStacks.get(guess)
+        )
+      : org.apache.commons.lang3.tuple.Pair.of(
+          java.lang.Thread.currentThread(),
+          threadStacks.get(java.lang.Thread.currentThread())
+        );
+  }
+  
+  public static java.util.List<String>
+    getInterpreterMethodNames(java.lang.StackTraceElement[] stes)
+  {
+    java.util.List<String> methodNames =
+      org.d6r.StringCollectionUtil.matchAll(
+        org.apache.commons.lang3.StringUtils.join(
+          org.d6r.CollectionUtil2.filter(
+            stes, 
+            java.util.regex.Pattern.compile(
+              "^bsh\\.Interpreter\\.([^(][^(]*)\\("
+            ).matcher("")
+          ),
+          "\n"
+        ),
+        "(?:^|(?<=\n))bsh\\.Interpreter\\.([^(][^(]*)\\("
+      );
+    java.util.Collections.reverse(methodNames);
+    return methodNames;
+  };
+  
+  public static java.lang.Object INVTYPE_SCRIPT = org.apache.commons.lang3.tuple.Pair.of("source", "SCRIPT");
+  public static java.lang.Object INVTYPE_REPL = org.apache.commons.lang3.tuple.Pair.of("run", "REPL");
+  public static java.lang.Object INVTYPE_OTHER = org.apache.commons.lang3.tuple.Pair.of("", "OTHER");
+  
+  
+  public static java.lang.Object getBshInvocationTypeId() {
+    // org.apache.commons.lang3.tuple.Pair<Thread__StackTraceElements>
+    java.lang.Object mainThreadWithStack = getMainThreadWithStack();
+    java.lang.StackTraceElement[] stes = mainThreadWithStack.getValue();
+    java.util.List<String> interpreterMethodNames
+      = getInterpreterMethodNames(stes);
+    java.util.Deque<String> names
+      = new java.util.ArrayDeque<String>(interpreterMethodNames);
+    
+    while (!names.isEmpty() && names.peek().equals("main")) names.poll(); 
+    java.lang.String firstMethodCalledFromInterpreterMain = names.peek();
+    java.lang.Object invtype = null, invtype_id = null;
+    java.lang.String invtype_methodName = null;
+    for (//Pair
+      invtype: java.util.Arrays.asList(
+        INVTYPE_SCRIPT, INVTYPE_REPL, INVTYPE_OTHER)) 
+    {
+      invtype_methodName = invtype.getKey();
+      invtype_id = invtype.getValue();
+      if (invtype_methodName.isEmpty() ||
+          invtype_methodName.equals(firstMethodCalledFromInterpreterMain))
+      {
+        return invtype;
+      }
+    }
+    throw new java.lang.AssertionError();
+  }
+  
+  
+  void;
+}
+
+
+
+
+

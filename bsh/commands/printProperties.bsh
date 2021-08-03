@@ -1,0 +1,10 @@
+
+public static void printProperties() { StringBuilder sb = new StringBuilder(76 * 50); props = System.getProperties(); al = new ArrayList(props.keySet()); Collections.sort(al); for (e: al) { sb.append(String.format("%27s = %s\n", e, props.get(e)));  } System.out.println(sb.toString()); } 
+
+
+
+
+public static Map printProperties(Map properties) { StringBuilder sb = new StringBuilder(76 * 50); Map props = (properties != null)? properties: System.getProperties(); List<String> keys = new ArrayList(props.keySet()); Collections.sort(keys); for (String key: keys) { Object value = props.get(key); sb.append(String.format("%27s = %s%c", key, (val instanceof String)? (String)value: Debug.ToString(value), 0x0a)); }; System.out.println(sb.toString()); Map ret = new bsh.NameSpace.BindingMap(); ret.putAll(RealArrayMap.toMap(keys.select(FunctionUtil.bind("return m -> { Pair.of(m, props.get(m)); }", "props", props)))); return ret; };
+
+
+

@@ -1,0 +1,87 @@
+
+importCommands("/");
+loadClass("bsh.This");
+loadClass("bsh.BshMethod");
+
+import java.lang.reflect.Method;
+import bsh.This;
+import bsh.BshMethod;
+
+
+public java.lang.reflect.Method getDumpMethod() { 
+  java.lang.Class dcls = null;
+  try { 
+    dcls = Dumper.class;
+  } catch (bsh.EvalError e) { 
+    try {
+      dcls = loadClass("org.d6r.Dumper");
+    } catch (bsh.EvalError e2) {
+      appendClassPath(new java.lang.String[]{ 
+        "/data/media/0/bsh/out/dumper-simple.jar" 
+      });
+    }
+  }
+  if (dcls == null) {
+    dcls = loadClass("org.d6r.Dumper");
+  }
+  java.lang.reflect.Method dumpMethod = dcls.getDeclaredMethod(
+    "dump", 
+    new java.lang.Class[] { 
+      java.lang.Object.class, Integer.TYPE, Integer.TYPE, java.lang.String[].class 
+    }
+  ); 
+  return dumpMethod; 
+}
+
+
+
+public static bsh.This Dumper() {
+
+  public static java.lang.String[] default_ignore = new java.lang.String[]{ };
+  public static int default_depth = 5;
+  public static int default_length = 50;
+  
+  
+  public static java.lang.String dump (java.lang.Object o, int depth, int length, java.lang.String[] ignore) { 
+    return getDumpMethod().invoke( null, new java.lang.Object[]{ 
+      o, depth, length, ignore 
+    }); 
+  }
+  
+  public static java.lang.String dump (java.lang.Object o, int depth, int length) { 
+    return getDumpMethod().invoke( null, new java.lang.Object[]{ 
+      o, depth, length, default_ignore 
+    }); 
+  }
+  
+  public static java.lang.String dump (java.lang.Object o, int depth) { 
+    return getDumpMethod().invoke( null, new java.lang.Object[]{ 
+      o, depth, default_length, default_ignore 
+    }); 
+  }
+  
+  public static java.lang.String dump (java.lang.Object o) { 
+    return getDumpMethod().invoke( null, new java.lang.Object[]{ 
+      o, default_depth, default_length, default_ignore 
+    }); 
+  }
+  
+  return this;
+  
+}
+
+
+
+
+for (bsh.BshMethod m: this.namespace.getMethods()) {
+  if (m.getName().equals("org.d6r.Dumper")) {
+    dumpMethods(m);
+    print(m);
+    bsh.BshMethod Dumper = m.invoke(
+      new java.lang.Object[]{  }, 
+      this.interpreter
+    );
+  }
+}
+
+

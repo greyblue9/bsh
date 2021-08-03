@@ -1,0 +1,59 @@
+
+
+public static Triple dexZip(ZipFile zip) {
+  
+  com.android.dx.dex.file.DexFile df 
+    = AndroidClassLoader.createDxDexFile();
+  
+  ZipEntry[] ents = StringCollectionUtil.toStringFilter(
+    CollectionUtil.toArray(zip.entries()), 
+    "\\.class$"
+  ); 
+  
+  System.err.printf("%d entries\n", ents.length); 
+  
+  for (ZipEntry ent: ents) { 
+  
+    String className = ent.getName().replaceAll("\\.class$", "").replace('/', '.'); 
+    
+    System.err.println(className); 
+    
+    byte[] bs = IOUtils.toByteArray(is = zip.getInputStream(ent));
+    is.close(); 
+    
+    try { 
+      com.android.dx.dex.file.ClassDefItem cdi 
+        = AndroidClassLoader.dexClass(className, bs, df);
+      df.add(cdi);
+    } catch (Throwable e) { 
+      e.printStackTrace(); 
+      continue;
+    }
+  }
+  
+  byte[] dex = df.toDex(null, false); 
+  dex[6] = (byte) '5';
+  FileUtils.writeByteArrayToFile(
+    new File("/data/media/0/classes.dex"), dex
+  ); 
+  DexFile df2 = new DexFile(new File("/data/media/0/classes.dex"));
+  String[] names = DexFile.getClassNameList(df2.mCookie).print(); 
+  System.err.printf("%d classes in dex\n", names.length); 
+  /*try { 
+    Class cls = DexFile.defineClass(
+      className, 
+      Thread.currentThread().getContextClassLoader(), 
+      df2.mCookie, 
+      errs = new ArrayList()
+    ); 
+    return Triple.of(dex, names, df2);
+  } catch (Throwable e) { 
+    e.printStackTrace(); 
+  }*/
+  
+  return Triple.of(dex, names, df2);
+  
+}
+
+
+

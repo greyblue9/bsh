@@ -1,0 +1,44 @@
+{
+  public static void quit() {
+    quit(0);
+  }
+  
+  public static void quit(int resultSt) {
+    java.lang.Runtime rt = java.lang.Runtime.getRuntime();
+    rt.freeMemory();
+    rt.runFinalization();
+    rt.freeMemory();
+    File procFds = new File(String.format(
+      "/proc/%d/fd", PosixFileInputStream.getPid()
+    ));
+    Iterable<String> names
+      = IterableUtils.reversedIterable(Arrays.asList(procFds.list()));
+    for (String name: names) {
+      int fd = Integer.parseInt(name, 10);
+      String target = PosixFileInputStream.readlink(
+        new File(procFds, name).getPath()
+      );
+      File targetFile = new File(target);
+      String fn = targetFile.getName();
+      if ("core.jar".equals(fn)) continue;
+      if ("rt.jar".equals(fn)) continue;
+      if ("rt_dexed.jar".equals(fn)) continue;
+      if (fd > 2) {
+        try {
+          sun.nio.fs.UnixNativeDispatcher.close(fd);
+        } catch (Throwable t) {
+          System.err.println(t);
+        }
+      }
+    }
+    java.lang.reflect.Method _exit = Reflect.findMethod(rt, "nativeExit");
+    if (_exit != null) {
+      _exit.invoke(rt, new Object[]{ Integer.valueOf(resultSt) });
+      return resultSt;
+    }
+    System.exit(resultSt);
+  }
+  
+  void;
+}
+

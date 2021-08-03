@@ -1,0 +1,106 @@
+import java.util.Map.Entry;
+
+
+public static Map x_mfw(Map origMap) {
+  Map prev = new TreeMap();
+  prev.putAll(RealArrayMap.toMap(
+    origMap.entrySet().select(FunctionUtil.bind(
+      "return m -> { " +
+      "  String.isInstance(m.getKey()) " +
+      "    ? m " +
+      "    : Pair.of(String.valueOf(m.getKey()), m.getValue()); " +
+      "}"
+    ))
+  ));
+  
+  Map map = new TreeMap();
+  Deque<Entry> q = new ArrayDeque<Entry>();
+  Collections.addAll(q, prev.entrySet().toArray(new Entry[0]));
+  int unhandled = 0;
+  
+  while (!q.isEmpty()) {
+    if (map.size() > 10000) {
+      System.err.println("Map is too big!");
+      return map;
+    }
+    Entry e = q.pollLast();
+
+    String curKey = e .getKey();
+    Object curValue = e .getValue();
+    
+    Map converted = convertItem(curKey, curValue, q, 1);
+    map.putAll(converted);
+    if (map.size() % 20 == 0) System.err.printf("%d items ...   ", map.size());
+  }
+  return map;
+}
+
+
+
+public Object convertItem(String curKey, Object curValue, Deque<Object> q, int d) {
+  Map map = new HashMap();
+  
+  if (curValue instanceof ZipFile) {
+    Map zm = ZipUtil.mapBytes((ZipFile) curValue);
+    for (Entry ze: zm.entrySet()) {
+      map.put(String.format("%s/%s", curKey, ze.getKey()), ze.getValue());
+    }
+  } else if (curValue instanceof String || curValue instanceof byte[]) {
+    map.put(curKey, curValue);
+  } else if (curValue instanceof CharSequence) {
+    map.put(curKey, curValue.toString());
+  } else if (curValue instanceof File) {
+    map.put(curKey, FileUtils.readFileToByteArray((File) curValue));
+  } else if (curValue instanceof Map) {
+    if (d > 7) {
+      System.err.println("depth == " + String.valueOf(d));
+      //map.put(curKey, Dumper.dumpStr(curValue, 5, 15));
+      return map; //String.valueOf(map);
+    }
+    Map innerMap = (Map) curValue;
+    String prefix = String.format("%s/", curKey);
+    Entry[] innerEntries = innerMap.entrySet().toArray(new Entry[0]);
+    int entryIndex = -1, numEntries = innerEntries.length;
+    while (++entryIndex < numEntries) {
+      Entry innerEntry = innerEntries[entryIndex];
+      String innerKey = String.valueOf(innerEntry.getKey());
+      String fullKey = prefix.concat(innerKey);
+      Object innerValue = innerEntry.getValue();
+      Map innerValueConv = convertItem(fullKey, innerValue, q, d+1);
+      if (innerValueConv.size() == 1) {
+        map.put(fullKey, innerValueConv.values()[0]);
+      } else {
+        map.putAll(innerValueConv);
+      }
+    }
+  } else if (curValue instanceof Iterable) {
+    int index = 0;
+    for (Object v : ((Iterable) curValue)) {
+      if (v instanceof Entry) {
+        String key = String.format("%s/%s", curKey, ((Entry) v).getKey());
+        map.put(key, ((Entry) v).getValue());
+      } else {
+        q.offerFirst(Pair.of(String.format("%s.%05d", curKey, index++), v));
+      }
+    }
+  } else if (curValue instanceof Entry) {
+    String key = String.format("%s/%s", curKey, ((Entry) curValue).getKey());
+    map.put(key, ((Entry) curValue).getValue());
+  } else {
+    System.err.printf(
+      "No rule for pair: %s -> %s\n",
+      curKey,bsh.Factory.typeof(curValue).getName()
+    );
+    map.put(curKey, String.valueOf(curValue));
+  }
+  if (map.size() > 1) {
+    System.err.printf(
+      "converted %s -> %d items, depth = %d\n",
+      ClassInfo.typeToName(curValue), map.size(), d
+    );
+  }
+  return map;
+}
+
+
+

@@ -1,0 +1,6 @@
+
+
+public static boolean fixDownloadsDbVersion(String path) { String vstr = PosixFileInputStream.pexecSync("sqlite3", path, "pragma user_version").trim(); int ver = vstr.matches("^[0-9]+$")? Integer.parseInt(vstr,10): -1; if (ver > 109) { System.err.printf("Downgrading from %d to %d ... SQL:\n\n%s\n", ver, 109, (sql = "BEGIN TRANSACTION;\npragma user_version = 109;\n\n\nCOMMIT TRANSACTION;\n\nVACUUM; ").replaceAll("(^|\n)", "$1    ")); String output1 = PosixFileInputStream.pexecSync("sqlite3", path, sql); if (output1.trim().isEmpty()) { System.err.printf("Verifying result (user_version == %d) ...\n", 109); String vstr2 = PosixFileInputStream.pexecSync("sqlite3", path, "pragma user_version").trim(); int ver2 = vstr2.matches("^[0-9]+$")? Integer.parseInt(vstr2, 10): -1; if (ver2 > 1) { System.err.printf("Result:  user_version == %d\n", ver2); if (ver2 == 109) { return true; }; System.err.printf("Wrong actual version! Expected %d, got %d\n", 109, ver2); return false; } } else { System.err.printf("Failure! Output was:\n\n%s\n", output1);  return false; } System.err.println("Unknown failure. (?)"); return false; } else { return true; } }
+
+public static boolean fixDownloadsDbVersion() { return fixDownloadsDbVersion("/data/data/com.android.providers.downloads/databases/downloads.db"); }
+

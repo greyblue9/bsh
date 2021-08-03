@@ -1,0 +1,26 @@
+import java.util.Map.Entry;
+public static org.jf.dexlib2.writer.pool.DexPool recoverDex(InputStream dexInputStream) {
+  Map internedItems = new TreeMap();
+  Map dm = null;
+  System.err.printf("Read %d items from dex\n", (dm = readDamagedDexFile(dexInputStream)).size());
+  org.jf.dexlib2.writer.pool.DexPool dexPool = DexRemix.newDexPool();
+  Map failedItems = new TreeMap();
+  Entry[] dmEnts = dm.entrySet().toArray(new Entry[0]);
+  for (int i = 0; i < dmEnts.length; i++) {
+    System.err.printf("interning %s ...\n", Dumper.tryToString(dmEnts[i].getValue()));
+    try {
+      dexPool.classSection.intern(dmEnts[i].getValue());
+      internedItems.put(dmEnts[i].getKey(), dmEnts[i].getValue());
+    } catch (Throwable e) {
+      failedItems.put(dmEnts[i].getKey(), dmEnts[i].getValue());
+      System.err.printf("  - Could not intern: %s\n\n", Reflector.getRootCause(e));
+    }
+  }
+  int internedCount = internedItems.size();
+  int originalClassCount = ((DexBackedDexFile) Reflect.getfldval(dm.values().iterator().next(), "dexFile")).getClasses().size();
+  String colorspec = (internedCount == originalClassCount) ? "32" : (internedCount > 0 ? "33" : "31");
+  Log.i("internItems", "Successfully read+interned %c[1;%sm%d of %d%c[0m total classes\n", 0x1b, colorspec, internedCount, originalClassCount, 0x1b);
+  return dexPool;
+}
+
+ 

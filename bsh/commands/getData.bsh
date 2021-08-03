@@ -1,0 +1,63 @@
+{
+  boolean exists = bsh.Capabilities.classExists("nl.lxtreme.binutils.elf.Elf");
+  if (bsh.Capabilities.classExists("nl.lxtreme.binutils.elf.Elf")) {
+    for (String _sn: Arrays.asList("Elf", "SectionHeader", "SectionType", "DynamicEntry")) {
+      this.namespace.importClass("nl.lxtreme.binutils.elf.".concat(_sn));
+    }
+  }
+
+  if (!exists) System.err.printf(
+    "Adding to classpath: %s ...\n", 
+    appendClassPathFile("/external_sd/_projects/sdk/elf/elf.jar"));
+  System.out.println(
+    bsh.Capabilities.classExists("nl.lxtreme.binutils.elf.Elf")? "OK": "Failed");
+  if (bsh.Capabilities.classExists("nl.lxtreme.binutils.elf.Elf")) {
+    for (String _sn: Arrays.asList("Elf", "SectionHeader", "SectionType", "DynamicEntry")) {
+      this.namespace.importClass("nl.lxtreme.binutils.elf.".concat(_sn));
+    }
+  }
+
+}
+
+
+
+
+
+
+
+
+
+
+
+
+public static byte[] getData(Elf elf, SectionHeader hdr) { 
+  SeekableByteChannel ch = elf.channel; 
+  ch.position(hdr.fileOffset); 
+  byte[] data = new byte[hdr.size]; 
+  ByteBuffer bb = ByteBuffer.wrap(data);
+  ch.read(bb);
+  return data;
+};
+
+
+
+
+
+public static Map getData(Elf elf) { Map smap = new TreeMap(); SeekableByteChannel ch = elf.channel; SectionHeader[] hdrs = elf.sectionHeaders; for (SectionHeader hdr: hdrs) { ch.position(hdr.fileOffset); byte[] data = null; ch.position(hdr.fileOffset);  int readLen = (int) Math.min(ch.size() - ch.position(), hdr.size);   ByteBuffer bb = ByteBuffer.allocateDirect(readLen); ch.position(hdr.fileOffset);  int bufLen = (int) hdr.size;  ch.read(bb); bb.flip(); data = new byte[bufLen]; bb.get(data, 0, readLen); if (readLen < bufLen) System.err.printf("Note: section %s: advertized length from header exceeds remaining program data by %d bytes\n", hdr.name, bufLen - readLen); bb.free(); smap.put(hdr.name, Pair.of(hdr, data)); }; return smap; };
+
+
+
+
+
+
+public static byte[] getData(Elf elf, nl.lxtreme.binutils.elf.ProgramHeader hdr) {
+  SeekableByteChannel ch = elf.channel;
+  ch.position(hdr.offset);
+  byte[] data = new byte[hdr.segmentFileSize];
+  ByteBuffer bb = ByteBuffer.wrap(data);
+  ch.read(bb);
+  return data;
+};
+
+
+

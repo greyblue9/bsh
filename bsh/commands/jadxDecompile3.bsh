@@ -1,0 +1,83 @@
+
+public static Map jadxDecompile3_2(String apkPath, String pattern,
+boolean mergeWithOriginalClassesDex)
+{
+  Object jx = getJadxWithResClasses(apkPath, mergeWithOriginalClassesDex);
+  System.err.println(jx);
+  Map jadxVars = RealArrayMap.toMap(jx.values());
+  JadxDecompiler dc = jadxVars.get("dc");
+  Object c2 = getCode2(dc, pattern);
+  return c2;
+}
+
+public static Map jadxDecompile3_2(String apkPath, String pattern) {
+  boolean DEFAULT_MERGE_RES_CLASSES = true;
+  return jadxDecompile3_2(apkPath, pattern, DEFAULT_MERGE_RES_CLASSES);
+}
+
+public static Map jadxDecompile_2(String apkPath) {
+  String DEFAULT_PATTERN = "^.?((?!android.suppport|com.google.android.gms" +
+    "|org.apache|org.[jg]son|com.google)[^$])*$";
+  return jadxDecompile3_2(apkPath, DEFAULT_PATTERN);
+}
+
+
+
+public static Map jadxDecompile3(String apkPath, String ptrn, boolean merge, boolean save)
+{
+  File apkFile = new File(apkPath);
+  String apkFileName = apkFile.getName();
+  
+  Map dcrs = jadxDecompile3_2(apkPath, ptrn, merge);
+  
+  if (save) {
+    File outZip = new File(
+      new File("/data/media/0"),
+      String.format(
+        "%s_src.zip",
+        StringUtils.substringBeforeLast(apkFileName, ".")
+      )
+    );
+    ZipFile outZipFile = writeZip(outZip, dcrs);
+    
+    String output = PosixFileInputStream.pexecSync(
+      "unza", outZip.getAbsolutePath()
+    );
+    
+    String outDir = output.matchLines(String.format(
+      "inflating: (%s/[^/]+)/(.+)$",
+      outZip.getParentFile().getPath())
+    ).firstOrDefault().firstOrDefault();
+    
+    PosixFileInputStream.pexecSync("opendir", outDir);
+  }
+  return dcrs;
+}
+
+
+
+public static Map jadxDecompile3(String apkPath, boolean merge, boolean save) {
+  return jadxDecompile3(
+    apkPath,
+    "^((?!android.support|org.apache|com.google.common).)*$",
+    merge,
+    save
+  );
+}
+
+public static Map jadxDecompile3(String apkPath, boolean save) {
+  return jadxDecompile3(
+    apkPath,
+    true,
+    save
+  );
+}
+
+
+public static Map jadxDecompile3(String apkPath) {
+  return jadxDecompile3(
+    apkPath,
+    false
+  );
+}
+

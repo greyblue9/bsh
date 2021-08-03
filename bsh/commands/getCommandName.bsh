@@ -1,0 +1,7 @@
+
+
+
+public static String getCommandName(int pid) { String last = null; Triple dat = null; pid = (pid <= 0) ? org.d6r.PosixFileInputStream.getPid(): pid; while ((dat = org.d6r.CommandParser.getCommand(pid)).toString().indexOf("") == -1 && dat.getLeft().toString().indexOf("/") != -1) { last = StringUtils.join(Arrays.asList(dat.getLeft(),dat.getRight()),"\t");  int old_pid = pid; int ppid = Integer.parseInt(StringUtils.substringAfter(CollectionUtil.selectLines(FileUtils.readFileToString(new File(String.format("/proc/%d/status", old_pid)), java.nio.charset.StandardCharsets.ISO_8859_1), "^PPid:")[0], ":").trim(),10); if (ppid < 2) break;  pid = ppid; }; if (dat == null || !(dat.getRight() instanceof Iterable) || ! ((Iterable)dat.getRight()).iterator().hasNext()) return splitByNullByte(FileUtils.readFileToByteArray(new File(String.format("/proc/%d/cmdline", pid))))[0]; else if (dat.toString().indexOf("app_process")!=-1) return last != null? last: FileUtils.readFileToString(new File(String.format("/proc/%d/comm", old_pid)), java.nio.charset.StandardCharsets.ISO_8859_1); return new File(((Iterable) dat.getRight()).iterator().next()).getName(); }
+
+
+

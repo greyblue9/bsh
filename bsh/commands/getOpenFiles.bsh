@@ -1,0 +1,7 @@
+
+
+
+public static Map getOpenFiles() { Map fm = new TreeMap(); for (File fd: new File("/proc/" + String.valueOf(org.d6r.PosixFileInputStream.getPid()) + "/fd/").listFiles()) { try { String tgt = File.readlink(fd.getPath()); /* System.err.printf("%4d -> %s\n", Integer.parseInt(fd.getName(), 10), tgt); */ fm.put(Integer.valueOf(Integer.parseInt(fd.getName(), 10)), new File(tgt.indexOf(" (deleted)") != -1? StringUtils.substringBeforeLast(tgt, " (deleted)"): tgt)); } catch (Throwable e) {  }; }; return fm; };
+
+
+

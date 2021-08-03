@@ -1,0 +1,6 @@
+
+
+
+public static String removeCommentHeader(String s) { try { Collection<String> cblks = s.matchAll(Pattern.compile("(/\\*.+?\n.+?\\*/)", Pattern.DOTALL | Pattern.MULTILINE | Pattern.UNIX_LINES)); String hdr = cblks.isEmpty()? "": cblks.iterator().next(); if (hdr.length() == 0) return s; int pos; if (!(hdr.toLowerCase().indexOf("copyright") != -1 && (pos = s.indexOf(hdr)) != -1)) { return s; }; StringBuilder sb = new StringBuilder(s); sb.delete(pos, pos + hdr.length()); while (sb.length() > 0 && Character.isWhitespace(sb.charAt(0))) sb.delete(0, 1); int pkgstIdx = sb.indexOf("package"); if (pkgstIdx != -1 && Character.isWhitespace(sb.charAt(pkgstIdx+"package".length()))) { int newlineAfterPos = sb.indexOf("\n", pkgstIdx + "package".length() + 1); if (newlineAfterPos != -1 && ! Character.isWhitespace(sb.charAt(newlineAfterPos + 1))) { sb.insert(newlineAfterPos + 1, "\n"); } }; return sb.toString(); } catch (Throwable e) { e.printStackTrace(); return s; }; }
+
+

@@ -1,0 +1,3 @@
+
+public static String hexDump(byte[] bytes) { PrintStream ps = new PrintStream(baos = new ByteArrayOutputStream()); HexDump.dump(bytes, 0, ps, 0); ps.flush(); baos.flush(); ps.close(); baos.close(); return baos.toString().replaceAll("(?<= )([0-9A-F]{2}) (..) (..) ([0-9A-F]{2})(?= )", " $1$2$3$4 ").replace("   ", "  "); }
+

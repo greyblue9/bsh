@@ -1,0 +1,77 @@
+import com.github.javaparser.ast.Node;
+import com.github.javaparser.ast.body.ClassOrInterfaceDeclaration;
+import org.apache.commons.lang3.exception.ContextedException;
+import org.apache.commons.lang3.exception.ExceptionContext;
+import com.github.javaparser.ast.body.EmptyMemberDeclaration;
+
+public static Object parseBsh(String src) {
+  return parseBsh(src, false);
+}
+
+public static Object parseBsh(String src, boolean returnAst) {
+  return parseBsh(src, returnAst, false);
+}
+
+public static Object parseBsh(String src, boolean returnAst, boolean entire)
+{
+  String PREAMBLE = "public class A {\n  ";
+  String POSTAMBLE = "\n}\n";
+  
+  String wrappedClassSource = new StringBuilder(
+    PREAMBLE.length() + src.length() + POSTAMBLE.length() + 3
+   ).append(PREAMBLE).append('\n').append(src).append('\n').append(POSTAMBLE).append('\n').toString();
+    
+  Node ast = null;
+  String excMessage = null;
+  Throwable thrownExc = null;
+  
+  try {
+    ast = parseJava(wrappedClassSource, true);
+  } catch (Throwable e) {
+    thrownExc = e;
+    System.err.println(Debug.ToString(e));
+  }
+  if (ast != null) {
+    List<Object> members = new ArrayList<Object>(
+      Arrays.asList(ast.getTypes()[0].getMembers().toArray())
+    );
+    Iterator it = members.iterator();
+    while (it.hasNext()) {
+      Object member = it.next();
+      if (member instanceof EmptyMemberDeclaration) it.remove();
+    }
+    int numMbs = members.size();
+    Node subject = (!entire && numMbs == 1)
+      ? members[0]
+      : ast;
+    if (returnAst) return subject;
+    // return as string
+    String s = subject.toString();
+    return s.replaceAll("(^|\n)[\t ;]*(?=\n|$)", "").replace("    ", "  ");
+  }
+  
+  // error
+  String numberedSourceLines = String.format(
+  "=== ATTEMPTED SOURCE ===\n%s\n======\n",
+    Pattern.compile(
+      "(^|\n)(?:\\(|)([0-9]+)(?:, ?|=)([^\n]*)(\\)|)(?=$|\n)",
+      Pattern.DOTALL | Pattern.UNIX_LINES
+    ).matcher(StringUtils.join(
+      new NumberedLines(wrappedClassSource).getLineMap().entrySet(), "\n"
+    )).replaceAll("$1\u001b[0;36m$2\u001b[0m$3")
+  );
+  
+  String message = String.format(
+    "Could not parse input; parseBsh(String[%d]) %s",
+    wrappedClassSource.length(),
+    thrownExc != null ? "threw ".concat(String.valueOf(thrownExc))
+                      : "returned null"
+  );
+  ContextedException exc = (thrownExc != null)
+    ? new ContextedException(message, thrownExc)
+    : new ContextedException(message.concat(" (see context info)"));
+  exc.setContextValue("Attempted Source", numberedSourceLines);
+  throw exc;
+}
+
+

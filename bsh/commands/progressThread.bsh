@@ -1,0 +1,57 @@
+
+public static Thread progressThread() {
+  
+  Thread mainThread = Thread.currentThread();
+  Runnable progressRunnable = new Runnable() {
+    public void run() { 
+      try {
+        int _iterCount = 0;
+        while (++_iterCount < 25000) {
+          if (Thread.currentThread().isInterrupted()) {
+            Thread.currentThread().interrupt();
+            break;
+          }
+          StackTraceElement[] elems
+            = Thread.getAllStackTraces().get(mainThread);
+          StackTraceElement elem = elems[0];
+          if (elem.getClassName().equals("libcore.io.Posix")
+          &&  elem.getMethodName().indexOf("read") != -1) break;
+          
+          System.err.printf(
+            "proessing... depth: %3d @ %s.%s(%s:%d)\n", 
+            elems.length, elem.getClassName(), elem.getMethodName(),
+            elem.getFileName(), elem.getLineNumber()
+          );
+        }
+      } catch (InterruptedException iex) { 
+        System.err.printf("Progress thread interrupted\n");
+        Thread.currentThread().interrupt();
+        return;
+      } 
+      return;
+    }
+  };
+  Thread progressThread = new Thread(progressRunnable);
+  progressThread.setPriority(10);
+  progressThread.setName("ProgressThread");
+  // progressThread.group.setMaxPriority(10);
+  return progressThread;
+}
+
+public static Thread progressThread(int timeoutSeconds) {
+  Thread progressThread = progressThread();
+  
+  Runnable timeoutRunnable = new Runnable() {
+    public void run() {
+      Thread.sleep(timeoutSeconds * 1000);
+      try {
+        if (progressThread.isAlive()) progressThread.interrupt();    
+      } catch (Throwable e) { System.err.println(e); };
+    }
+  };
+  Thread timeoutThread = new Thread(timeoutRunnable);
+  timeoutThread.start();
+  progressThread.start();
+  return progressThread;
+}
+

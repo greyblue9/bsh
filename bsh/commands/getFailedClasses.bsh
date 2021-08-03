@@ -1,0 +1,174 @@
+import java.util.Map.Entry;
+import com.android.dex.Dex;
+import com.android.dex.ClassDef;
+import java.util.AbstractMap.SimpleImmutableEntry;
+
+
+
+
+
+
+
+public static Map getFailedClasses(String logcatStr) {
+  
+  String[] lines = StringUtils.split(logcatStr, '\n');
+  Matcher IS_NUMERIC = Pattern.compile("^-?[0-9]+$").matcher("");
+  
+  List<Triple> matcherInfos = Arrays.asList(
+    Triple.of("fail_typedesc", new String[] { 
+      "className"      
+      }, Pattern.compile(
+      "^Unable to match class for part: .(L[^;]+;)."
+      ).matcher("")
+    ),
+    Triple.of("fail_superclass", new String[] { 
+      "className", "superclassTypeIndex"
+      }, Pattern.compile(
+      "^Unable to resolve superclass of (L[^;]+;) \\(([0-9]+)\\)"
+      ).matcher("")
+    ),
+    Triple.of("fail_interface", new String[]{ 
+      "className", "interfaceTypeIndex", "interfaceClassName"
+      }, Pattern.compile(
+      "^Failed resolving (L[^;]+;) interface ([0-9]+) .(L[^;]+;)."
+      ).matcher("")
+    ), 
+    Triple.of("fail", new String[]{ 
+      "className"
+      }, Pattern.compile(
+      "^Link of class .(L[^;]+;). failed"
+      ).matcher("")
+    )      
+  );
+  
+  Map meta = new TreeMap();
+  
+  for (int i=0,len=lines.length; i<len; ++i) {
+    String line = lines[i], msgType = null;
+    List<Pair> groups = null;
+    
+    for (Triple matcherInfo: matcherInfos) {
+      Matcher matcher = matcherInfo.getRight();
+      if (! matcher.reset(line).find()) continue;
+      
+      msgType = matcherInfo.getLeft();
+      groups = new ArrayList<Pair>();
+      String[] groupNames = matcherInfo.getMiddle();
+      for (int g=1, gmax=matcher.groupCount(); g<=gmax; ++g) {
+        Object value = matcher.group(g);
+        if (IS_NUMERIC.reset((String) value).matches()) {
+          value = Integer.parseInt(value, 10);
+        }
+        groups.add(new SimpleImmutableEntry(
+          groupNames[g-1],
+          value
+        ));
+      }; // for groups[g] 1 to gmax -> group
+      break;
+    }; // foreach matcherInfo
+    
+    if (groups != null) {
+      meta.put(
+        Integer.valueOf(i + 1),
+        new SimpleImmutableEntry(msgType, groups)
+      );
+    }
+  }; // for lines[i] 0 to len -> line
+  
+  return meta;
+}
+
+
+
+
+
+
+
+public static Map getFailedClasses(Map meta) {
+  Collection<Entry> fails
+    = meta.values().filter("^fail_(?:superclass|interface)=");
+  
+  Map failBases = new TreeMap();
+  
+  for (Entry fail: fails) { 
+    String msgType = fail.getKey();
+    String failBaseKind = StringUtils.substringAfter(msgType, "_");
+    Map info = RealArrayMap.toMap(fail.getValue());
+    
+    String className = ClassInfo.typeToName(info.get("className"));   
+    Dex dex = getDex(className);
+    int typeIndex = ((Integer) info.get(
+      info.containsKey("interfaceTypeIndex")
+        ? "interfaceTypeIndex"
+        : "superclassTypeIndex"
+    )).intValue();
+    
+    String baseClassName = ClassInfo.typeToName(
+      dex.strings().get(dex.typeIds().get(typeIndex))
+    );
+    String message = String.format(
+      "%s : %s %s", className, failBaseKind, baseClassName
+    );
+    System.err.println(message);
+    failBases.put(className, baseClassName);
+  }
+  
+  return failBases;
+}
+
+/*List al = new ArrayList();
+  int dexPathStart = logcatStr.lastIndexOf("DEX prep '") + 10;
+  int dexPathEnd = logcatStr.indexOf("'", dexPathStart);
+  String dexPath = logcatStr.substring(dexPathStart, dexPathEnd);
+  NumberedLines lines = new NumberedLines(logcatStr);
+  // @var lineMapFilt Map<Integer,String>
+  Set<Entry> lineMapFilt = RealArrayMap.toMap(
+    lines.getLineMap().entrySet().filter(
+      "Unable to res|Link of class|DEX prep|(interface|class) [0-9]"
+    )
+  );
+  
+  int ctx = 1;
+  // @var lineMapFiltOrdered SortedMap<Integer,String>
+  // @inittype TreeMap<Integer,String>
+  SortedMap lineMapFiltOrdered = new TreeMap();
+  lineMapFiltOrdered.putAll(lineMapFilt);
+  SortedSet<Integer> linenos = lineMapFiltOrdered.keySet();
+  
+  // @var tm SortedMap<Integer,String>
+  // @inittype TreeMap<Integer,String>
+  SortedMap tm = new TreeMap();
+  for (Integer linenoBox: linenos) {    
+    int lineno = linenoBox.intValue();
+    String[] ctxlines = lines.getContextLines(lineno, 1);
+    for (int i=0; i<ctxlines.length; ++i) { 
+      tm.put(
+        lineno + (i - ((ctxlines.length)*ctx) / 2),
+        ctxlines[i]
+      );
+    }
+  }
+  return tm;
+}
+/*
+  Dex dex = new Dex(
+    ZipUtil.toByteArray(dexPath, "classes.dex")); for (String summary: StringUtils.join(tm.values(),"\n").matchAll("Unable to resolve (superclass|interface)(?: of)?[^L\n]*(L[^;]*;) \\(([0-9]+)\\)", "$2 $1 $3")) { String[] toks = StringUtils.split(summary, " "); String className = ClassInfo.typeToName(toks[0]); String unresKind = toks[1]; int unresTypeIdx = Integer.parseInt(toks[2], 10); String unresClassName = ClassInfo.typeToName(dex.strings()[dex.typeIds()[unresTypeIdx]]); System.err.printf("Failed resolving [%s], %s of class %s\n", unresClassName, unresKind, className); al.add(unresClassName); }; return al; }
+
+
+
+
+
+
+
+public static List<String> getFailedClasses() { System.err.println("Reading logcat ..."); String logcatStr = logcat(); System.err.printf("Read %d lines from current process; parsing ...\n", StringUtils.split(logcatStr, "\n").length); int lxi = 0; do { String key = String.format("logcat_%d", ++lxi); if (CollectionUtil.dbg.containsKey(key)) continue; CollectionUtil.dbg.put(key, logcatStr); } while (false); return getFailedClasses(logcatStr); }
+*/public static List<String> getFailedClasses(Map fc) { return Arrays.asList(ClassInfo.typeToName(Iterables.concat(fc.entrySet().select(FunctionUtil.bind("return m -> { RealArrayMap.toMap(CollectionUtil2.filter(m.getValue().getValue(), \"(super|interface)className=\")).values(); }")).toArray(new Iterable[0])).typeFilter(String.class).toArray(new String[0])).sort().uniq()); };
+
+
+
+
+
+
+public static List<String> getFailedClasses(Object dexElement, String lc) { Collection<Integer> typeIndexes = lc.matchAll("([0-9]+)").filter("^((?!2017|^[012]$).)*$").select(FunctionUtil.bind("return m -> { Integer.parseInt(m, 10); }")).sort().uniq(); List typeNames = new ArrayList(); for (Integer idx: typeIndexes) { typeNames.add(getClassName(dexElement, idx.intValue())); }; return typeNames; };
+
+
+

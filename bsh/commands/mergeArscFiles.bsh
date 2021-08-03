@@ -1,0 +1,15 @@
+public static byte[] mergeArscFiles(byte[][] arscFiles) {
+  List<Pkg> allPkgs = new ArrayList();
+  for (byte[] arscf : arscFiles) {
+    Log.d("arscmerger", "reading resource table from byte array %s ...", arscf);
+    byte[] arscBytes = arscf;
+    pxb.android.arsc.ArscParser parser = new pxb.android.arsc.ArscParser(arscBytes);
+    List<Pkg> arscPkgs = parser.parse();
+    allPkgs.addAll(arscPkgs);
+  }
+  pxb.android.arsc.ArscWriter writer = new pxb.android.arsc.ArscWriter(allPkgs);
+  byte[] arscMergedBytes = writer.toByteArray();
+  return arscMergedBytes;
+}
+
+ 

@@ -1,0 +1,112 @@
+
+
+public static java.lang.Class resolveClass(java.lang.String clzname) {
+  
+  clzname = clzname.replace('/', '.');
+  if (clzname.charAt(0) == 'L' 
+   && clzname.charAt(clzname.length()-1) == ';') 
+  {
+    clzname = clzname.substring(1, clzname.length() - 1);
+  }
+  
+  dalvik.system.BaseDexClassLoader ldr 
+    = java.lang.Thread.currentThread().getContextClassLoader();
+
+  appendLibraryPath(
+    new java.lang.String[]{ 
+      "/storage/extSdCard/_projects/sdk/lib/com/sun/jna/linux-armv7l", 
+      "/system/lib", 
+      "/system/vendor/lib"   
+    },
+    ldr
+  );
+
+  dalvik.system.BaseDexClassLoader ldr 
+    = Thread.currentThread().getContextClassLoader();
+
+  
+  java.lang.Class cls = null;
+  
+  boolean absolute = true;
+  boolean ambiguous = false;
+  
+  try {
+    cls = ldr.loadClass(clzname);
+    return cls;
+  } catch (Throwable notExactName) {
+    //if (clzname.indexOf('.') != -1 ) {
+    //  print(
+    print("findInnerClass: "+clzname);
+    cls = findInnerClass(clzname);
+    if (cls != null) return cls;
+    absolute = false;
+  }
+  
+  
+  import *;
+  
+  try {
+    java.lang.Class cls = resolve(clzname);
+    return cls;
+  } catch (java.lang.Throwable e2) {
+    ambiguous = true;
+  }
+  
+  java.util.List matches = new java.util.ArrayList();
+  
+  java.util.Map map = mapClassPath();
+  java.util.Iterator it = map.entrySet().iterator();
+  while (it.hasNext()) {
+    
+    java.util.Map.Entry crnt = it.next();
+    java.lang.String jarFileName = crnt.getKey();
+    java.lang.String[] classNames = crnt.getValue();
+
+    for (java.lang.String item: classNames) {
+      
+      int dot = item.lastIndexOf('$');
+      if (dot == -1) dot = item.lastIndexOf('/');
+      if (dot == -1) dot = item.lastIndexOf('.');
+      
+      java.lang.String simpleName = (
+        (dot == -1)
+          ? item.replace(";", "")
+          : item.substring(dot + 1)
+      ).replace(";", "");
+      
+      if (clzname.equals(simpleName)) {
+        print(java.lang.String.format(
+          "Match (%s) in %s: %s",
+          simpleName,
+          jarFileName,
+          item
+        ));
+      } else if (item.indexOf(clzname) != -1) {
+        print(java.lang.String.format(
+          "Weak match (%s) in %s: %s",
+          simpleName,
+          jarFileName,
+          item
+        ));
+      }
+      matches.add(new java.lang.String[] { jarFileName, item });
+      
+    }
+    
+  }
+  
+  for (java.lang.String[] entry: matches) {
+    try {
+      cls = Thread.currentThread().getContextClassLoader().loadClass(entry[1]);
+      return cls;
+    } catch (java.lang.Throwable e3) {
+      print(java.lang.String.format(
+        "Loading [%s, %s] failed:",
+        entry[0], entry[1]
+      ));
+      print(e3.getMessage());
+    }
+  }
+  
+  return null;
+}

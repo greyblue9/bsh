@@ -1,0 +1,38 @@
+import java.io.IOException;
+
+
+public static File mktemp(String prefix, String extension) {
+  File tmpDir = mktempDir(prefix);
+  try {
+    File tmpFile = File.createTempFile(
+      prefix, // String prefix
+      String.format(".%s", extension), // String suffix
+      tmpDir // File directory
+    ); // throws IOException
+    if (! tmpFile.exists()) tmpFile.createNewFile();
+    return tmpFile;
+  } catch (IOException ex) {
+    throw new RuntimeException(String.format(
+      "Could not create temporary file: %s", ex
+    ));
+  }
+}
+
+public static File mktemp() {
+  File tmpDir = mktempDir();
+  try {
+    File tmpFile = File.createTempFile(
+      "temp", // String prefix
+      String.format(".%s", "tmp"), // String suffix
+      tmpDir // File directory
+    ); // throws IOException
+    if (! tmpFile.exists()) tmpFile.createNewFile();
+    return tmpFile;
+  } catch (IOException ex) {
+    throw new RuntimeException(String.format(
+      "Could not create temporary file: %s", ex
+    ));
+  }
+}
+
+

@@ -1,0 +1,99 @@
+
+  public static Class defineClassNative
+  (String name, ClassLoader loader, int cookie)
+  {
+    Method m = DexFile.class
+      .getDeclaredMethod("defineClassNative", new Class[]{ 
+      String.class, ClassLoader.class, Integer.TYPE 
+    });
+    m.setAccessible(true);
+    Class clz = m.invoke(null, name, loader, cookie);
+    return clz;
+  }
+  
+  public static Class defineClassNative
+  (String name, ClassLoader loader, int cookie)
+  {
+    Method m = DexFile.class
+      .getDeclaredMethod("defineClassNative", new Class[]{ 
+      String.class, ClassLoader.class, Integer.TYPE 
+    });
+    m.setAccessible(true);
+    Class clz = m.invoke(null, name, loader, cookie);
+    return clz;
+  }
+
+
+  
+  public static Class defineClass 
+  (String name, ClassLoader loader, int cookie) 
+  {
+    Method m = DexFile.class.getDeclaredMethod(
+      "defineClass", 
+      String.class, ClassLoader.class, Integer.TYPE
+    );
+    m.setAccessible(true);
+    Class clz = m.invoke(null, name, loader, cookie);
+    
+    return clz;
+  }
+  
+  
+  
+  
+  
+  public static Class defClass(String path, String name) 
+  { 
+    
+    String nativeLibPath 
+      = System.getProperty("java.library.path");
+  
+    DexPathList dpl 
+      = getUnsafe().allocateInstance(DexPathList.class);
+    
+    
+    Method mthd_sp = DexPathList.class.getDeclaredMethod(
+      "splitPaths", 
+      new Class[]{ String.class, String.class, Boolean.TYPE }
+    );
+    mthd_sp.setAccessible(true);
+    
+    ArrayList<File> cps = mthd_sp.invoke(null, 
+      path, nativeLibPath, false); 
+    
+    Method mthd_mde = DexPathList.class.getDeclaredMethod(
+      "makeDexElements", 
+      new Class[] { ArrayList.class, File.class, ArrayList.class }
+    );
+    mthd_mde.setAccessible(true);
+    
+    
+    Method mthd_fc = DexPathList.class.getDeclaredMethod(
+      "findClass", new Class[]{ String.class, List.class });
+    
+    mthd_fc.setAccessible(true);
+    ArrayList exList = new ArrayList();
+    this.interpreter.set("exList", exList);
+    
+    Object[] de = mthd_mde.invoke(null, 
+      cps, 
+      new File("/data/local/tmp_clazzes"), 
+      exList
+    );
+    setfldval(dpl, "dexElements", de);
+    
+    ArrayList lfs 
+      = mthd_sp.invoke(null, path, nativeLibPath, true); 
+    
+    setfldval(dpl, "nativeLibraryDirectories", 
+      lfs.toArray(new File[0])); 
+    
+    List errs = new ArrayList();
+    this.interpreter.set("errs", errs);
+    Class cls = mthd_fc.invoke(dpl, name, errs);  
+    return cls;
+  }
+  
+  
+  
+  

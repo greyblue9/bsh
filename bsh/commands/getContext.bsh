@@ -1,0 +1,52 @@
+
+
+public static String getContext(Object cls, int lno, int ctxsize) {
+  Object s = SourceUtil.findSource(cls);
+  /* Log.d("getContext", "s = %s", s); */
+  if (s != null) {
+    String src = IOUtils.toString(s);
+    String[] lines = src.split("\n");
+    int start = Math.max(lno - ctxsize, 0);
+    int end = Math.min(lno + ctxsize, lines.length - 1);
+    /* Log.d("getContext", "lines = String[%d]; start = %d, end = %d, lno = %d, ctxsize = %d", lines.length, start, end, lno, ctxsize); */
+    if (start < 0 || start >= lines.length)
+      return "";
+    if (end < 0 || end >= lines.length || end < start)
+      return "";
+    String[] a = Arrays.copyOfRange(lines, start, end);
+    if (lno - 1 < 0 || lno - 1 >= lines.length)
+      return "";
+    int aidx = ArrayUtils.indexOf(a, lines[lno - 1]);
+    a[aidx] = dumpMembers.colorize(a[aidx], "1;31");
+    return StringUtils.join(a, "\n");
+  }
+  return "";
+}
+
+
+public static String[] getContext(CharSequence cs, int lineNo, int context, String highlight) {
+  try {
+    String s = (cs instanceof String) ? (String) cs: cs.toString();
+    String[] lines = s.split("\n");
+    int contextStart = Math.max(0, (lineNo - 1) - context), contextEnd = Math.min((lineNo - 1) + context + 1, lines.length + 1);
+  
+    String[] selLines = Arrays.copyOfRange(
+      lines,
+      contextStart < 0? 0: contextStart,
+      contextEnd > lines.length
+        ? lines.length
+        : (contextEnd < contextStart)
+            ? contextStart
+            : contextEnd
+    );
+    int lineIdx = (lineNo - 1) - contextStart;
+    selLines[lineIdx] = (highlight != null && highlight.length() != 0) ? String.format("\u001b[%smm%s\u001b[0m", highlight, selLines[lineIdx]) : selLines[lineIdx];
+  } catch (Throwable e) {
+    return new String[] { "", "", "" };
+  }
+  return selLines;
+}
+
+public static String[] getContext(CharSequence cs, int lineNo, int context) {
+  return getContext(cs, lineNo, context, (String) null);
+}

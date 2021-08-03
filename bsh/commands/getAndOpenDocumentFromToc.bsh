@@ -1,0 +1,82 @@
+
+
+
+public static Pair getAndOpenDocumentFromToc(String tocUrl) {
+  String TAG = "getAndOpenDocumentFromToc";
+  File tmpFile
+    = File.createTempFile("tmpDoc", ".html", new File("/data/media/0/David/www/"));
+  Log.d(TAG, "tempFile: %s", tmpFile);
+  
+  Document doc = getDocumentFromToc(tocUrl);
+  Log.d(TAG, "Got document from getDocumentFromToc @0x%08x", doc.hashCode());
+  String html = doc.toString();
+  Log.d(TAG, "doc.toString() -> %d chars", html.length());
+  Log.d(TAG, "Writing to %s ...", tmpFile);
+  
+  FileUtils.writeStringToFile(tmpFile, doc.toString(), "UTF-8");
+  Log.d(TAG, "tmpFile.length():  %d bytes", html.length());
+  Log.d(TAG, "Adding template ...");
+  System.err.println(
+    PosixFileInputStream.pexecSync("htmlvhdr", "-i", tmpFile.getPath())
+  );
+  Log.d(TAG, "tmpFile.length():  %d bytes", html.length());
+  String localUrl = String.format("http://localhost/%s", tmpFile.getName());
+  
+  System.err.println(localUrl);
+  
+  
+  String prefsPath = "/data/data/org.d6r.urllauncher/shared_prefs/main.xml";
+  Log.d(TAG, "Reading prefa from [%s] ...", prefsPath);
+  
+  Document prefsXmlDoc
+    = Document.createShell(String.format("file://%s", prefsPath)); 
+  prefsXmlDoc.body().html(
+    StringUtils.substringBetween(
+      FileUtils.readFileToString(new File(prefsPath), "UTF-8"),
+      "<map>",
+      "</map>"
+    )
+  );
+  Log.d(TAG, "prefsXmlDoc: %s", prefsXmlDoc);
+  
+  String browserCmp
+    = prefsXmlDoc.select("string[name=local_www]").text().trim();
+  Log.d(TAG, "Browser component: [%s] ...", browserCmp);
+    
+  String result = PosixFileInputStream.pexecSync(
+    "am", "start", "--user", "0",
+    "-a", "android.intent.action.VIEW",
+    "-c", "android.intent.category.BROWSEABLE",
+    "-f", "0x1380000",
+    "-n", browserCmp,
+    "-d", localUrl
+  );
+  System.err.println(result);
+  String topwin = PosixFileInputStream.pexecSync("topwin");
+  if (topwin.indexOf("chrome") == -1) {
+    Log.d(TAG, "Trying again...");
+    
+    String result = PosixFileInputStream.pexecSync(
+      "am", "start", "--user", "0",
+      "-a", "android.intent.action.VIEW",
+      "-c", "android.intent.category.BROWSEABLE",
+      "-f", "0x1380000",
+      "-n", browserCmp,
+      "-d", localUrl
+    );
+    System.err.println(result);
+  }
+  
+  System.err.println(localUrl);
+  System.err.println(localUrl);
+  
+  
+  return Pair.of(
+    new URL(localUrl), 
+    CollectionUtil.toArray(Arrays.asList(doc))
+  );
+};
+
+
+
+

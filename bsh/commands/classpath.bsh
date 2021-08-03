@@ -1,0 +1,48 @@
+
+public static String classpath(com.sun.tools.jdi.ClassLoaderReferenceImpl ldr) {
+  com.sun.tools.jdi.ObjectReferenceImpl ucp = ldr.getValue(ldr.referenceType().fieldByName("ucp")), loaders = ucp.getValue(ucp.referenceType().fieldByName("loaders"));
+  List arr = CollectionUtil2.typeFilter(loaders.getValue(loaders.referenceType().fieldByName("elementData")).getValues(), com.sun.tools.jdi.ObjectReferenceImpl.class);
+  List<ObjectReference> urls = arr.select(FunctionUtil.bind("return m -> { m.getValue(m.referenceType().fieldByName(\"base\")); }"));
+  List<String> paths = urls.select(FunctionUtil.bind("return m -> { PathInfo.getPathInfo(m.getValue(m.referenceType().fieldByName(\"file\")).value()).path; }"));
+  String classpath = StringUtils.join(paths, ":");
+  return classpath;
+}
+
+ 
+
+public static String classpath(com.sun.tools.jdi.VirtualMachineImpl vm, boolean includeBootclasspath) {
+  com.sun.tools.jdi.ClassLoaderReferenceImpl ldr = vm.classesByName("sun.misc.Launcher$AppClassLoader").get(0).instances(1L).get(0);
+  List parts = new ArrayList();
+  if (includeBootclasspath) {
+    com.sun.tools.jdi.ClassTypeImpl bchClazz = vm.classesByName("sun.misc.Launcher$BootClassPathHolder").get(0);
+    com.sun.tools.jdi.ObjectReferenceImpl ucp = bchClazz.getValue(bchClazz.fieldByName("bcp"));
+    String bootclasspath = classpath(ucp);
+    parts.add(bootclasspath);
+  }
+  com.sun.tools.jdi.ClassLoaderReferenceImpl parent = ldr.getValue(ldr.referenceType().fieldByName("parent"));
+  while (parent != null) {
+    parts.add(classpath(parent));
+    parent = parent.getValue(parent.referenceType().fieldByName("parent"));
+  }
+  parts.add(classpath(ldr));
+  return StringUtils.join(parts, ":");
+}
+
+ 
+
+public static String classpath(com.sun.tools.jdi.VirtualMachineImpl vm) {
+  return classpath(vm, true);
+}
+
+ 
+
+public static String classpath(com.sun.tools.jdi.ObjectReferenceImpl ucp) {
+  com.sun.tools.jdi.ObjectReferenceImpl loaders = ucp.getValue(ucp.referenceType().fieldByName("loaders"));
+  List arr = CollectionUtil2.typeFilter(loaders.getValue(loaders.referenceType().fieldByName("elementData")).getValues(), com.sun.tools.jdi.ObjectReferenceImpl.class);
+  List<ObjectReference> urls = arr.select(FunctionUtil.bind("return m -> { m.getValue(m.referenceType().fieldByName(\"base\")); }"));
+  List<String> paths = urls.select(FunctionUtil.bind("return m -> { PathInfo.getPathInfo(m.getValue(m.referenceType().fieldByName(\"file\")).value()).path; }"));
+  String classpath = StringUtils.join(paths, ":");
+  return classpath;
+}
+
+ 

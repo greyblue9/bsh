@@ -1,0 +1,158 @@
+import java.util.Map.Entry;
+/*
+public static ArrayList findClassSource(String clsName) { Class cls = Class.forName(clsName, false, Thread.currentThread().getContextClassLoader()); if (!(cls instanceof Class)) return null; com.android.dex.Dex dex = org.d6r.ClassInfo.getDex(cls); System.err.println(dex.toString()); byte[] clsBytes = dex.getBytes(); System.err.printf("dex is %d bytes\n", clsBytes.length); ArrayList found = new ArrayList(); int sz = 0; for (DexPathList.Element ce: Thread.currentThread().getContextClassLoader().pathList.dexElements) { if (ce.zipFile == null) { sz = (int) ce.file.length(); } else { sz = (int) ce.zipFile.entries.get("classes.dex").getSize(); } int sizediff = clsBytes.length - sz; if (sizediff < 0) sizediff *= -1; if (sizediff < 4096) { System.err.printf("[%8d] %s", sz, ce.file.name); System.err.printf(" <<=== difference is %d bytes ***\n", sizediff); found.add(ce); if (sizediff == 0) { System.err.println("Returning exact match\n"); return found; } else { System.err.printf("\n"); } } } System.err.printf("%d possible matches found\n", found.size()); return found; }
+public static Map scan() { Map szmap = new HashMap(); int i=0; String resPath = null; URL res = null; while ((resPath = java.lang.VMClassLoader.getBootClassPathResource("classes.dex", i)) != null) { i += 1; res = new URL(resPath); URLConnection conn = res.openConnection(); conn.setUseCaches(false); ZipEntry ze = conn.getJarEntry(); long zesz = ze.getSize(); szmap.put(Long.valueOf(zesz), res.getPath()); } return szmap; }
+
+public static ArrayList findClassSource(String clsName) { Class cls = Class.forName(clsName, false, Thread.currentThread().getContextClassLoader()); if (!(cls instanceof Class)) return null; com.android.dex.Dex dex = org.d6r.ClassInfo.getDex(cls); System.err.println(dex.toString()); byte[] clsBytes = dex.getBytes(); System.err.printf("dex is %d bytes\n", clsBytes.length); ArrayList found = new ArrayList(); int sz = 0; for (DexPathList.Element ce: Thread.currentThread().getContextClassLoader().pathList.dexElements) { if (ce.zipFile == null) { sz = (int) ce.file.length(); } else { sz = (int) ce.zipFile.entries.get("classes.dex").getSize(); } int sizediff = clsBytes.length - sz; if (sizediff < 0) sizediff *= -1; if (sizediff < 4096) { System.err.printf("[%8d] %s", sz, ce.file.name); System.err.printf(" <<=== difference is %d bytes ***\n", sizediff); found.add(ce); if (sizediff == 0) { System.err.println("Returning exact match\n"); return found; } else { System.err.printf("\n"); } } } if (found.size() == 0) { Map sysmap = scan(); String path = sysmap.get(Long.valueOf(clsBytes.length)); if (path != null) { found.add(PathInfo.getPathInfo(path)); System.err.println("Returning exact match\n"); return found; } } System.err.printf("%d possible matches found\n", found.size()); return found; }
+*/
+public static dalvik.system.DexPathList$Element[] findClassSources(Class cls)
+{ 
+  List<Element> elements = new LinkedList<Element>();
+  
+  try {
+    List<String> paths = findClassSourcesAux(cls);
+    if (! paths.isEmpty()) System.err.println(StringUtils.join(paths, "\n"));
+    outer:
+    for (String path: paths) {
+      Object dexElem = ClassPathUtil2.findDexElement(
+        cls.getClassLoader(),
+        new File(path)
+      );
+      if (dexElem != null) {
+        System.err.println("[INFO] matched DexElement via findDexElement()");
+        elements.add(dexElem); continue;
+      }
+      dexElem = ClassPathUtil2.findDexElement(
+        cls.getClassLoader(), PosixFileInputStream.resolve(new File(path)));
+      if (dexElem != null) {
+        System.err.println(
+          "[INFO] matched DexElement via findDexElement(resolve(File))");
+        elements.add(dexElem); continue;
+      }
+      Object[] elems = Thread.currentThread().getContextClassLoader().pathList.dexElements;
+      File baseFile = new File(path);
+      for (Object elem: elems) {
+        File file = Reflect.getfldval(elem, "file");
+        if (file == null) continue;
+        if (file.equals(baseFile) 
+        || PosixFileInputStream.resolve(file).equals(PosixFileInputStream.resolve(baseFile)))
+        {
+          System.err.println(
+            "[INFO] matched DexElement via multiple calls to "
+            + "PosixFileInputStream.resolve() over DexPathList.dexElements");
+          elements.add(elem); continue outer;
+        }
+      }// for elem: elems
+      if (dexElem != null) {
+        System.err.println(
+          "[INFO] matched DexElement via multiple calls to "
+          + "PosixFileInputStream.resolve() over DexPathList.dexElements");
+        elements.add(dexElem); continue;
+      }
+    } // for path: paths
+  } catch (Throwable e) { 
+    e.printStackTrace();
+  }
+  
+  if (elements.isEmpty()) {
+    long capacity = org.d6r.ClassInfo.getDex(cls).data.capacity;
+    /*
+    String str = String.format(StringUtils.join(Arrays.asList(
+        "m => ",
+        "java.lang.Object zf = org.d6r.Reflect#getfldval(m, \"zipFile\");",
+        "if (zf == null) {",
+        "  org.d6r.Reflector#invokeOrDefault(",
+        "    m, \"maybeInit\", new java.lang.Object[0]",
+        "  );",
+        "  zf = org.d6r.Reflect#getfldval(m, \"zipFile\");",
+        "}",
+        "return ((java.util.zip.ZipFile) ",
+        "   org.d6r.Reflect#getfldval(m, \"zipFile\")",
+        "  ).getEntry(\"classes.dex\").getSize() == (long) %d;",
+        ""
+      ), ""), capacity);
+    Object[] elems = (Thread.currentThread().getContextClassLoader().pathList.dexElements
+      .where(str));
+    */
+    Matcher mchr = Pattern.compile(
+      "^[^ ]{10} +[0-9.]+ +[^ ]+ +([0-9][0-9]*) +"
+    ).matcher("");
+        
+    for (Object dexElement: Thread.currentThread().getContextClassLoader().pathList.dexElements) 
+    {
+      long size = -1;
+      ZipFile zf = Reflect.getfldval(dexElement, "zipFile");
+      if (zf == null 
+      &&  dexElement.toString().indexOf("zip file") != -1) 
+      {
+        String output = PosixFileInputStream.pexecSync(
+          "unzip", "-Zls", 
+          PosixFileInputStream.resolve(
+            Reflect.getfldval(dexElement, "file")).getPath(),
+          "classes.dex"
+        );
+        mchr.reset(output);
+        if (mchr.find()) { 
+          size = Long.valueOf(mchr.group(1), 10);
+        } else {
+          Reflector.invokeOrDefault(dexElement, "maybeInit");
+          zf = Reflect.getfldval(dexElement, "zipFile");
+        }
+      }
+      if (size == -1) {
+        size = (zf != null && zf.getEntry("classes.dex") != null) 
+          ? zf.getEntry("classes.dex").getSize()
+          : ((File) Reflect.getfldval(dexElement, "file")).length();
+      }
+      if (Math.max(size, capacity) - Math.min(size, capacity) > 1024) {
+        continue;
+      }
+      elements.add(dexElement);
+    }
+  }
+  
+  return elements.toArray(new dalvik.system.DexPathList$Element[0]);
+}
+
+public static dalvik.system.DexPathList$Element[] findClassSources(Object o) 
+{ 
+  if (o instanceof bsh.ClassIdentifier) {
+    return findClassSources(
+      (Class) ((bsh.ClassIdentifier)o).getTargetClass()
+    );
+  }
+  if (!(o instanceof Class)) {
+    if (o instanceof String) {      
+      String className = ClassInfo.typeToName(o);
+      o = Class.forName(
+        className, false, Thread.currentThread().getContextClassLoader()
+      );
+    } else {
+      o = o.getClass();     
+    }
+  }
+  return findClassSources((Class) o);
+}
+
+public static List<String> findClassSourcesAux(Class cls) {
+  com.android.dex.Dex dex = org.d6r.ClassInfo.getDex(cls);
+  String className = ClassInfo.typeToName(
+    dex.typeNames()[dex.classDefs()[0].getTypeIndex()]
+  );  
+  Matcher mchr = Pattern.compile(String.format(
+    "^(?:jar:)?file:/[^=]+=%s", className.replace("$", "\\$")
+  )).matcher("");
+  
+  Set<Entry> entries = org.d6r.DexUtil.lookupDexMap.entrySet();
+  Collection<Entry> filtered 
+    = CollectionUtil2.filter(entries, mchr);
+  List<String> paths = new LinkedList<String>();
+  for (Entry entry: filtered) {
+    PathInfo pi = PathInfo.getPathInfo(entry.getKey());
+    String path = pi.path;
+    paths.add(path);
+  }
+  return paths;
+}
+
+ 

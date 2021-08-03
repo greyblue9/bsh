@@ -1,0 +1,37 @@
+public static java.lang.String readstring(java.lang.String path) {
+ java.io.File file = new java.io.File(path);
+  java.io.InputStream is = new java.io.FileInputStream(file);
+  int avail = is.available(); 
+  java.lang.String encoding = "utf-8";
+  java.lang.StringBuilder sb = new java.lang.StringBuilder(avail);
+  byte[] b = new byte[avail > 1024? 1024: avail];
+  while (avail > 0) {
+    int read = is.read(b);
+    sb.append(new java.lang.String( b, 0, read, encoding ));
+    avail = is.available();
+  }
+  return sb.toString();
+}
+
+
+
+
+public static java.lang.String readstring(java.lang.String path) {
+  Matcher SCHEME_MCHR = Pattern.compile("^Filepath: *|([a-z]+):").matcher("");
+  while (SCHEME_MCHR.reset(path).find()) path = SCHEME_MCHR.replaceAll("");
+  path = path.replaceAll("^//*", "/");
+  java.io.File file = new java.io.File(path);
+  java.io.InputStream is = new java.io.FileInputStream(file);
+  int avail = is.available();
+  java.lang.String encoding = "utf-8";
+  java.lang.StringBuilder sb = new java.lang.StringBuilder(avail);
+  byte[] b = new byte[avail > 1024 ? 1024 : avail];
+  while (avail > 0) {
+    int read = is.read(b);
+    sb.append(new java.lang.String(b, 0, read, encoding));
+    avail = is.available();
+  }
+  return sb.toString();
+}
+
+ 

@@ -1,0 +1,48 @@
+
+import java.util.jar.JarFile;
+import java.util.jar.JarEntry;
+import java.util.zip.ZipFile;
+import java.util.zip.ZipEntry;
+import java.net.URL;
+import java.lang.TwoEnumerationsInOne;
+import java.util.Collection$3;
+
+import bsh.classpath.BshClassPath;
+
+
+public static ZipFile jarWith(String className) {
+  
+  PrintStream out = this.interpreter.getOut(); 
+  Class cls = ClassResolveUtils.findInnerClass(className); 
+  String clsname = cls.getName(); 
+  
+  // java.util.Collection$3 _or_ TwoEnumerationsInOne 
+  // (TEIO for Jar and Collections$3 (some inner-$List variant)  
+  // for ZIP Archives possibly
+  
+  _c3 = cls.getClassLoader().getResources("classes.dex");
+  List<URL> urll = new ArrayList();
+  
+  while (_c3.hasMoreElements()) {
+    el = _c3.nextElement(); 
+    urll.add(el);
+  }  
+  
+  URL[] urls = urll.toArray(new URL[urll.size()]); 
+  for (URL u: urls) {
+    jarconn = u.getContent(new Class[]{ Object.class });
+    ZipFile jar = getfldval(jarconn, "jarFile"); 
+    
+    String[] nmes = BshClassPath.getDexZipClasses(jar);
+    
+    out.println(nmes.length); 
+    for (n: nmes) { 
+      if (n != null && n.equals(clsname)) {
+        return jar;
+      } 
+    }
+  }
+  return null;
+}
+
+

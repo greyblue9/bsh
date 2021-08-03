@@ -1,0 +1,51 @@
+
+
+public static Collection getClassLoaderEntries(ClassLoader ldr) {
+  
+  Class col3Cls = Class.forName("java.util.Collections$3"); 
+  Field valc = col3Cls.getDeclaredField("val$c");
+  valc.setAccessible(true); 
+  Class teioCls = Class.forName("java.lang.TwoEnumerationsInOne");
+  Field firstf = teioCls.getDeclaredField("first"); 
+  Field secondf = teioCls.getDeclaredField("second");
+  firstf.setAccessible(true); 
+  secondf.setAccessible(true); 
+  
+  Object resources = ldr.getResources("classes.dex"); 
+  if (resources.getClass().isAssignableFrom(col3Cls)) {
+    return (Collection) valc.get(resources);
+  }
+  
+  if (resources.getClass().isAssignableFrom(teioCls)) {
+    Collection _allEntries = new ArrayList(); 
+    Object col3A = firstf.get(resources); 
+    Object col3B = secondf.get(resources);
+    for (Object entry: valc.get(col3A)) _allEntries.add(entry);
+    for (Object entry: valc.get(col3B)) _allEntries.add(entry);
+    
+    return _allEntries;
+  }
+  
+  Dumper.dump(resources); 
+  System.err.println("incompatible: "+(resources.getClass()));
+  return Collections.emptyList();
+}
+
+public static Set getAllClasspathEntries() {
+  Set allEntriesSet = new HashSet(); 
+  ClassLoader cl = Thread.currentThread().getContextClassLoader();
+  while (cl != null) {
+    Collection entries = getClassLoaderEntries(cl);
+    for (Object entry: getClassLoaderEntries(cl)) {
+      allEntriesSet.add(entry);
+    }
+    //Collections.addAll(allEntriesSet, entries); //allEntriesSet.addAll(entries); 
+    cl = cl.getParent();
+  }
+  return allEntriesSet;
+}
+
+
+
+
+  

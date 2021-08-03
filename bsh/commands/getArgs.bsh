@@ -1,0 +1,16 @@
+public static List getArgs() {
+  List procs = StringCollectionUtil.matchLines(PosixFileInputStream.pexecSync("ppid_info", "--mi", Integer.toString(PosixFileInputStream.getPid())), "^([0-9]+)\t([0-9]+)\t([^ \t]*)(.*)[\t ]([^\t ]*)$");
+  for (Iterator it = procs.iterator(); it.hasNext(); ) {
+    List pts = it.next();
+    String comm = pts.get(pts.size() - 1);
+    if ("java".equals(comm.trim()) || "rlwrap".equals(comm.trim())) {
+      it.remove();
+      continue;
+    }
+  }
+  List args = new ArrayList(Arrays.asList(StringUtils.split(procs.iterator().next().get(3).trim(), " ")));
+  args.remove(0);
+  return args;
+}
+
+ 

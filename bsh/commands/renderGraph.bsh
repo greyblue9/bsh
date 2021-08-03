@@ -1,0 +1,7 @@
+
+
+
+public static String renderGraph(MethodDefinition md) { Object context = ProcyonUtil.getDecompilerContext().clone(); graph=com.strobel.assembler.flowanalysis.ControlFlowGraphBuilder.build(md.getBody().getInstructions(), md.getBody().getExceptionHandlers()); graph.export(f=File.createTempFile("tmpgraph", ".g")); s=readstring(f.getPath()); prevs=""; while (!prevs.equals(s)) { prevs = s; s = s.replaceAll("(^|\n)([\t ]*)([^\t \n][^\n]*)(?:(Block)|\\\\l)", "$1$2\n$2$3\n$2$4"); }; s = s.replaceAll("\\\\\"", "\"").replaceAll("([\t ]+)null", "$1").replaceAll("(\n[\t ]*)\\1+", "$1").replaceAll("(\t| )[\",]([\t \n]|$)", "$1$2").replace("\\","").replace("    ", "  "); f.delete(); return s; }
+
+
+

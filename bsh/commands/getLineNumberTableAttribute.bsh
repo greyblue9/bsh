@@ -1,0 +1,40 @@
+import com.strobel.assembler.ir.attributes.LineNumberTableEntry;
+import com.strobel.decompiler.languages.java.OffsetToLineNumberConverter;
+import com.strobel.decompiler.languages.java.LineNumberTableConverter;
+import com.strobel.assembler.ir.attributes.SourceAttribute;
+import com.strobel.assembler.ir.attributes.LineNumberTableAttribute;
+
+
+public static LineNumberTableAttribute getLineNumberTableAttribute(Member mtd) {
+  DexParser.DebugInfo info = DexParser.parseDebugInfo(mtd);
+  DexParser.LineNumberTable table = info.lineNumberTable;
+  if (! table.entries().isEmpty()) {
+    return table.toLineNumberAttribute();
+  }
+  return new LineNumberTableAttribute(new LineNumberTableEntry[0]);
+}
+
+public static LineNumberTableAttribute getLineNumberTableAttribute(
+MethodDefinition md)
+{
+  Collection<SourceAttribute> attrs = md.getSourceAttributes();
+  Collection<LineNumberTableAttribute> filteredAttrs
+    = CollectionUtil2.typeFilter(attrs, LineNumberTableAttribute.class);
+  LineNumberTableAttribute attr = (! filteredAttrs.isEmpty())
+      // method comes with LineNumberTableAttribute
+    ? filteredAttrs.iterator().next() 
+    : null;
+  if (attr != null) return attr;
+  // no LineNumberTableAttribute provided
+  Member mtd = ProcyonUtil.getMethod(md);
+  if (mtd == null) {
+    Log.w("getLineNumberTableAttribute",
+      "Could not get corresponding live Member instance for %s '%s' (%s); " +
+      "results depending on line number info will be degraded or missing.",
+      md.getClass().getSimpleName(), md.toString(),
+      "class lacks attribute and ProcyonUtil.getMethod(md) returned null"
+    );
+    return new LineNumberTableAttribute(new LineNumberTableEntry[0]);
+  };
+  return getLineNumberTableAttribute((Member) mtd);
+}

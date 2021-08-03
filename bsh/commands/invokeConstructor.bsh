@@ -1,0 +1,7 @@
+
+
+
+public static Object invokeConstructor(Class ctorClass, Object instance, Object[] ctorArgs) { Constructor[] ctors = ctorClass.getDeclaredConstructors(); Constructor ctor = Reflect.findBestMatch(ctors, ctorArgs); if (ctors == null || ctors.length == 0) { throw new NoSuchMethodException(String.format("No suitable constructor was found in the class [%s] for the argument types [%s]", ctorClass.getName(), StringUtils.join(ClassInfo.typeToName(bsh.Type.getTypes(ctorArgs)), ", "))); }; return invokeNative(instance, ctorArgs, ctor.getDeclaringClass(), ctor.getParameterTypes(), Void.TYPE, ((Integer) Reflect.getfldval(ctor, "slot")).intValue(), true); };
+
+
+

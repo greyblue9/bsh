@@ -1,0 +1,1 @@
+public static String fixEncodedObject(String enc) { String xml = new String(SimpleCodec.decode(enc), java.nio.charset.StandardCharsets.UTF_8).replaceAll("(&#x(?:0|f|1b);)(?:\\[[K0-9;]+m)?", ""); byte[] bytes = xml.getBytes(java.nio.charset.StandardCharsets.UTF_8); String fixedEnc = SimpleCodec.encode(bytes); return fixedEnc; };

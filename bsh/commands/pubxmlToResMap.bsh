@@ -1,0 +1,39 @@
+
+
+public static Object pubxmlToResMap(String publicXml) {
+  Element root = Jsoup.parseBodyFragment(publicXml, "").body().children().firstOrDefault();
+  Iterable<Element> elems = root.select("public");
+  Map pkgMap = new TreeMap();
+  
+  for (Element elem : elems) {
+    String typeName = elem.attr("type");
+    String name = elem.attr("name");
+    String idStr = elem.attr("id");
+    boolean hex = idStr.startsWith("0x");
+    int id = Integer.parseInt((hex)
+      ? idStr.subSequence(2, idStr.length())
+      : idStr, (hex) ? 16 : 10);
+    int pkgId = ((id & 0xFF000000) >>> 24),
+       typeId = ((id & 0xFF0000) >>> 16),
+        resId = ((id & 0xFFFF) >>> 0);
+    Map typeMap = (pkgMap.containsKey(Integer.valueOf(pkgId)))
+      ? pkgMap.get(Integer.valueOf(pkgId))
+      : new TreeMap();
+    Map idMap = (typeMap.containsKey(Integer.valueOf(typeId)))
+      ? typeMap.get(Integer.valueOf(typeId))
+      : new TreeMap();
+    System.err.printf(
+      "pkgMap: %d, typeMap: %d, idMap: %d\n",
+      pkgMap.size(), typeMap.size(), idMap.size()
+    );
+    idMap.put(Integer.valueOf(id), Pair.of(typeName, name));
+    typeMap.put(Integer.valueOf(typeId), idMap);
+    pkgMap.put(Integer.valueOf(pkgId), typeMap);
+  }
+  
+  // for elem in elems
+  return pkgMap;
+}
+
+
+

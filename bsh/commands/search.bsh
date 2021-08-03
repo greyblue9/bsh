@@ -1,0 +1,82 @@
+
+
+
+search(obj) { 
+  return search(obj, 3);
+}
+
+search(obj, maxdepth) { 
+  return search(
+    obj, 
+    obj.getClass(), 
+    new java.util.HashMap(), 
+    0, 
+    "",
+    maxdepth
+  );
+}
+
+
+search(obj, cls, map, depth, prefix, maxdepth) { 
+
+  if (obj == null) return map; 
+  if (depth > maxdepth) return map; 
+  
+  
+  while (cls != null && cls != java.lang.Object.class) 
+  {
+    flds = obj.getClass().getDeclaredFields(); 
+    
+    for (fld: flds) { 
+      fld.setAccessible(true); 
+      v = fld.get(obj); 
+      if (v == null || !(v instanceof java.lang.Object))
+        continue; 
+      
+      java.lang.Class vCls = v.getClass();
+      java.lang.String clsName = vCls.getName();
+      java.lang.String fldPrefix = prefix + "." + fld.getName();
+      if (vCls instanceof java.util.List) {
+        v = v.toArray();
+        fldPrefix += ".toArray()";
+        for (int i=0; i<v.length; i++) {
+          arrPrefix = fldPrefix + "["+i+"]";
+          
+          if (depth + 1 <= maxdepth) {
+            search(
+              v[i], v[i].getClass(), map, 
+              depth+1, fldPrefix, maxdepth
+            );
+          }
+        }
+        continue; 
+      }
+      
+      
+      if (! vCls.isPrimitive()
+       &&   clsName.length() > 4
+       &&   clsName.indexOf("java.") == -1) {
+         
+         map.put(fldPrefix, v);
+      }  
+         
+      if (depth + 1 <= maxdepth) {
+        search(
+          v, vCls, map, 
+          depth+1, fldPrefix, maxdepth
+        );
+      }
+    } // for fld: cls.getDeclaredFields() 
+    
+    cls = cls.getSuperclass(); 
+  } // for cls: cls.getSuperclass()
+   
+  
+  return map;
+}
+  
+
+
+
+
+

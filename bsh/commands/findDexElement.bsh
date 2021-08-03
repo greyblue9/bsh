@@ -1,0 +1,14 @@
+import java.util.Map.Entry;
+
+
+
+public static Object expensiveFindDexElement(String dexFilePath) { List dists = new ArrayList(), nameDists = new ArrayList(), pathDists = new ArrayList(); int lastslash; dexFileName = (lastslash = dexFilePath.indexOf('/')) != -1? dexFilePath.substring(lastslash+1): dexFilePath; int nameMin = Integer.MAX_VALUE, pathMin = Integer.MAX_VALUE, min = Integer.MAX_VALUE, nameMax = 0, pathMax = 0; Object minElement = null; Object[] dexElements = Thread.currentThread().getContextClassLoader().pathList.dexElements; for (Object dexElement: dexElements) { File elementFile = Reflect.getfldval(dexElement, "file"); String fileName = elementFile.getName(); String elementPath = elementFile.getPath(); int pathDist = StringUtils.getLevenshteinDistance(elementPath, dexFilePath); int nameDist = StringUtils.getLevenshteinDistance(fileName, dexFileName); int dist = (pathDist) + ((nameDist) * 3);  System.err.printf("%4d: %s\n", dist, elementPath); if (dist < min) { min = dist; minElement = dexElement; }; nameDists.add(nameDist); pathDists.add(pathDist); dists.add(Triple.of(nameDist, pathDist, dexElement)); nameMin = Math.min(nameMin, nameDist); pathMin = Math.min(pathMin, pathDist); nameMax = Math.max(nameMax, nameDist); pathMax = Math.max(pathMax, pathDist); }; List ddists = new ArrayList(dists.size()); for (Triple m: dists) { ddists.add(Triple.of( ((double)(((Integer) m.getLeft()).intValue() - nameMin)) / (nameMax - nameMin), ((double)(((Integer) m.getMiddle()).intValue() - pathMin)) / (pathMax - pathMin), m.getRight())); }; Comparator cmp = FunctionUtil.delegate(Comparator.class, "(a, b) -> { return Double.valueOf(a.getLeft().doubleValue() + a.getMiddle().doubleValue()).compareTo(Double.valueOf((b.getLeft().doubleValue() * 20) + b.getMiddle().doubleValue())); };"); Collections.sort(ddists, cmp); Object bestElement = ddists.iterator().next().getRight(); return bestElement; }
+
+
+
+
+public static Object findDexElement(String dexFilePath) { for (Object dexElement: Thread.currentThread().getContextClassLoader().pathList.dexElements) { if (((String) dexFilePath).equals((String) dexElement.file.path)) return dexElement; }; return expensiveFindDexElement(dexFilePath); };
+
+
+public static Object findDexElement(Entry dexPair) { String dexFilePath = (String) dexPair.getKey(); for (Object dexElement: Thread.currentThread().getContextClassLoader().pathList.dexElements) { if (((String) dexFilePath).equals((String) dexElement.file.path)) return dexElement; }; return expensiveFindDexElement(dexFilePath); };
+

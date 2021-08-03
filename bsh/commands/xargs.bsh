@@ -1,0 +1,17 @@
+
+
+
+
+
+
+public static Object xargs(Object files, String[] cmd) { return execCmdFilter(ArrayUtils.addAll(new String[]{ "busybox", "xargs", "-0" }, cmd), StringUtils.join(files, "|").replaceAll("\n","").replace('|', '\u0000') + '\u0000').toString(); };
+
+
+
+
+
+
+public static Object xargs(Object files, String cmd) { return xargs(files, (String[]) new String[]{ cmd }); };
+
+
+

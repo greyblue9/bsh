@@ -1,0 +1,2 @@
+public static Object toTuple(MatchResult mr) { int offsi = 0, gc = mr.groupCount(); String[] mchs = new String[gc-1]; while (++offsi < gc) { mchs[offsi-1] = mr.text.substring(mr.offsets[offsi*2], mr.offsets[offsi*2 + 1]); } if (mchs.length == 3) return Triple.of(mchs); return Arrays.asList(mchs); }
+

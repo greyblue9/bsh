@@ -1,0 +1,31 @@
+public static com.strobel.assembler.metadata.CompositeTypeLoader getTypeLoader() {
+  List<JarFile> classpathJars = CollectionUtil2.invokeAll(CollectionUtil2.typeFilter(ClassPathUtil.mapClassPathJre2().values(), DexVisitor.classForName("sun.misc.URLClassPath$JarLoader")), Reflect.getfldval[2], 0, new Object[] { null, "jar" });
+  List<JarFile> bootJars = CollectionUtil2.invokeAll(Reflect.get(DexVisitor.classForName("sun.misc.Launcher$BootClassPathHolder"), "bcp", "loaders"), Reflect.getfldval[2], 0, new Object[] { null, "jar" });
+  List<JarFile> allJars = Iterables.concat(new Iterable[] { bootJars, classpathJars }).toList();
+  com.strobel.assembler.metadata.ITypeLoader[] jtls = CollectionUtil2.invokeAll(allJars, com.strobel.assembler.metadata.JarTypeLoader.class.getDeclaredConstructors()[0], 0, new Object[] { null }).toArray(new com.strobel.assembler.metadata.ITypeLoader[0]);
+  com.strobel.assembler.metadata.CompositeTypeLoader newCtl = new com.strobel.assembler.metadata.CompositeTypeLoader(jtls);
+  ProcyonUtil.getMetadataResolver()._typeLoader = newCtl;
+  ProcyonUtil.typeLoader = newCtl;
+  return newCtl;
+}
+
+ 
+
+public static com.strobel.assembler.metadata.CompositeTypeLoader getTypeLoader() {
+  List<JarFile> classpathJars = CollectionUtil2.invokeAll(CollectionUtil2.typeFilter(ClassPathUtil.mapClassPathJre2().values(), DexVisitor.classForName("sun.misc.URLClassPath$JarLoader")), Reflect.getfldval[0], 0, new Object[] { null, "jar" });
+  List<JarFile> bootJars = CollectionUtil2.invokeAll(Reflect.get(DexVisitor.classForName("sun.misc.Launcher$BootClassPathHolder"), "bcp", "loaders"), Reflect.getfldval[0], 0, new Object[] { null, "jar" });
+  List<JarFile> allJars = Iterables.concat(new Iterable[] { bootJars, classpathJars }).toList();
+  com.strobel.assembler.metadata.ITypeLoader[] jtls = CollectionUtil2.invokeAll(allJars, com.strobel.assembler.metadata.JarTypeLoader.class.getDeclaredConstructors()[0], 0, new Object[] { null }).toArray(new com.strobel.assembler.metadata.ITypeLoader[0]);
+  com.strobel.assembler.metadata.CompositeTypeLoader newCtl = new com.strobel.assembler.metadata.CompositeTypeLoader(jtls);
+  ProcyonUtil.getMetadataResolver()._typeLoader = newCtl;
+  ProcyonUtil.typeLoader = newCtl;
+  return newCtl;
+}
+
+ 
+
+public static com.strobel.assembler.metadata.CompositeTypeLoader getTypeLoader() {
+  return Reflect.newInstance(com.strobel.assembler.metadata.CompositeTypeLoader.class, new Object[] { CollectionUtil2.invokeAll(CollectionUtil2.invokeAll(CollectionUtil.flatten(Arrays.asList(Reflect.get(DexVisitor.classForName("sun.misc.Launcher$BootClassPathHolder"), "bcp", "loaders"), CollectionUtil2.typeFilter(Reflect.get(Thread.currentThread().getContextClassLoader(), "ucp", "lmap").values(), DexVisitor.classForName("sun.misc.URLClassPath$JarLoader")))), Reflect.class.getDeclaredMethod("getfldval", Object.class, String.class), 0, null, "jar"), com.strobel.assembler.metadata.JarTypeLoader.class.getDeclaredConstructor(JarFile.class), 0, null).toArray(new com.strobel.assembler.metadata.ITypeLoader[0]) });
+}
+
+ 

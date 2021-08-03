@@ -1,0 +1,18 @@
+public static Map readDamagedDexFile(Object dexStreamOrByteArray) {
+  DexBackedDexFile dbdf = DexRemix.getDexBackedDexFile((Object) dexStreamOrByteArray);
+  Map map = new TreeMap();
+  org.jf.dexlib2.dexbacked.util.FixedSizeSet<DexBackedClassDef> classDefs = null;
+  int size = (classDefs = dbdf.getClasses()).size();
+  
+  for (int i = 0; i < size; ++i) {
+    try {
+      DexBackedClassDef classDef = new DexBackedClassDef(dbdf, dbdf.getClassDefItemOffset(i));
+      map.put(Integer.valueOf(i), classDef);
+    } catch (Throwable e) {
+      Log.w("DexBackedClassDef", "Unable to initialize classDef with index %d: %s", i, Reflector.getRootCause(e));
+    }
+  }
+  return map;
+}
+
+ 

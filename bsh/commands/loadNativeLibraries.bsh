@@ -1,0 +1,17 @@
+
+public static List<Map> loadNativeLibraries() {
+  List<Map> loaded = new ArrayList<DexElement>();
+  Map dexMap = RealArrayMap.toMap(Thread.currentThread().getContextClassLoader().pathList.dexElements.select(FunctionUtil.bind("return m -> { Pair.of(m.file.getPath(), m); }")));
+  List<String> bshnicp = Arrays.asList(StringUtils.split(PosixFileInputStream.pexecSync("bshnicp"), ":"));
+  List<DexElement> newElems = dexMap.entrySet().select(FunctionUtil.bind("return m -> { bshnicp.contains(m.getKey()) ? null: m.getValue(); }", "bshnicp", bshnicp));
+  for (Object dexElement : newElems) {
+    Log.v("loadNativeLibraries", "Loading libraries from \"%s\" ...", dexElement.file.getPath());
+    try {
+      loaded.add(loadNativeLibrariesFromApk(dexElement));
+    } catch (Exception ex) {
+      ex.printStackTrace();
+      Log.e("loadNativeLibraries", String.format("Error loading libraries from \"%s\": %s", dexElement.file.getPath(), Reflector.getRootCause(ex)), ex);
+    }
+  }
+  return loaded;
+}

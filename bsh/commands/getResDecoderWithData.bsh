@@ -1,0 +1,61 @@
+
+if (! bsh.Capabilities.classExists("zhao.arsceditor.ResDecoder.ARSCDecoder"))
+{
+  appendClassPathFile("/external_sd/_projects/sdk/ares/ares.jar");
+  Log.d("getResSpecMap", "Checking class OK: %s", Class.forName(
+    "zhao.arsceditor.ResDecoder.ARSCDecoder",
+    false,
+    Thread.currentThread().getContextClassLoader()
+  ));
+}
+  
+  
+import zhao.arsceditor.ResDecoder.ARSCDecoder;
+import zhao.arsceditor.ResDecoder.ARSCDecoder.ARSCData;
+import zhao.arsceditor.ResDecoder.data.ResTable;
+import zhao.arsceditor.ResDecoder.data.ResType;
+import zhao.arsceditor.ResDecoder.data.ResResSpec;
+import zhao.arsceditor.ResDecoder.data.ResResource;
+import libcore.io.StructStat;
+import libcore.io.StructStatVfs;
+import org.apache.commons.io.input.AutoCloseInputStream;
+
+
+public static Pair getResDecoderWithData(byte[] arscBytes, ResTable optRsTbl)
+{
+  String TAG = "getResDecoderWithData";
+  
+  ResTable resTable = (optRsTbl != null)? optRsTbl: new ResTable();
+  InputStream arscInputStream = new BufferedInputStream(
+    new AutoCloseInputStream(new ByteArrayInputStream(arscBytes))
+  );
+  arscInputStream.mark(arscBytes.length + 1);
+  ARSCDecoder decoder = new ARSCDecoder(arscInputStream, resTable, true);
+  
+  arscInputStream.reset();
+  arscInputStream.mark(arscBytes.length + 1);
+  Log.d(TAG, 
+    "calling decoder[%s].decode( \n" +
+    "  ARSCDecoder: %s, \n" +
+    "  InputStream: %s, \n" +
+    "  boolean: %s, \n" +
+    "  boolean: %s, \n" +
+    "  ResTable: %s \n" +
+    ")",
+    decoder, decoder, arscInputStream, true, true, resTable
+  );
+  ARSCDecoder.ARSCData arscData = decoder.decode(
+    decoder, // ARSCDecoder decoder
+    arscInputStream, // InputStream arscStream
+    true, // boolean findFlagsOffsets
+    true, // boolean keepBroken
+    resTable // ResTable resTable
+  );
+  Log.d(TAG, "ad := decoder.decode(..) -> %s", arscData);
+  return Pair.of(decoder, arscData);
+}
+
+public static Pair getResDecoderWithData(byte[] arscBytes) {
+  return getResDecoderWithData(arscBytes, null);
+}
+

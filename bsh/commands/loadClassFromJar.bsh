@@ -1,0 +1,15 @@
+loadClassFromJar(classPath, className) {
+  
+  pathList = new dalvik.system.DexPathList(
+    this.getClass().getClassLoader(),
+    classPath,
+    "/system/lib:/system/vendor/lib:/system/usr/lib",
+    new java.io.File("/data/media/0/Android/data")
+  );
+  aList = new java.util.ArrayList();
+  clazz = pathList.getClass().getDeclaredMethods()[0].invoke(   pathList, new java.lang.Object[]{ className, aList });
+  return clazz;
+  
+}
+
+

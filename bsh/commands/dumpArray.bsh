@@ -1,0 +1,44 @@
+public static void dumpArray(Object arr) { 
+
+  sun.misc.Unsafe u = ClassPathUtil2.getUnsafe();
+  dalvik.system.VMRuntime vmr = dalvik.system.VMRuntime.getRuntime();
+  Class arrCls = arr.getClass();
+  Class cmpCls = arrCls.getComponentType();
+  int offset = u.arrayBaseOffset(arrCls);
+  int skip = u.arrayIndexScale(arrCls); 
+  int arridx = -1; 
+  int pos = offset - skip; 
+
+  StringBuilder sb = new StringBuilder(256); 
+
+  while ((pos += skip) < arr.length * skip) { 
+    arridx += 1; 
+    sb.append(String.format(
+    "%c[0;36m[%c[1;32m%4d%c[0;36m]%c[0m  %4d:  %s  %12d\n", 
+      0x1b, 0x1b, arridx, 0x1b, 0x1b, pos, 
+      StringUtils.leftPad(
+        Integer.toHexString( u.getInt(arr, pos) ), 8
+      ).replaceAll(
+        "[ 0]", 
+        ((char) 0x1b) + "[1;30m0" + ((char) 0x1b) + "[0m"
+      ), 
+      u.getInt(arr, pos)
+    )); 
+  }
+  
+  sb.insert(0, String.format(
+    "\n  \n%s[] @ %x: (length = %d)\n\n", 
+    cmpCls.isPrimitive()
+      ? dumpMembers.colorize(
+          cmpCls.getCanonicalName(), "1;35"
+        )
+      : dumpMembers.colorize(
+          cmpCls.getName(), "1;36"
+        ), 
+    arr.hashCode(), 
+    Array.getLength(arr)
+  )); 
+  
+  System.out.println(sb.toString());
+}
+

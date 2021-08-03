@@ -1,0 +1,12 @@
+public static Pair dex(String className, dx2.dex.file.DexFile dexFile) {
+  dexFile = (dexFile != null) ? dexFile : JavaToDex.createDxDexFile();
+  byte[] classBytes = ZipUtil.toByteArray(CollectionUtil.firstOrDefault(ClassPathUtil.findClassSource(className)), ClassInfo.classNameToPath(className, "class"));
+  boolean isClassFile = (classBytes[0] == (byte) 0xCA && classBytes[1] == (byte) 0xFE && classBytes[2] == (byte) 0xBA && classBytes[3] == (byte) 0xBE && ClassInfo.getClassName(classBytes).equals(className));
+  dx2.dex.file.ClassDefItem classDefItem = JavaToDex.dexClass(ClassInfo.getClassName(classBytes), classBytes, dexFile);
+  dexFile.add(classDefItem);
+  OutputStreamWriter osw = new OutputStreamWriter(new org.apache.commons.io.output.CloseShieldOutputStream(System.err), java.nio.charset.StandardCharsets.ISO_8859_1);
+  classDefItem.debugPrint(osw, true);
+  osw.flush();
+  osw.close();
+  return Pair.of(dexFile, classDefItem);
+}

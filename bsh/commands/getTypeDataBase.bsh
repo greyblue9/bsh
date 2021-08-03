@@ -1,0 +1,5 @@
+public static Object getTypeDataBase() {
+  return Reflect.getfldval(Class.forName("sun.jvm.hotspot.runtime.VM", false, Thread.currentThread().getContextClassLoader()), "soleInstance").getTypeDataBase();
+}
+
+ 

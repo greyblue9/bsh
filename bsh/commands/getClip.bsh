@@ -1,0 +1,81 @@
+
+import android.sec.clipboard.data.file.WrapFileClipData;
+import android.sec.clipboard.data.ClipboardData;
+import org.apache.commons.lang3.StringUtils;
+import android.sec.clipboard.data.list.ClipboardDataUri;
+import android.sec.clipboard.data.list.ClipboardDataText;
+/*
+public static Object[] getClip(boolean raw) {
+  ObjectInput ois = new ObjectInputStream(
+    MarkableFileInputStream.from(
+      "/data/clipboard/clips.info_temp"
+    )
+  ); 
+  List<android.sec.clipboard.data.file.WrapFileClipData> wcl 
+    = (List) ois.readObject(); 
+  android.sec.clipboard.data.file.WrapFileClipData[] arr 
+    = wcl.toArray(new android.sec.clipboard.data.file.WrapFileClipData[0]);  
+  Object[] clips = raw
+   ? new ClipboardData[arr.length]
+   : new String[arr.length];
+  int cidx = -1; 
+  while (++cidx < arr.length) { 
+    clips[cidx] = raw
+      ? (Object) arr[cidx].getClipData()
+      : (Object) arr[cidx].getClipData().GetText();
+  }
+  return clips;
+}
+*/
+
+public static Object[] getClip(boolean raw) {
+  ObjectInput ois = new ObjectInputStream(
+    MarkableFileInputStream.from("/data/clipboard/clips.info_temp")
+  );
+  List<WrapFileClipData> wcl
+    = (List) ois.readObject();
+  android.sec.clipboard.data.file.WrapFileClipData[] arr
+    = wcl.toArray(new android.sec.clipboard.data.file.WrapFileClipData[0]);
+    
+  Object[] clips = new Object[arr.length];
+  for (int cidx=0, len=arr.length; cidx<len; ++cidx) {
+    Object cd = arr[cidx].getClipData();
+    Object data = (raw)
+      ? cd
+      : (
+          (cd instanceof android.sec.clipboard.data.list.ClipboardDataUri)
+            ? ((android.sec.clipboard.data.list.ClipboardDataUri) cd).GetUri().normalizeScheme().toSafeString()
+            : ((android.sec.clipboard.data.list.ClipboardDataText) cd).GetText()
+        );
+    clips[cidx] = data;
+  }
+  return CollectionUtil.toArray(Arrays.asList(clips));
+}
+
+
+
+public static String[] getClip(int start, int end) {
+  String[] cd = (String[]) getClip(false); 
+  if (end > cd.length) end = cd.length; 
+  if (start > cd.length) start = cd.length; 
+  return Arrays.copyOfRange(cd, start, end);
+}
+
+public static String getClip(int numEntries) { 
+  return getClip(numEntries, "\n");
+}
+
+public static String getClip() { 
+  return getClip(0, 1)[0];
+}
+
+public static String getClip(int numEntries, String sep) {
+  String[] clips = getClip(0, numEntries);
+  ArrayUtils.reverse(clips);
+  return StringUtils.join(clips, sep);
+}
+
+
+
+
+

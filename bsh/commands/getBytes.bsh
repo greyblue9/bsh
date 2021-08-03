@@ -1,0 +1,65 @@
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+public static byte[] getBytes(org.d6r.Range rng) { long size = rng.upperEndpoint() - rng.lowerEndpoint(); byte[] b = UnsafeUtil.getBytes(rng.lowerEndpoint(), (int) size); return b; };
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+public static byte[] getBytes(java.util.TreeMap$Node nodeEntry) { Object key = nodeEntry != null? nodeEntry.getKey(): null; if (nodeEntry instanceof org.d6r.Range) { return getBytes((org.d6r.Range) nodeEntry.getKey()); }; return null; };
+
+
+
+
+
+
+
+
+
+
+
+
+public static byte[] getBytes(java.util.TreeMap$Node nodeEntry) { Object key = nodeEntry != null? nodeEntry.getKey(): null; if (key instanceof org.d6r.Range) { return getBytes((org.d6r.Range) key); }; return null; };
+
+
+
+
+
+
+
+
+
+public static byte[] getBytes(java.util.TreeMap$Node nodeEntry) { Object key = nodeEntry != null? nodeEntry.getKey(): null; if (key instanceof org.d6r.Range) { return getBytes((org.d6r.Range) key); }; return null; };
+
+
+
+
+
+
+public static byte[] getBytes(int zfcaddr) { return new byte[] { (zfcaddr & 0xFF), (zfcaddr & 0xFF00) >>> 8, (zfcaddr & 0xFF0000) >>> 16, (zfcaddr & 0xFF000000) >>> 24 }; };
+
+
+

@@ -1,0 +1,248 @@
+import java.util.Map.Entry;
+
+
+public static String sugarSwitch(String origSrc, String name) {
+  Map cache = CollectionUtil.dbg.get("enumCache");
+  if (cache == null) {
+    CollectionUtil.dbg.put("enumCache", cache = new HashMap());
+  }
+  
+  if (origSrc == null) {
+    List<String> results = null;
+    Collections.reverse(results = getClips(".ordinal()]").filter("\n *case [0-9]+:\n"));
+    origSrc = results.firstOrDefault();
+    results.clear();
+  }
+  String TAG = "sugarSwitch";
+  
+  String className = null;
+  if (cache.containsKey(name)) {
+    className = cache.get(name);
+    enCls = DexVisitor.classForName(className);
+  } else {
+    className = (name.indexOf("$SwitchMap$") != -1)
+    ? StringUtils.substringAfter(name, "$SwitchMap$")
+    : StringUtils.substringAfter(name, "$SWITCH_TABLE$");
+    if (name.equals(className) || className.equals("")) {
+      throw new IllegalArgumentException(String.format(
+        "Expected name ('%s') to contain either '$SwitchMap$' or '$SWITCH_TABLE$'.",
+        name
+      ));
+    }
+    Log.d(TAG, "className = \"%s\"", className);
+    className = className.replace('$', '.');
+    Log.d(TAG, "className = \"%s\"", className);
+    Class enCls = DexVisitor.classForName(className);
+    while (enCls == null && className.indexOf('.') != -1) {
+      className = new StringBuilder(StringUtils.substringBeforeLast(className, ".")).append('$').append(StringUtils.substringAfterLast(className, ".")).toString();
+      Log.d("sugarSwitch", "trying %s", className);
+      enCls = DexVisitor.classForName(className);
+      if (enCls != null) {
+        Log.d(TAG, "Found class: %s", enCls);
+      }
+    }
+    cache.put(name, className);
+  } 
+    
+  if (!enCls.isEnum()) {
+    throw new IllegalArgumentException(String.format(
+      "Expected class (%s) to be an enum",
+      enCls
+    ));
+  }
+  
+  
+  Enum[] values = Reflector.invokeOrDefault(
+    enCls, "values", new Class[0], new Object[0]
+  );
+  //Log.d(TAG, "values = %s", Arrays.toString(values));
+  
+  Field enFld = null;
+  if (cache.containsKey(enCls)) {
+    enFld = cache.get(enCls);
+  } else {
+    Object dexElement = DexFinder.findDexElement(enCls);
+    Class[] cs = DexFile.getClassNameList(dexElement.dexFile.mCookie).to(Class);
+    String fieldRegex = String.format(
+      "int\\[\\] \\$.*%s", enCls.getName().replace('$', '.')
+    );
+    Log.d(TAG, "fieldRegex = \"%s\"", StringEscapeUtils.escapeJava(fieldRegex));
+    Field[] fields = Arrays.asList(getFields(cs, fieldRegex)).toArray(new Field[0]);
+    fields = fields.filter("\\$SWITCH_TABLE\\$");
+    Map _distMap = RealArrayMap.toMap(fields.select(FunctionUtil.bind(
+      "return m -> { " +
+      "  Pair.of(StringUtils.getLevenshteinDistance(m.getName(), name), m);" +
+      "}",
+      "name", name
+    )));
+    SortedMap distMap = new TreeMap();
+    distMap.putAll(_distMap);
+    Field enFld = null;
+    for (Iterator it = distMap.entrySet().iterator(); it.hasNext();) {
+      enFld = it.next().getValue();
+      break;
+    };
+    if (enFld == null) {
+      throw new IllegalArgumentException(String.format(
+        "Unable to find any int[] fields in the same DexFile as the dexFile " +
+        "defining the enum '%s' with a name matching the regex '%s' (\"%s\")",
+        enCls.getName(), fieldRegex, StringEscapeUtils.escapeJava(fieldRegex)
+      ));
+    }
+    cache.put(enCls, enFld);
+  }
+  
+  Log.d(TAG, "enFld = %s", dumpMembers.colorize(enFld));
+  Map mapping = null;
+  if (cache.containsKey(enFld)) {
+    mapping = cache.get(enFld);
+  } else {
+    Method enMethod = enFld.getDeclaringClass().getDeclaredMethod  (enFld.getName());
+    enMethod.setAccessible(true);
+    int[] ints = enMethod.invoke(null);
+    Map _mapping = new TreeMap();
+    for (int i = 0, len = values.length; i < len; ++i) {
+      Enum value = values[i];
+      int caseNum = ints[value.ordinal()];
+      _mapping.put(Integer.valueOf(caseNum), value.name());
+    }
+    mapping = RealArrayMap.asBiMap(_mapping);
+    cache.put(enFld, mapping);
+  }
+  System.gc();
+  
+  StringBuilder src = new StringBuilder(origSrc.length() * 2).append(origSrc);
+  for (Entry entry : mapping.entrySet()) {
+    Matcher mchr = Pattern.compile(String.format("case %d:", entry.getKey())).matcher(src);
+    if (!mchr.find())
+      continue;
+    src.replace(0, src.length(), mchr.replaceAll(String.format("case %s:", entry.getValue())));
+  }
+  
+  List<List> matches = null;
+  String srcNew = "";
+  StringBuilder sbSrcNew = new StringBuilder(src.length());
+  while (matches == null || !matches.isEmpty()) {
+    matches = CollectionUtil.flatten(
+      src.matchLines("switch ?\\(([^\n]*)\\)").filter(
+        enCls.getName().replace('$', '.')
+      )
+    );
+    Iterator it = matches.iterator();
+    if (!it.hasNext()) break;
+    String match = it.next();
+    int start = src.indexOf(match);
+    int lsqpos = match.indexOf('[');
+    int dotOrdPos = match.indexOf(".ordinal()");
+    String replStr = match.substring(lsqpos + 1, dotOrdPos);
+    sbSrcNew.setLength(0);
+    sbSrcNew.append(src);
+    Log.d(
+      TAG, "Replacing enum-switch header:\n    %s\nwith:\n    \n",
+      sbSrcNew.subSequence(start, start + match.length()), replStr
+    );
+    
+    sbSrcNew.replace(start, start + match.length(), replStr);
+    srcNew = sbSrcNew.toString();
+    src.setLength(0); src.append(srcNew);
+  };
+  
+  return srcNew;
+}
+
+public static String sugarSwitch(String name) {
+  return sugarSwitch(null, name);
+}
+
+
+import com.github.javaparser.ast.CompilationUnit;
+import com.github.javaparser.ast.ImportDeclaration;
+import com.github.javaparser.ast.PackageDeclaration;
+import com.github.javaparser.ast.body.EnumConstantDeclaration;
+import com.github.javaparser.ast.body.EnumConstantDeclaration;
+import com.github.javaparser.ast.body.EnumDeclaration;
+import com.github.javaparser.ast.expr.ArrayInitializerExpr;
+import com.github.javaparser.ast.expr.AssignExpr;
+import com.github.javaparser.ast.expr.MethodCallExpr;
+import com.github.javaparser.ast.stmt.LocalClassDeclarationStmt;
+import com.github.javaparser.ast.stmt.LocalClassDeclarationStmt;
+import com.github.javaparser.ast.stmt.SwitchEntryStmt;
+import com.github.javaparser.ast.stmt.SwitchStmt;
+import com.github.javaparser.ast.type.ArrayType;
+import com.github.javaparser.ast.expr.IntegerLiteralExpr;
+import com.github.javaparser.ast.expr.NameExpr;
+
+public static Object sugarSwitch(String src, boolean returnRawCompilationUnit) {
+  CompilationUnit sugaredCu = sugarSwitch(parseJava(src, true));
+  if (returnRawCompilationUnit) return sugaredCu;
+  return sugaredCu.toString().replaceAll("(?<= |\n|^)    ", "  ");
+}
+
+
+JavaParserVisitor v = new JavaParserVisitor(SwitchStmt.class); 
+cu.getTypes()[0].accept(v, v);
+Set sws = v.toSet();
+for (SwitchStmt sw: sws) {
+  Object swrawval = sw.getSelector();
+  Object swval = sw.getChildNodes().firstOrDefault().getIndex().getScope().get();
+  System.err.printf(
+    "Working on:\n      switch (%s)\nm  --> switch (%s)\n",
+    swrawval, swval
+  );
+  NodeList<SwitchEntryStmt> swents = sw.getEntries();
+  for (Iterator it = swents.iterator(); it.hasNext();) { 
+    SwitchEntryStmt swent = it.next();
+    if (!swent.getLabel().isPresent()) continue;
+    Object expr = swent.getLabel().get();
+    if (!(expr instanceof IntegerLiteralExpr)) continue;
+    int num = numexpr.asInt();
+    String enumValueName = "OP_NAME";
+    Object nameExpr = new NameExpr(enumValueName);
+    swent.setLabel(nameExpr);
+    System.err.printf("case %d  -->  %s\n", num, swent);
+  };  
+};
+
+
+
+public static CompilationUnit sugarSwitch(CompilationUnit cu) {
+  boolean changed = true;
+  int curMaxDepth = 0;
+  
+  // TODO: Process all types
+  TypeDeclaration t = cu.getTypes().firstOrDefault();
+  System.err.printf("parsed type: %s\n", t.getName());
+  
+  JavaParserVisitor swv  = new JavaParserVisitor(SwitchStmt.class);
+  JavaParserVisitor swv2 = new JavaParserVisitor(SwitchStmt.class);
+  
+  outer:
+  while (changed) { 
+    changed = false;
+    cu.accept(swv, swv);
+    Set<SwitchStmt> switches = swv.toSet();
+    
+  for (sw: q) { sw.accept(subSwv = new JavaParserVisitor(com.github.javaparser.ast.stmt.SwitchStmt.class), subSwv); if (iter == 0 && subSwv.toSet().size() > 1) { continue; }; Log.d("sugarSwitchTxfm", "selector is: %s", sw.getSelector()); if (sw.getSelector() instanceof com.github.javaparser.ast.expr.SimpleName || sw.getSelector().getName() instanceof com.github.javaparser.ast.expr.SimpleName) { System.err.println("This one is already done..."); continue; };    String name = sw.getSelector().getName().getName().asString(); Log.d("sugarSwitchTxfm", "extracted name: %s", name);  if (! name.startsWith("$SWITCH")) continue;  
+
+  String swSrc = sw.toString(); 
+  System.err.printf("Working on \"%s\" ...\n", name);
+  String swSrc2 = sugarSwitch(swSrc, name); 
+  System.out.printf("result:\n%s\n", swSrc2);
+  
+  t2 = parseJava(String.format(
+    "public class A { public void a() { %s } }", swSrc2
+  ) ,true); 
+  t2.accept(
+    swv = new JavaParserVisitor(com.github.javaparser.ast.stmt.SwitchStmt.class),
+    swv
+  );
+  sw2 = swv.toSet()[0];
+  
+  sw.getParentNode().get().getNodeLists()[0].replace(sw, sw2);
+  src = cu.toString();
+  continue outer; 
+   
+  };
+};
+
+

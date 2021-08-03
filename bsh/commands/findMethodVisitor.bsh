@@ -1,0 +1,17 @@
+
+
+
+
+
+
+public static MethodVisitor findMethodVisitor(Iterable<MethodVisitor> methods, MethodDefinition md) { String mdName = md.getName(); String mdDesc = md.getErasedSignature();  for (MethodVisitor mv: methods) { com.googlecode.dex2jar.Method djm = mv.method; String name = djm.name, desc = djm.desc; System.out.printf("%s: %s\n", name, desc); if (name.equals(mdName) && desc.equals(mdDesc)) return mv; }; return null; }
+
+
+
+
+
+
+public static MethodVisitor findMethodVisitor(Iterable<MethodVisitor> methods, MethodDefinition md) { String mdName = md.getName(); String mdDesc = md.getErasedSignature();  for (MethodVisitor mv: methods) { com.googlecode.dex2jar.Method djm = mv.method; System.out.println(Debug.ToString(djm)); String name = djm.name, desc = djm.getDesc() != null? djm.getDesc(): String.format("(%s)%s", StringUtils.join(djm.getParameterTypes(), ""), djm.getReturnType()); System.out.printf("%s: %s\n", name, desc); if (name.equals(mdName) && desc.equals(mdDesc)) return mv; }; return null; }
+
+
+

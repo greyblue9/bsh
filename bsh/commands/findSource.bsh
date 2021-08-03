@@ -1,0 +1,132 @@
+
+import org.apache.commons.io.IOUtils;
+import org.apache.commons.io.FileUtils;
+import org.apache.commons.io.LineIterator;
+
+import java.util.regex.Pattern;
+import java.util.regex.Matcher;
+import java.util.regex.MatchResult;
+
+import bsh.ClassIdentifier;
+import bsh.Capabilities;
+import com.android.dex.Dex;
+import com.android.dex.ClassDef;
+
+public static URL findSource(ClassIdentifier ci) {
+  Class cls 
+    = (Class) ((ClassIdentifier) ci).getTargetClass();
+  return findSource(cls);
+}
+
+
+public static URL findSource(Class cls) {
+  return findSource(cls.getName()); 
+}
+
+
+public static String getClassSourceFile(Class cls) {
+  Dex dex = org.d6r.ClassInfo.getDex(cls);
+  int cdIdx = cls.getDexClassDefIndex();
+  ClassDef classDef = getClassDef(dex, cdIdx);
+  int sourceFileStringIndex = classDef.getSourceFileIndex();
+  if (sourceFileStringIndex >= 0) {
+    return dex.strings().get(sourceFileStringIndex);
+  }
+  return null;
+}
+
+
+public static ClassDef getClassDef(Dex dex, int cdIdx) {
+  Dex.Section s = dex.open(dex.getTableOfContents().classDefs.off);
+  int pos0 = s.getPosition();  
+  ClassDef def, def0 = s.readClassDef();
+  int pos = s.getPosition(), itemSize = pos - pos0;
+  if (cdIdx == 0) return def0;
+  if (cdIdx > 1) s.skip((cdIdx - 1) * itemSize);  
+  def = s.readClassDef();
+  return def;
+}
+
+
+
+
+public static URL findSource(String clsName) {
+  String srcResPath = ClassInfo.classNameToPath(
+    StringUtils.substringBefore(clsName, "$"), "java"
+  );
+  ClassLoader clsLoader 
+    = Thread.currentThread().getContextClassLoader();
+  
+  URL srcResUrl = clsLoader.getResource(srcResPath);
+  if (exists(srcResUrl)) return srcResUrl; 
+
+  if (Capabilities.classExists(clsName)) {
+    Class cls = Class.forName(
+      clsName, false,
+      Thread.currentThread().getContextClassLoader()
+    );
+    String tgtfn = getClassSourceFile(cls);
+    if (tgtfn != null) {
+      // "com.example"
+      String pkg = cls.getName().replaceAll("^(.*)\\.([^.$]+)(?:\\$.*)?$", "$1");
+      // "com/example/RealSourceFile.java"
+      String tgtResPath = pkg.concat(".").concat(StringUtils.substringBefore(tgtfn, ".java")).replace('.', '/').concat(".java");    
+      URL tgtResUrl_CL = clsLoader.getResource(tgtResPath);
+      if (exists(tgtResUrl_CL)) return tgtResUrl_CL;
+      URL tgtResUrl_Ex = findSourceEx(tgtResPath);
+      if (exists(tgtResUrl_Ex)) return tgtResUrl_Ex;
+    }
+  }
+  
+  // fallback
+  URL srcResUrl = findSourceEx(srcResPath);
+  if (exists(srcResUrl)) return srcResUrl;   
+  return null;
+}
+
+
+public static URL findSourceEx(String srcResPath) { 
+  Pattern dirPtrn = Pattern.compile(
+    "^.*?[\"']*([^\"' ]+[^ \"']*/[^ '\"]+[^ \"' ]*)[\"']*.*?$");
+    
+  File[] allDirs = CollectionUtil.dbg.get("allDirs");
+  if (allDirs == null) {
+    System.err.printf("[INFO] Building directory set ... ");
+    Set<String> allDirsSet = new TreeSet<String>();
+    LineIterator lit 
+      = FileUtils.lineIterator(new File("findsrc"));
+    while (lit.hasNext()) { 
+      String crntLine = lit.next(); 
+      Matcher lineMatcher = dirPtrn.matcher(crntLine); 
+      if (! lineMatcher.find()) continue; 
+      MatchResult lineResult = lineMatcher.toMatchResult(); 
+      String base = lineResult.group(1);
+      List<String> dirs = base.indexOf('*') != -1
+        ? expandGlob(base)
+        : Arrays.asList(base);
+      allDirsSet.addAll(dirs);
+    }
+    allDirs = allDirsSet.toArray(new String[0]).to(File);
+    CollectionUtil.dbg.put("allDirs", allDirs);
+    System.err.printf("[INFO] Building directory set complete!\n");
+    System.err.printf("[INFO] %d dirs in set: %s\n", allDirs.length, 
+      ClassInfo.getSimpleName(allDirsSet.getClass().getName()));
+  }
+  
+  for (int i=-1, len=allDirs.length; ++i<len;) {
+    File srcBaseDir = allDirs[i];
+    // if (! srcBaseDir.exists()) continue;
+    File srcFile = new File(srcBaseDir, srcResPath);
+    if (! srcFile.exists()) continue;      
+    
+    URL srcUrl = PosixFileInputStream.resolve(srcFile).toURL();
+    if (exists(srcUrl)) return srcUrl;
+  }
+  return null;
+}
+
+
+
+
+
+

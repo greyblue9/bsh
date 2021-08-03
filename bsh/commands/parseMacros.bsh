@@ -1,0 +1,24 @@
+
+{
+
+  
+  { if (! bsh.Capabilities.classExists("org.eclipse.cdt.internal.core.parser.scanner.CPreprocessor")) { appendClassPathFile("/external_sd/_projects/sdk/cdt/cdt.jar");   CollectionUtil.getInterpreter().bcm.absoluteNonClasses.clear(); bsh.Capabilities.classes.clear(); XClassLoader.badClasses.clear();  }; };
+  
+  
+  
+  
+  
+  
+  
+public static Map parseMacros(String cSourceFilePath, String[] includePaths) { String path = cSourceFilePath; File file = new File(path); int size = (int) file.length(); FileInputStream fis = new FileInputStream(file); FileChannel ch = fis.getChannel(); Charset cs = java.nio.charset.StandardCharsets.UTF_8; char[] chars = FileUtils.readFileToString(file, cs).toCharArray(); org.eclipse.cdt.internal.core.parser.scanner.InternalFileContent fc = Reflect.allocateInstance(org.eclipse.cdt.internal.core.parser.scanner.InternalFileContent.class); Reflect.setfldval(fc, "fSource", new org.eclipse.cdt.internal.core.parser.scanner.CharArray(chars)); Reflect.setfldval(fc, "fFileLocation", path); Reflect.setfldval(fc, "fFiles", new ArrayList()); Reflect.setfldval(fc, "fFoundOnPath", new org.eclipse.cdt.internal.core.parser.scanner.IncludeSearchPathElement(file.getParentFile().getPath(), false)); Reflect.setfldval(fc, "fKind", org.eclipse.cdt.internal.core.parser.scanner.InternalFileContent.InclusionKind.USE_SOURCE); Reflect.setfldval(fc, "fMacroDefinitions", new ArrayList());    Object scannerInfo = new org.eclipse.cdt.core.parser.ExtendedScannerInfo(new TreeMap(), ArrayUtils.addAll(includePaths != null? includePaths: new String[0], new String[]{ file.getParentFile().getPath(), file.getParentFile().getParentFile().getPath() })), lang = org.eclipse.cdt.core.parser.ParserLanguage.C, logService = new org.eclipse.cdt.internal.core.indexer.StdoutLogService(), extConfig = org.eclipse.cdt.core.dom.parser.c.GCCScannerExtensionConfiguration.getInstance(), includeProvider = org.eclipse.cdt.internal.core.parser.SavedFilesProvider.getInstance();    org.eclipse.cdt.internal.core.parser.scanner.CPreprocessor cp = new org.eclipse.cdt.internal.core.parser.scanner.CPreprocessor(fc, scannerInfo, lang, logService, extConfig, includeProvider); List toks = new ArrayList(); for (int i=0, offset = -1, lastOffset = -1; i<size; i++) { lastOffset = offset; tok = cp.fetchToken(); offset = tok.getOffset(); if (offset == lastOffset) break; toks.add(tok); };        Map macroDefs = cp.getMacroDefinitions();  Map macroExps = RealArrayMap.toMap(macroDefs.entrySet().select(FunctionUtil.bind("return m -> { Pair.of(m.getKey(), new(String, m.getValue().getExpansionImage())); }")));  return macroExps; };  
+  
+  
+  
+  
+  public static Map parseMacros(String cSourceFilePath) { return parseMacros(cSourceFilePath, null); };
+  
+  
+}
+
+
+  

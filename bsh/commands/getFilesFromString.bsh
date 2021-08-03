@@ -1,0 +1,148 @@
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+public static ArrayList<File> getFilesFromString(String str) {
+  HashSet<File> files = new HashSet<File>();
+  Pattern ptrn = Pattern.compile("(\\.?/?([^*?\\<>\\s:]+| [^*?\\<>\\s:]+(/|.[a-z0-9]{1,7}))*)");
+  str = str.replaceAll("[^@()~+:A-Za-z0-9_.,/\\s-]+", "\n");
+  Matcher mchr = ptrn.matcher(str);
+  while (mchr.find()) {
+    MatchResult mr = mchr.toMatchResult();
+    String path = mr.group(0);
+    File file = new File(path);
+    if (file.exists()) {
+      files.add(
+        (file.getPath().startsWith("/"))
+          ? file
+          : file.getAbsoluteFile()
+     );
+    }
+  }
+  File[] filesArr = files.toArray(new File[0]);
+  Arrays.sort(filesArr);
+  return new ArrayList(Arrays.asList(filesArr));
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+public static ArrayList<File> getFilesFromString() {
+  return getFilesFromString(getClip(3));
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+public static Set getFilesFromString(String str) { Set files = CollectionFactory.newSet(new File("/")); files.clear(); String[] maybePaths = new NumberedLines(str.replace("\\u000d", "\n").replaceAll("(\\.?/[\\u0040-\\u007f!@#%()0-9/.,+=\\?:_ -]*)", "\nfile: $1\n").selectLines("^file: ")).toString().replaceAll("(^|\n)file: ", "$1").split("\n"); for (File file: maybePaths.to(File)) { if (file.exists()) files.add(file); }; return files; };
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+public static Set getFilesFromString(String str) { Set files = CollectionFactory.newSet(new File("/")); files.clear(); String[] maybePaths = new NumberedLines(str.replace("\\u000d", "\n").replaceAll("(\\.?/[\\u0040-\\u007f!@#%()0-9/.,+=\\?_ -]*)", "\nfile: $1\n").selectLines("^file: ")).toString().replaceAll("(^|\n)file: ", "$1").split("\n"); for (File file: maybePaths.to(File)) { if (file.exists()) files.add(file); }; return files; };
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+public static Set getFilesFromString(String str) { Set files = CollectionFactory.newSet(new File("/")); files.clear(); String[] maybePaths = new NumberedLines(str.replace("\\u000d", "\n").replaceAll("(\\.?/[\\u0040-\\u005a\\u005c\\u005e-\\u007f!@#%()0-9/.+=\\?_ -]*)", "\nfile: $1\n").selectLines("^file: ")).toString().replaceAll("(^|\n)file: ", "$1").split("\n"); for (File file: maybePaths.to(File)) { if (file.exists()) files.add(file); }; return files; };
+
+
+
+
+
+
+
+
+
+
+
+
+public static Set getFilesFromString(String str) { Set files = CollectionFactory.newSet(new File("/")); files.clear(); String[] maybePaths = new NumberedLines(str.replace("\\u000d", "\n").replace("|", "\t").replace(":", "\t").replaceAll("[\"';=`]", "\t").replaceAll("(\\.?/[\\u0040-\\u005a\\u005c\\u005e-\\u007f!@(){}#%0-9/.+=\\?_ -]*)", "\nfile: $1\n").selectLines("^file: ")).toString().replaceAll("(^|\n)file: ", "$1").split("\n"); for (File file: maybePaths.to(File)) { if (file.exists()) files.add(file); }; return files; };
+
+
+
+
+
+
+
+
+
+public static Set getFilesFromString(String str) { File root = new File("/"); Set files = CollectionFactory.newSet(new File("/")); files.clear(); String[] maybePaths = new NumberedLines(str.replace("\\u000d", "\n").replace("|", "\t").replace(":", "\t").replaceAll("[\"';=`]", "\t").replaceAll("(\\.?/[\\u0040-\\u005a\\u005c\\u005e-\\u007f!@(){}#%0-9/.+=\\?_ -]*)", "\nfile: $1\n").selectLines("^file: ")).toString().replaceAll("(^|\n)file: ", "$1").split("\n"); for (File file: maybePaths.to(File)) { if (file.exists() && ! root.equals(file)) files.add(file); }; return files; };
+
+
+
+
+
+
+public static Set getFilesFromString(String str) { File root = new File("/"); Set files = CollectionFactory.newSet(new File("/")); files.clear(); String[] maybePaths = new NumberedLines(str.replace("\\u000d", "\n").replace("|", "\t").replace(":", "\t").replaceAll("[\"';=`]", "\t").replaceAll("(\\.?/[\\u0040-\\u005a\\u005c\\u005e-\\u007f!@(){}#%0-9/.+=\\?_ -]*)", "\nfile: $1\n").selectLines("^file: ")).toString().replaceAll("(^|\n)file: ", "$1").split("\n"); maybePaths = ArrayUtils.addAll(maybePaths, new NumberedLines(str.replace("\\u000d", "\n").replaceAll("[\t ]+", "\n").replace(":", "\t").replaceAll("[\"';=`]", "\t").replaceAll("(\\.?/[\\u0040-\\u005a\\u005c\\u005e-\\u007f!@(){}#%0-9/.+=\\?_ -]*)", "\nfile: $1\n").selectLines("^file: ")).toString().replaceAll("(^|\n)file: ", "$1").split("\n")); for (File file: maybePaths.to(File)) { if (file.exists() && ! root.equals(file)) files.add(file); }; return files; };
+
+
+

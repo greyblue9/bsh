@@ -1,0 +1,18 @@
+
+
+
+
+
+
+
+public static EnumSet toEnumSet(long val, Enum[] states) { BitSet bs = BitSet.valueOf(new long[]{ val }); EnumSet es; List esValues = new ArrayList(); for (int i=0, bsl=bs.length(); i<bsl; ++i) { if (!bs.get(i)) continue; Enum st = states.length > i? states[i]: null; if (st == null) { System.err.printf("[WARN] No state in %s map for position %d (%3$d / 0x%3$x)\n", ClassInfo.getSimpleName(ClassInfo.typeToName(states.getClass().getComponentType().getName())), i, (long) Math.pow(2, i)); break; }; esValues.add(st); if (i == states.length-1) { System.err.printf("[WARN] Loop stopped after position %d (states.length == %d)\n", i, states.length); break; }; }; es = (esValues.isEmpty())? EnumSet.noneOf(states.getClass().getComponentType()): EnumSet.of(esValues.iterator().next(), esValues.toArray(new Enum[0]));  return es; };
+
+
+
+
+
+
+public static EnumSet toEnumSet(long val, Enum[] states) { BitSet bs = BitSet.valueOf(new long[]{ val }); EnumSet es; List esValues = new ArrayList(); for (int i=0, bsl=bs.length(); i<bsl; ++i) { if (!bs.get(i)) continue; Enum st = states.length > i? states[i]: null; if (st == null) { System.err.printf("[WARN] No state in %s map for position %d (%3$d / 0x%3$x)\n", ClassInfo.getSimpleName(ClassInfo.typeToName(states.getClass().getComponentType().getName())), i, (long) Math.pow(2, i)); break; }; esValues.add(st); if (i == states.length-1) { System.err.printf("[WARN] Loop stopped after position %d (states.length == %d)\n", i, states.length); break; }; }; es = (esValues.isEmpty())? EnumSet.noneOf(states.getClass().getComponentType()): EnumSet.of(esValues.iterator().next(), esValues.toArray(new Enum[0]));  return es; };
+
+
+

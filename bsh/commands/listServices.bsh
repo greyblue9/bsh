@@ -1,0 +1,3 @@
+
+public static List<String> listServices() { List serviceList = new ArrayList(Arrays.asList(android.os.ServiceManagerNative.asInterface(com.android.internal.os.BinderInternal.getContextObject()).listServices())); Collections.sort(serviceList); return serviceList; }
+

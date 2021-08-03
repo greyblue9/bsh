@@ -1,0 +1,25 @@
+public static List addToList(Pair cur) {
+  List myres = new ArrayList();
+  myres.add(cur.getKey());
+  if (!cur.getValue().isEmpty()) {
+    myres.add("<");
+    for (Object child : cur.getValue()) {
+      System.err.printf("getChildren(%s) \n  -> %s\n", child, getChildren(child));
+      myres.addAll(addToList(getChildren(child)));
+    }
+    myres.add(">");
+  }
+  return myres;
+}
+
+ public static Pair getChildren(Object node) {
+  Iterable children2 = (node instanceof sun.reflect.generics.tree.TypeTree) ? Arrays.asList(node.getClass().getDeclaredMethods().select(FunctionUtil.bind("return m -> { Iterable.isAssignableFrom(m.getReturnType())? m.invoke(node): (Arrays.asList().toArray().getClass().isAssignableFrom(m.getReturnType())? Arrays.asList(m.invoke(node)): null); }", "node", node))).firstOrDefault() : null;
+  Object base = (base = Reflect.getfldval(node, "name")) != null ? base : children2 != null ? Reflect.getfldval(children2.firstOrDefault(), "name") : "<null>";
+  return Pair.of(base, children2 != null ? children2 : Collections.emptyList());
+}
+
+ public static String typeToString(sun.reflect.generics.tree.TypeTree tree) {
+  return dumpMembers.colorize(addToList(getChildren(tree.path[0])).join("").toString(), "1;32");
+}
+
+ 

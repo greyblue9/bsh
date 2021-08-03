@@ -1,0 +1,9 @@
+
+
+public static String[] getLoadedClasses() {
+  PosixFileInputStream.pexecSync("logcat", "-c");
+  android.os.Debug.printLoadedClasses(0);
+  List<String> lines = Logcat.getProcessMessages();
+  return ClassInfo.typeToName(CollectionUtil.flatten(StringCollectionUtil.matchLines(StringUtils.join(lines, "\n"), "^\\[*L([^;]*);$")).sort().toArray(new String[0]));
+}
+

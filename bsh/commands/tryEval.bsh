@@ -1,0 +1,26 @@
+
+
+
+public static java.lang.Object tryEval(java.lang.String expr) {
+  
+  try { 
+    res = this.interpreter.eval(expr); 
+    print(res); 
+    return res;  
+  } catch (EvalError e) { 
+    last = getfldval( getfldval(e,"node"), "lastToken").image;
+    java.lang.String newExpr = expr.substring(0, expr.lastIndexOf(last)-1); 
+    
+    if (newExpr.length() > 0) { 
+      r = tryEval(newExpr); 
+      print(r); 
+      v = getfldval(r, last); 
+      print(v); 
+      return v;
+    }
+  } 
+  
+  return null; 
+}
+
+

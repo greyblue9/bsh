@@ -1,0 +1,7 @@
+
+
+
+public static Object getMethodAst(Member mtd) { String methodName = mtd.getName(); className = mtd.getDeclaringClass().getName(); (astmds = (t=SourceTypeSolver.getDefault().solveType(className)).getDeclaredMethods()).size(); ast = (astmd = astmds.select(FunctionUtil.bind("return m -> { m.getName().equals(name) && size(m.getParameters()) == numParams? m: null; }", "name", methodName, "numParams", mtd.getParameterTypes().length)).firstOrDefault()); if (ast == null){ ast = (astmd = astmds.select(FunctionUtil.bind("return m -> { m.getName().equals(name)? m: null; }", "name", methodName)).firstOrDefault()); }; return ast; };
+
+
+

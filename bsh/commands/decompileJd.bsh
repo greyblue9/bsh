@@ -1,0 +1,4 @@
+public static String decompileJd(Class cls) { javassist.ClassPool cp = CollectionUtil.getClassPool(); URL url = cp.find(cls.getName()); if (url != null) { URLConnection conn = url.openConnection(); conn.setUseCaches(false); InputStream is = null; try { is = conn.getInputStream(); byte[] bytes = IOUtils.toByteArray(is); dc = new jd.core.DecompilerImpl(new jd.commonide.preferences.IdePreferences(true, true, false, true, true, false, true)); return dc.decompileClass(bytes); } finally { IOUtils.closeQuietly(is); } } return null; }
+
+public static String decompileJd(bsh.ClassIdentifier ci) { return decompileJd((Class) ((bsh.ClassIdentifier) ci).getTargetClass()); }
+

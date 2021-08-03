@@ -1,0 +1,53 @@
+import java.util.Map.Entry;
+
+
+public static Class addDefaultImport(Object clazz) {
+  Iterable<CharSequence> outLines = null;
+  Class cls = dumpMembers.getClass(clazz);
+  String className = ClassInfo.typeToName(cls);
+  System.out.println(className);
+  Map tm = new TreeMap();
+  File bshBaseDir = new File(
+    bsh.NameSpace.getClassResource(bsh.Interpreter.class).openConnection().getJarFileURL().getPath()
+  ).getParentFile();
+  
+  for (String subdirName : Arrays.asList("out", "src", "overlay", "outdir_perm_files")) 
+  {
+    File listFile = new File(new File(bshBaseDir, subdirName), "class_imports.list");
+    if (!(listFile.exists()))
+      continue;
+    long sz = listFile.length();
+    tm.put(Long.valueOf(sz), listFile);
+  }
+  
+  Entry largest = Arrays.asList(
+    ArrayExtensions.reverse(tm.entrySet().toArray(new Entry[0]))
+  ).iterator().next();
+  
+  long size = largest.getKey();
+  File file = largest.getValue();
+  List<String> lines = java.nio.file.Files.readAllLines(
+    Paths.get(file.getAbsolutePath()), java.nio.charset.StandardCharsets.UTF_8
+  );
+  
+  Set<String> all = new TreeSet();
+  all.addAll(CollectionUtil2.filter(
+    lines, Pattern.compile("^[a-zA-Z0-9_$.]+$").matcher("")
+  ));
+  
+  if (!all.add(className) && false) {
+    System.err.printf("Class already listed in [%s]\n", file.getAbsolutePath());
+    return cls;
+  }
+  outLines = all;
+  for (File listFile : tm.values()) {
+    Path listPath = Paths.get(listFile.getAbsolutePath());
+    Files.write(listPath, outLines, java.nio.charset.StandardCharsets.UTF_8);
+  }
+  System.err.println(PosixFileInputStream.pexecSync("mksh", "-c", "cd /storage/extSdCard/_projects/sdk/bsh/trunk/out; time=\"$( busybox_st stat -c %Y ../bsh-mod.jar; )\"; echo -E \"File time: $time\"; zip -u ../bsh-mod.jar class_imports.list; rs=$?; busybox_st touch \"--date=@${time}\" ../bsh-mod.jar; time=\"$( busybox_st stat -c %Y ../bsh-mod.jar; )\"; echo -E \"File time: $time\"; return $rs; "));
+  return cls;
+}
+
+
+
+

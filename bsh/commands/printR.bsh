@@ -1,0 +1,196 @@
+{
+
+
+public static Map printR(Object obj) { 
+  if (obj instanceof Class) return printR((Class) obj);
+  if (obj instanceof bsh.ClassIdentifier) {
+    return printR((Class) ((bsh.ClassIdentifier) obj).getTargetClass());
+  }
+  return printR((Object) obj, false);
+}
+
+
+public static Map printR(Object obj, boolean altToString) {
+  return printR(obj, altToString, (String) null);
+}
+
+public static Map printR(Object obj, boolean altToString,
+  String customBlacklistRegex)
+{
+  Map rmap = new TreeMap(); 
+  Object result = null; 
+  Class clazz = obj.getClass(); 
+  
+  String blacklistRegex = (customBlacklistRegex != null)
+    ? customBlacklistRegex
+    : "^[^a-zA-Z]*(?:detach|disconnect|connect|send|kill|delete|unlink|mklink|remove|add|delete|set|put|clone|free|unzip|define|create|make|write|save|close|apply|inlinePossibles|inlineSyntheticAccessors|insertLabelledBlocks|miscKeyholeTransforms|prettifyBadLoops|processEndingBlocks|removeConstructorBoilerplate|removeInnerClassOuterThis|removePointlessBlocks|removePointlessReturn|removePrimitiveDeconversion|removeStructuredGotos|removeSyntheticConstructorOuterArgs|removeUnnecessaryLabelledBreaks|removeUnnecessaryVarargArrays|replaceAsSource|replaceInSources|replaceInTargets|replaceNestedSyntheticOuterRefs|rewriteBadCastChains|rewriteLambdas|tidyEmptyCatch|tidyTryCatch|tidyTypedBooleans|tidyVariableNames|addSource|addSource|addTarget|addTarget|collectTypeUsages|copyBlockInformationFrom|informBlockMembership|linearizeStatementsInto|nopOut|nopOutConditional|nopThis|removeLastContinue|removeLastGoto|removeLastGoto|replaceContainedStatement|replaceSource|replaceStatement|replaceStatement|replaceStatementWithNOP|replaceTarget|setSources|setTargets|traceLocalVariableScope|transform|init|setup|create|new|swap|with|null|zero|clear|reset|mark|clearAttributes|remove|initStorage|removeAttr|copyAttributesFro|copy|mkdir|make|del|add|getParent|getOriginalNode|getTranslationUnit|getRawSignature|getLeadingSyntax)";
+  
+  Matcher mchr = Pattern.compile(
+    blacklistRegex,
+    Pattern.CASE_INSENSITIVE | Pattern.DOTALL
+  ).matcher("");
+      
+  do { 
+    System.err.printf("clazz: %s\n", clazz);
+    
+    for (Method md: clazz.getDeclaredMethods()) {
+      if (md.getParameterTypes().length!=0 || md.getReturnType()==Void.TYPE)
+        continue;
+      String name = md.getName();
+      if ("detach".equals(name) ||
+          "exit".equals(name) ||
+          "disconnect".equals(name) ||
+          "close".equals(name) ||
+          "clear".equals(name) ||
+          "remove".equals(name) ||
+          "delete".equals(name) ||
+          "free".equals(name) ||
+          "release".equals(name) ||
+          "mark".equals(name) ||
+          "release".equals(name))
+      {
+        continue; 
+      }
+      if (mchr.reset(name).find()) continue;
+      md.setAccessible(true);
+      
+      try
+      {
+        result = md.invoke(obj);
+        if (result == null) { 
+          type = md.getGenericReturnType();
+          resultStr = "null";
+          resultStrDebug = "\u001b[1;30m<null>\u001b[0m";
+          typeStr = dumpMembers.typeToString(type);
+        } else { 
+          type =bsh.Factory.typeof(result); 
+          typeStr = dumpMembers.typeToString(type); 
+          if (md.getGenericReturnType() instanceof ParameterizedType) {
+            typeStr = String.format(
+              "%s<%s>", 
+              StringUtils.substringBefore(typeStr, "<"), 
+              StringUtils.substringAfter(
+                StringUtils.substringBeforeLast(
+                  md.getGenericReturnType().toString(), ">"
+                ), "<"
+              )
+            );
+          };
+          resultStr = String.valueOf(result);
+          if (resultStr.length() > 2048) {
+            resultStr = resultStr.substring(0, 2048).concat("..."); 
+          }
+          try {
+            resultStrDebug = (altToString)
+              ? ToString(result)
+              : Debug.tryToString(result, 0, 4);
+          } catch (Exception e) {
+            resultStrDebug = Debug.ToString(result);
+          } catch (Throwable e2) {
+            resultStrDebug = Debug.ToString(result);
+          };
+          if (md.getReturnType().equals(String.class) && result != null) {
+            resultStr = String.format(
+              "\u001b[1;33m\"%s\"\u001b[0m", resultStr
+            );
+            resultStrDebug = "";
+          };
+          System.out.printf(
+            "\u001b[1;32m%s\u001b[0m():  %s  (%s)\n     %s\n\n", 
+            String.format(
+              "%".concat(String.valueOf(5)).concat("s"),
+              md.getName()
+            ),
+            resultStr,
+            dumpMembers.colorize(ClassInfo.getSimpleName(typeStr), "1;36"),
+            (
+              (resultStrDebug.length() > 768
+                ? resultStrDebug.subSequence(0, 768).concat(" . . .")
+                : resultStrDebug)
+            ).replaceAll("(^|\n)", "$1      ")
+          );
+          rmap.put(md.getName(), result);
+        };// endif result != null        
+      } catch (Throwable e3) {
+        System.out.printf(
+          "%5s  <%s>\n    at %s\n",
+          md.getName(),
+          (e3 = Reflector.getRootCause(e3)),
+          e3.getStackTrace().firstOrDefault()
+        );
+      } // end try
+    } // end method loop
+  } while ((clazz = clazz.getSuperclass()) != Object.class 
+         && clazz != null);   
+  return new bsh.NameSpace.BindingMap(rmap);
+};
+
+
+
+public static Map printR(bsh.ClassIdentifier ci) {
+  return printR((Class) ((ClassIdentifier) ci).getTargetClass());
+};
+
+public static Map printR(bsh.ClassIdentifier ci, boolean expanded) {
+  return printR((Class) ((ClassIdentifier) ci).getTargetClass(), expanded);
+};
+
+public static Map printR(Class cls) {
+  return printR((Class) cls, false);
+};
+
+public static Map printR(Class cls, boolean expanded) {
+  List<Method> methods
+    = CollectionUtil2.typeFilter(Reflect.getMembers(cls), Method.class).select(
+        FunctionUtil.bind(
+          "return m -> { " +
+          "  m.setAccessible(true); " +
+          "  return (((m.getModifiers() & Modifier.STATIC) != 0) && " +
+          "         Array.getLength(m.getParameterTypes()) == 0) " +
+          "           ? m " +
+          "           : null; " +
+          "}"
+        )
+      );
+  Class dcls = null;
+  Map rmap = new TreeMap();
+  Object result = null;
+  for (Method method : methods) {
+    Class dc = method.getDeclaringClass();
+    bsh.ClassIdentifier ci
+      = (bsh.ClassIdentifier) new bsh.ClassIdentifier((Class) dc);
+    if (dc != dcls) {
+      dcls = dc;
+      String header = String.format(
+        "// As %s %s", ClassInfo.getModifiers(dc.getModifiers()), ci
+      );
+      try {
+        header = Reflector.invokeOrDefault(dumpDexClass2.class, "typeHeader", ci);
+      } catch (Throwable ex_) {
+        System.err.println(Reflector.getRootCause(ex_));
+      }
+      System.err.printf("\n%s\n\n", header);
+    }
+    System.err.println(dumpMembers.colorize(method));
+    try {
+      result = method.invoke(null);
+      if (result != null) {
+        rmap.put(method.getName(), result);
+        String debugToString = Debug.ToString(result);
+        String strResult = (expanded)
+          ? (debugToString
+             .replaceAll("(\u001b\\[0;36m\\{\u001b\\[0m)",    "$1\n     ").replace(",", ",\n     ").replaceAll("(\u001b\\[[^m]*m.?\\}.?\u001b\\[0m)", "\n    $1"))
+          : (debugToString);
+        System.err.printf("  = %s\n", strResult);
+      };
+    } catch (ReflectiveOperationException e) {
+      e.printStackTrace();
+    }
+    System.err.println("");
+  }
+  return new bsh.NameSpace.BindingMap(rmap);
+};
+
+
+void;
+};

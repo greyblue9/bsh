@@ -1,0 +1,2 @@
+public static List loadAllVariables() { for (Map vmap: getAllVariables().entrySet()) { System.err.printf("loading variables from: [%s] ...\n", vmap.getKey()); CollectionUtil.getInterpreter().getNameSpace().getVariables().putAll((Map) vmap.getValue()); }; return Arrays.asList(CollectionUtil.getInterpreter().getNameSpace().getVariableNames()); }
+

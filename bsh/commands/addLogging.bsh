@@ -1,0 +1,18 @@
+public static String addLogging(String ms) {
+  Matcher mchr = Pattern.compile("^( *)(?:(?:declared|public|abstract|annotation|bridge|constructor|enum|final|interface|miranda|native|private|protected|public|static|strict|synchronized|synthetic|transient|varargs|volatile) )*([A-Z]+[a-zA-Z0-9_$]*[^;\n=]*) ([a-zA-Z0-9_$]+)(?: *=| *; *$)", Pattern.DOTALL).matcher("");
+  String[] lines = ms.selectLines(".");
+  List<String> lines2 = new ArrayList(Arrays.asList(lines));
+  String ms2 = lines2.join("\n").toString();
+  for (String line : lines) {
+    int insertAt = ms2.indexOf("\n", ms2.indexOf(";", ms2.indexOf(line))) + 1;
+    int lineInsertAt = lines2.indexOf(ms2.subSequence(insertAt, ms2.indexOf("\n", insertAt)));
+    if (!mchr.reset(line).find())
+      continue;
+    String lineToInsert = String.format("%1$sif (LOGV) v(TAG, \"%3$s: (%%s) %%s\", getSimpleName(%3$s), %3$s);\n", mchr.group(1), mchr.group(2), mchr.group(3));
+    lines2.add(lineInsertAt, lineToInsert);
+    ms2 = lines2.join("\n");
+  }
+  return lines2.join("\n").toString();
+}
+
+ 

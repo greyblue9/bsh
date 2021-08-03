@@ -1,0 +1,1 @@
+public static Object fromAddress(long addr) { Object[] loader = new Object[1]; byte[] bsl = new byte[8]; UnsafeUtils.writeLong(bsl, 0, addr); int offs = -1; while(++offs < 8) { UnsafeUtils.putByte(loader, 16+offs, UnsafeUtils.getByteAt(bsl, offs)); } return loader[0]; }

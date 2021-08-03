@@ -1,0 +1,19 @@
+import java.util.Map.Entry;
+public static Map parseNetExportMap(Map requestPhaseMap) {
+  Map byid = RealArrayMap.toMap(getAllVariables2().get("parseNetExport").values()).get("byid");
+  Map byIndex = RealArrayMap.toMap(Iterables.concat(byid.values().select(FunctionUtil.bind("return m -> { FunctionUtil.select(m, FunctionUtil.bind(\"return n -> { Pair.of(n.get('index'), v); }\", \"v\", m)); };")).toArray(new Iterable[0])).toSet());
+  for (Entry e : requestPhaseMap.entrySet()) {
+    Map map = e.getValue();
+    if (map.containsKey("index")) {
+      Integer index = map.get("index");
+      map.putAll(RealArrayMap.toMap(Iterables.concat(Iterables.concat(byIndex[index].select(FunctionUtil.bind("return m -> { m.entrySet(); }")).toArray(new Iterable[0])).toSet().select(FunctionUtil.bind("return m -> { Map.isInstance(m.getValue())? m.getValue().entrySet(): Arrays.asList(m); }")).toArray(new Iterable[0]))));
+    }
+    if (map.containsKey("source_dependency")) {
+      Integer id = map.get("source_dependency").get("id");
+      map.put("source_dependency", RealArrayMap.toMap(Iterables.concat(Iterables.concat(byid[id].select(FunctionUtil.bind("return m -> { m.entrySet(); }")).toArray(new Iterable[0])).toSet().select(FunctionUtil.bind("return m -> { Map.isInstance(m.getValue())? m.getValue().entrySet(): Arrays.asList(m); }")).toArray(new Iterable[0]))));
+    }
+  }
+  return requestPhaseMap;
+}
+
+ 

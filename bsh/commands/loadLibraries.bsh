@@ -1,0 +1,38 @@
+public static void loadLibraries() {
+
+  for (File sofile: findFiles.iterate("/external_sd/_projects/natives", 0, ".*\\.so")) { 
+    System.err.println(sofile); 
+    try { 
+      Runtime.getRuntime().load(sofile.getPath()); 
+      System.err.println("  * success");
+    } catch (Throwable e) { ;; };;
+  }
+
+  String[] lns = org.apache.commons.lang3.StringUtils.split(
+    FileUtils.readFileToString(
+      new File("/external_sd/_projects/sdk/bsh/trunk/loadlibs.bsh")
+    ),
+    "\n"
+  ); 
+  
+  String[] srclns = StringCollectionUtil.toStringFilter(
+    lns, 
+    Pattern.compile(
+      "\"(?!cf)(?!cups)(?!java\")(?!jvm\")(?!jli\")[a-z_0-9]+\""
+    ).matcher("")
+  ); 
+
+  for (String ln: srclns) { 
+    try { 
+      name = StringUtils.substringBetween(ln, "'", "' ..."); 
+      System.err.println(name); 
+      Runtime.getRuntime().loadLibrary(name); 
+      if (!CollectionUtil.isJRE()) { Thread.currentThread().getContextClassLoader().badClasses.clear(); };  
+      bsh.Capabilities.classes.clear();   
+      System.err.println("  * Success"); 
+    } catch (Throwable e) { };; 
+  }
+
+}
+
+

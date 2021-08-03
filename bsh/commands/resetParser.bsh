@@ -1,0 +1,13 @@
+
+
+
+public static Object resetParser(Object p) { Reflect.setfldval(p.input.tokenSource, "state", Reflect.newInstance(Reflect.getfld(p.input.tokenSource.getClass(), "state").getType())); Reflector.invokeOrDefault(p.input.tokenSource, "reset"); Reflect.setfldval(p, "input", Reflect.newInstance(org.antlr.runtime.CommonTokenStream.class, Reflect.getfldval(p.input, "tokenSource"))); return Reflect.newInstance(p.getClass(), Reflect.getfldval(p, "input")); };
+
+
+
+
+
+
+public static Object resetParser(Object p) { p.reset(); Reflect.setfldval(p.input.tokenSource, "state", Reflect.newInstance(Reflect.getfld(p.input.tokenSource.getClass(), "state").getType())); Reflector.invokeOrDefault(p.input.tokenSource, "reset"); Reflect.setfldval(p, "input", Reflect.newInstance(org.antlr.runtime.CommonTokenStream.class, Reflect.getfldval(p.input, "tokenSource"))); if(p.getClass().getDeclaredConstructors()[0].getParameterTypes().length == 1) return Reflect.newInstance(p.getClass(), Reflect.getfldval(p, "input")); return p; };  
+
+

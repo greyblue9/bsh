@@ -1,0 +1,25 @@
+
+
+public static Map getAllVariables() {
+
+  return RealArrayMap.toMap(
+    NameSpace.all.where(
+      "m => m.getVariables().size() > 0"
+    ).select(StringUtils.join(Arrays.asList(
+      "m => org.apache.commons.lang3.tuple.Pair#of( ",
+      "  java.lang.String#format( ",
+      "    \"%04d:%s\", ",
+      "    new java.lang.Object[]{ ",
+      "      java.lang.Integer#valueOf( ",
+      "        m.getVariables().size() ",
+      "      ), ",
+      "      m.getName() ",
+      "    } ",
+      "  ), ",
+      "  m.getVariables() ",
+      "); "
+    ), "")).sort()
+  );
+
+}
+

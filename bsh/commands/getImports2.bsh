@@ -1,0 +1,102 @@
+
+public static String getImports2(String src) {
+  Matcher NAME_MCHR
+    = Pattern.compile("([A-Z][a-zA-Z0-9._$]*)").matcher("");
+  byte[] srcBytes = src.getBytes(
+    java.nio.charset.Charset.forName("UTF-8")
+  );
+  System.err.printf(
+    "Parsing java source code (%d bytes) ...\n", srcBytes.length
+  );
+  JavaFile jf = new JavaFile(new ByteArrayInputStream(srcBytes));
+  System.err.printf(
+    "Traversing syntax tree (%d type found) ...\n",
+    jf.cu.getTypes().size()
+  );
+  JavaVisitor jv = new JavaVisitor();
+  jf.cu.accept(jv, null);
+  System.err.printf("Processing results ...\n");
+  Set names = new LinkedHashSet();
+  TreeSet seen = new TreeSet(new ToStringComparator());
+  Collection<Type> clsTypes
+    = CollectionUtil2.typeFilter(
+        jv.visited, javafile.api.type.Type.class);
+  ArrayDeque q = new ArrayDeque();
+  Collections.addAll(q, clsTypes);
+  while (! q.isEmpty()) {
+    
+    javafile.api.type.Type t = q.pollFirst();
+    if (__type instanceof javafile.api.type.WildcardType
+    ||  __type instanceof javafile.api.type.PrimitiveType
+    ||  __type instanceof javafile.api.type.VoidType
+    ||  __type instanceof javafile.api.TypeParameter
+    ||  ((str = t.toString()).length() == 1
+       && str.equals(str.toUpperCase())))
+    {
+       continue;
+    }
+    if (! seen.add(t.toString())) continue;
+    if (__type instanceof javafile.api.type.ReferenceType) {
+      q.offerFirst(t.getType());
+      continue;
+    };
+    String name0 = t.toString();
+    List<String> names0 = name0.matchAll(NAME_MCHR).print();
+    for (String name0: names0) {
+      String quotedName = Pattern.quote(name0);
+      names.add(quotedName);
+    }
+    // names.addAll(Arrays.asList(names0));
+  };
+  
+  String[] classNames = ClassPathUtil.searchClassPath(
+    "^(?:java\\.|javax\\.annotation|org.apache.commons"
+    + "|com.google.common|com.sun.tools.classfile|javassist"
+    + "|java|bsh|org.objectweb|org.jf|org.benf.cfr|com.strobel"
+    + ")[.$](?:.+?[$.])?"
+    + "(?:"
+      .concat(
+        StringUtils.join(names, "|").replaceAll("[$./]", "[\\$.]")
+      ).concat(")$")
+  );
+  
+  
+  Arrays.sort(classNames, FunctionUtil.delegate(Comparator.class, 
+    "return (a, b) -> { \n" +
+    "  return Integer.compare(b.length(), a.length()); \n" +
+    "} \n"
+  ));
+  
+  
+  classNames.print();
+  
+  Pair[] pairs = classNames.select(FunctionUtil.bind(
+    "return m -> { \n" +
+    "  return Pair.of(StringUtils.substringAfterLast(" +
+    "    m.replace('$', '.'), '.'"
+    + "), m); \n" +
+    "} "
+  ));
+  
+  Map namesMap = RealArrayMap.toMap(pairs);
+  
+  System.err.println(StringUtils.join(namesMap.entrySet(), "\n"));
+  
+  String finalImports = (
+    "import " //;
+      .concat(StringUtils.join(
+        namesMap.entrySet().select(FunctionUtil.bind(
+          "return m -> { m.getValue(); }"
+        )),
+        ";\nimport "
+      )) //;
+    .concat(";\n").replace('$', '.')
+  );
+  
+  return StringUtils.join(
+    finalImports.selectLines("import .+;").sort().uniq(), '\n'
+  );
+}
+
+
+

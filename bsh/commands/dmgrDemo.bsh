@@ -1,0 +1,81 @@
+public static List dmgrDemo() {
+  
+  appendClassPath(new String[]{ 
+    "/external_sd/_APKs/SecMediaProvider-signed.apk", 
+    "/system/framework/framework-res.apk", 
+    "/system/app/" +
+   "Download_manager_19_4.4.2-N900AUCUCNC2-signed.apk"
+  }); 
+
+  // boilerplate
+  //   here ...
+  import android.os.Looper; 
+  import android.content.Context; 
+  import android.app.ActivityThread;  
+  Looper looper; 
+  if ((looper = Looper.myLooper()) == null) {
+    Looper.prepare(); 
+    looper = Looper.myLooper();
+  } 
+  main = ActivityThread.systemMain();   
+  at = ActivityThread.currentActivityThread();
+  app = at.getApplication();   
+  inst = at.getInstrumentation();  
+  cr = app.getContentResolver();  
+  Context bctx = app.mBase; 
+
+  dmgr = bctx.SYSTEM_SERVICE_MAP.get("download").getService(bctx); 
+  cns = new ArrayList(Arrays.asList(
+   mapClassPath().get(
+     "/system/app/" +
+   "Download_manager_19_4.4.2-N900AUCUCNC2-signed.apk"
+   )
+  ));
+  StringCollectionUtil.removeMatching(
+    cns, "^com.google.common."); 
+  cns.print(); 
+  mcns = StringUtils.split(
+    // long space-delimited class names supplier
+    "libcore.util.CollectionUtils$1 val$iterable android.content.res.Configuration ndroid.content.res.AssetManage ndroid.app.LoadedApk android.app.ContextImpl$ApplicationContentResolver mContentResolver java.util.ArrayList android.app.ActivityThread android.app.ActivityThread$H android.app.ActivityThread$ApplicationThrea android.os.IInterface android.content.res.AssetManager android.os.UserHandl mResolver android.content.ContentResolver com.android.providers.downloads.DownloadService$1 com.sec.android.provider.logsprovider android.util.Log$TerribleFailure", 
+    " "
+  );
+  
+  cs = mcns.select(evalJexl("""
+    m -> { 
+      val = m.replaceAll("\\(|\\)| .*$|<|>|, *", "");
+      Capabilities.classExists(val) 
+        ? Class.forName(val)
+        : null;
+    }
+    """)); 
+  
+  (cis = cs.select(evalJexl(
+    "m -> { new(ClassIdentifier, m); }"
+  )).sort()).print();   
+  
+  ArrayList all = new ArrayList();
+  for (ClassIdentifier cident: cis) { 
+    try { 
+      System.err.printf(
+        "Lopking for instances of: %s...\n", cident
+      ); 
+      Class clazz = (Class)
+       ((bsh.ClassIdentifier)cident).getTargetClass();
+      Map found = searchObject(dmgr, clazz); 
+      if (found.size() == 0) continue;
+      
+      printMap(found); 
+      Collections.addAll(
+        all, CollectionUtil.toArray(found.entrySet())
+      ); 
+      ttim.putInstance(
+        clazz, found.values().iterator().next()
+      ); 
+      found.values().printR();
+      System.out.println(found.size());
+    } catch (Throwable e) { 
+      System.err.println(e);;
+    };
+  }
+  return all;
+}

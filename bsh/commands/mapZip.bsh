@@ -1,0 +1,12 @@
+
+
+public static Map mapZip(org.apache.commons.compress.archivers.ArchiveInputStream ais, Iterable<Object> namesOrEntries) { Map zm = new TreeMap(); org.apache.commons.compress.archivers.ArchiveEntry entry = null; Set<String> nameStrs = new TreeSet(); for (Object o: (namesOrEntries != null? namesOrEntries: Collections.emptyList())) { if (o instanceof String) nameStrs.add(o); else if (o instanceof org.apache.commons.compress.archivers.ArchiveEntry) nameStrs.add(((org.apache.commons.compress.archivers.ArchiveEntry) o).getName()); else if (o instanceof ZipEntry) nameStrs.add(((ZipEntry) o).getName()); else nameStrs.add(o != null? o.toString(): "null"); }; while ((entry = ais.getNextEntry()) != null) { if (nameStrs.isEmpty() || nameStrs.contains(entry.getName())) { System.out.printf("%12s %s\n", entry.getSize(), entry.getName());  byte[] content = IOUtils.toByteArray(ais);  zm.put(entry.getName(), content); }; }; if (is.markpos == 0 && is.marklimit >= is.pos) { is.reset(); is.mark(Integer.MAX_VALUE); }; return zm; }
+
+
+
+
+public static Map mapZip(org.apache.commons.compress.archivers.ArchiveInputStream ais) { return mapZip(ais, null); }
+
+
+public static Map mapZip(ZipFile zipFile) { Map zipBuiltinEntryMap = Reflect.findField(Reflect.findField(zipFile.entries(), Iterator.class)[1], Map.class)[1]; try { return RealArrayMap.toMap(zipBuiltinEntryMap.entrySet().select(FunctionUtil.bind("return m -> { m.getValue().isDirectory()? null: Pair.of(m.getKey(), IOUtils.toByteArray(new(AutoCloseInputStream, zf.getInputStream(m.getValue())))); }", "zf",zipFile, org.apache.commons.io.input.AutoCloseInputStream.class))); } finally { zipBuiltinEntryMap = null; } };
+

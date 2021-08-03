@@ -1,0 +1,145 @@
+import org.d6r.InternalNames;
+import libcore.reflect.AnnotationAccess;
+import javassist.bytecode.SignatureAttribute;
+
+
+
+
+
+
+
+
+
+
+
+
+
+public static String getSignature(Class clz) {
+  unset("all");
+  unset("ifaces");
+  unset("superClass");
+  String sigstr = AnnotationAccess.getSignature(clz);
+  List all = new ArrayList();
+  Class superClass = clz.getSuperclass();
+  if (superClass != null) all.add(superClass);
+  
+  Class[] ifaces = clz.getInterfaces();
+  if (ifaces.length > 0) all.addAll(Arrays.asList(ifaces));
+  //if (superClass == null) all.remove(all.size() - 1);
+  outer:
+  while (sigstr != null) {
+    for (Class c: all) {
+      String expect = InternalNames.getInternalName(c).replace(";","");
+      System.out.println(expect);
+      if (sigstr.indexOf(expect) == -1) {
+        System.err.printf(
+          "Rejecting signature \"%s\", ".concat(
+          "because it does not contain expected class \"%s\"\n"),
+          sigstr, expect
+        );
+        break outer;
+      }
+    }
+    return sigstr;      
+  }
+  StringBuilder sigsb = new StringBuilder(80);
+
+  if (superClass != null) sigsb.append(
+    InternalNames.getInternalName(superClass)
+    // getSignature(superClass)
+  );
+  for (Class iface: ifaces) {
+    if (iface.getTypeParameters().length > 0) {
+      System.err.printf("generic interface: %s\n", iface);
+      sigsb.append(AnnotationAccess.getSignature(iface));
+      continue; 
+    }
+    sigsb.append(InternalNames.getInternalName(iface));
+  }
+  return sigsb.toString();
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+public static String typeHeader(bsh.ClassIdentifier ci) {
+  return typeHeader(
+    (Class) ((bsh.ClassIdentifier) ci).getTargetClass()
+  );
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+public static String typeHeader(Class clz) {
+  
+  String sigstr = getSignature(clz);
+  SignatureAttribute.ClassSignature sig 
+    = SignatureAttribute.toClassSignature(sigstr);
+  
+  StringBuilder sb = new StringBuilder(80 * 4);
+  sb.append("\u001b[1;36m").append(clz.getName()).append("\u001b[1;31m<\u001b[1;31m").append(StringUtils.join(
+      sig.getParameters(), 
+      "\u001b[1;31m, \u001b[1;31m"
+    )).append("\u001b[0;31m>\u001b[0m").append("\n     \u001b[0;36mextends\u001b[0m ").append("\u001b[1;36m").append(sig.getSuperClass().getName()).append("\u001b[0;31m<\u001b[1;31m").append(StringUtils.join(
+      sig.getSuperClass().toString().replaceAll(        
+        "^".concat(sig.getSuperClass().getName().toString()), 
+        ""
+      ), 
+      "\u001b[0;31m>\u001b[1;31m"
+    )).append("\u001b[0;31m>\u001b[0m");
+  
+  int ifaceidx = -1;
+  for (SignatureAttribute.ClassType ct: sig.getInterfaces()) {
+    if (++ifaceidx > 0) {
+      sb.append(", "); 
+    } else { 
+      sb.append("\n   \u001b[0;36mimplements\u001b[0m ");
+    }
+    sb.append("\u001b[1;36m").append(ct.getName()).append("\u001b[0;31m<\u001b[1;31m").append(StringUtils.join(
+        ct.toString().replaceAll("^".concat(ct.getName()), ""),
+        "\u001b[0m")
+      );
+  }
+  
+  int mods = clz.getModifiers();
+  mods &= (~(Modifier.INTERFACE));
+  sb.insert(0, String.format(
+    "\u001b[0;36m%s%s%s\u001b[0m ", 
+    Modifier.toString(mods), 
+    mods != 0 ? " " : "", 
+    clz.isInterface() ? "interface" : "class"
+  ));
+  
+  return sb.toString().replaceAll("1;31m<([^\n]*)0;31m>", "1;31m<$11;31m>").replaceAll("\u001b\\[0;31m[<>]+", "").replaceAll("\u001b\\[1;31m<(\u001b[^m]*m)*>>*", "").replaceAll("\n((?:(?!\n|31).)*)\u001b\\[1;31m"
+                + "<([^<\n]*)>(\u001b[^m]*m)*>+",
+                "\n$1\u001b[1;31m<$2>");
+}
+
+
+public static String typeHeader(Dex dex, String className) { String typeId = String.format("L%s;", ClassInfo.typeToName(className).replace('.', '/').replace(";", "")); int typeIndex = -2; try { typeIndex = dex.findTypeIndex(typeId); } catch (Throwable e) { typeIndex = -1; }; if (typeIndex < 0) return null; return typeHeader(dex, typeIndex); };
+
+
+public static String typeHeader(Dex dex, int typeIndex) { String className = dex.strings()[dex.typeIds()[typeIndex]]; int classDefIndex = dex.findClassDefIndexFromTypeIndex(typeIndex); ClassDef classDef = (classDefIndex != -1)? dex.classDefs()[classDefIndex]: null; int superTypeIndex = (classDef != null)? classDef.getSupertypeIndex(): -1; short[] ifaceTypeIndexes = (classDef != null)? classDef.getInterfaces(): new short[0]; String superClassName = (superTypeIndex != -1)? dex.strings()[dex.typeIds()[superTypeIndex]]: ""; List<String> ifaceClassNames = new ArrayList<String>(); for (int i=0,len=ifaceTypeIndexes.length; i<len; ++i) { int ifaceTypeIndex = (int) ifaceTypeIndexes[i]; String ifaceClassName = dex.strings()[dex.typeIds()[ifaceTypeIndex]]; ifaceClassNames.add(ifaceClassName); }; int modifiers = (classDef != null)? classDef.getAccessFlags(): -1; boolean isInterface = (modifiers != -1 && (modifiers & Modifier.INTERFACE) != 0); return String.format("%s%s%s%s\n    extends %s\n    %s%s\n", modifiers != -1? Modifier.toString(modifiers): "", modifiers > 0? " ": "", (modifiers == -1 || isInterface)? "": (modifiers != 0)? "class ": "", ClassInfo.typeToName(className), classDef != null? ClassInfo.typeToName(superClassName): "?", ifaceClassNames.isEmpty()? "": "implements ", StringUtils.join(ClassInfo.typeToName(ifaceClassNames.toArray(new String[0])), ", ")); };
+
+

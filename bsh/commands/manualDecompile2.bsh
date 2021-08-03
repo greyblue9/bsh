@@ -1,0 +1,29 @@
+public static MethodDeclaration manualDecompile2(MethodDefinition md) {
+  this.namespace.getVariables().putAll(manualDecompile(md));
+  com.strobel.decompiler.DecompilerContext ctx = builder._context;
+  com.strobel.decompiler.ast.Block b = new com.strobel.decompiler.ast.Block(ast);
+  com.strobel.decompiler.ast.AstOptimizer.optimize(ctx, b);
+  com.strobel.decompiler.ast.TypeAnalysis.run(ctx, b);
+  com.strobel.decompiler.ast.LoopsAndConditions lac = new com.strobel.decompiler.ast.LoopsAndConditions(ctx);
+  lac.findLoops(b);
+  lac.findConditions(b);
+  com.strobel.decompiler.languages.java.ast.BlockStatement bs = mbb.transformBlock(b);
+  Collection<ParameterDeclaration> ps = mbb._astBuilder.createParameters(md.getParameters());
+  com.strobel.decompiler.languages.java.ast.BlockStatement mb = mbb.createMethodBody(mbb._astBuilder, md, ctx, ps);
+  MethodDeclaration decl = new MethodDeclaration();
+  decl.setBody(mb);
+  decl.insertChildrenBefore(decl.getBody(), Roles.PARAMETER, CollectionUtil.toArray(ps));
+  decl.setName(md.getName());
+  com.strobel.decompiler.languages.java.ast.AstType rt = mbb._astBuilder.convertType(md.getReturnType());
+  decl.setReturnType(rt);
+  decl.setModifiers(decl, com.strobel.assembler.metadata.Flags.asModifierSet(md.getModifiers()));
+  Keys.METHOD_DEFINITION.set(decl, md);
+  Keys.TYPE_REFERENCE.set(rt, md.getReturnType());
+  for (int i = 0; i < md.getParameters().size(); ++i) {
+    Keys.TYPE_REFERENCE.set(ps.get(i), md.getParameters().get(i).getParameterType());
+  }
+  com.strobel.decompiler.languages.java.ast.transforms.TransformationPipeline.runTransformationsUntil(decl, null, ctx);
+  return decl;
+}
+
+ 

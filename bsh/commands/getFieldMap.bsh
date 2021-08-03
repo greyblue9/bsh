@@ -1,0 +1,40 @@
+public static Map getFieldMap(Object info) {
+  if (!(info instanceof Map.Entry || info instanceof Iterable)) {
+    getBshMethods("getFields");
+    info = getFields(info, true);
+  }
+  Map map = new LinkedHashMap();
+  Object tdb = getTypeDataBase();
+  for (Object vfld : (Iterable) (info instanceof Map.Entry ? ((Map.Entry) info).getValue() : info)) {
+    String name = vfld.id.getName();
+    List<String> parts = Arrays.asList(StringUtils.split(name, "."));
+    Deque q = new ArrayDeque((Collection) parts);
+    List<Pair> fieldPath = new ArrayList();
+    Object field = null;
+    Object type = null;
+    while (!q.isEmpty()) {
+      String part = q.poll();
+      boolean found = false;
+      for (Object type_flds_e : tdb.nameToTypeMap.entrySet()) {
+        if (found)
+          break;
+        for (Object fld : IteratorUtils.asIterable(type_flds_e.getValue().getFields())) {
+          if (found)
+            break;
+          if (part.equals(fld.name)) {
+            found = true;
+            System.err.printf("found match for part \"%s\": %s\n", part, fld);
+            field = fld;
+            type = field.type;
+            fieldPath.add(Pair.of(type, fld));
+            break;
+          }
+        }
+      }
+    }
+    map.put(fieldPath.isEmpty() ? name : IterableUtils.reversedIterable(fieldPath).iterator().next().getKey() + " " + name, Pair.of(fieldPath, vfld));
+  }
+  return map;
+}
+
+ 

@@ -1,0 +1,9 @@
+public static List toList(org.w3c.dom.NodeList nlist) {
+  int len = nlist.getLength();
+  List nodeList = new ArrayList(len);
+  for (int i = 0; i < len; ++i) {
+    org.w3c.dom.Node item = nlist.item(i);
+    nodeList.add(item);
+  }
+  return nodeList;
+}

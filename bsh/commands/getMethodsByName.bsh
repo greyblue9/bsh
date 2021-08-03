@@ -1,0 +1,7 @@
+
+
+
+public static Map getMethodsByName(String[] bshCommandNames) { NameSpace ns = NameSpaceFactory.get(NameSpace.class).make(String.format("res_scripts_%s", Long.toString(System.nanoTime(), 32))); Interpreter in = new Interpreter(); in.namespace = ns; ns.loadDefaultImports(); for (String cmdName: bshCommandNames) { try { ns.getCommand(cmdName, new Class[]{ Object[].class }, in); } catch (Throwable e) { Log.w("getMethodsByName", "trouble parsing command \"%s\": %s: %s", cmdName, Reflector.getRootCause(e), e); } }; return ns.getMethodsByName(); };
+
+
+

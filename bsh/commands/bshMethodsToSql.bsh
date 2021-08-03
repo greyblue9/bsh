@@ -1,0 +1,9 @@
+
+public static String bshMethodsToSql() { 
+
+  HashMap cmb = new HashMap(); StringBuilder sb = new StringBuilder(76 * 100); for (e: mm.entrySet()) { n = e.getKey(); v = e.getValue().get(0);  pts = v.getParameterTypes(); caps = n.charAt(0) + n.replaceAll("[^A-Z]+", "").toLowerCase(); if (pts.length > 0 && pts[0] == String.class) { n = n + "("; } else if (pts.length == 0) { n = n + "()"; } if (caps.length() == 1 &&  n.length() >= 2) { caps = caps + String.valueOf(n.charAt(1)).toLowerCase(); } int l = 2; while (l < caps.length() && cmb.get(caps.substring(0, l)) != null) { l += 1; } caps = caps.substring(0, l); sb.append(String .format("insert into utext (title, note) values (\"%s\", \"%s\"); \n", caps, n.replaceAll("\"", "\\\"")));  }  sql = sb.toString(); 
+  this.interpreter.set("cmb", cmb);
+  return sql;
+
+}
+

@@ -1,0 +1,40 @@
+import com.github.javaparser.ast.body.ClassOrInterfaceDeclaration;
+
+
+public static Object getSimpleName(Object obj) {
+   typeDecl
+  = (obj instanceof ClassOrInterfaceDeclaration)
+      ? (ClassOrInterfaceDeclaration) obj
+      : parseJava(
+          (obj instanceof
+            com.strobel.decompiler.languages.java.ast.AstNode)
+          ? obj.getText()
+          : String.valueOf(obj),
+          true
+        );
+          
+  return typeDecl.getTypes().where(
+    FunctionUtil.eval("""return (c) -> { c.isTopLevelType(); }""")
+  )[0]; 
+  String simpleName = typeDecl.getName().getIdentifier(); 
+  return simpleName;
+}
+
+
+public static Object getSimpleName(com.sun.source.tree.CompilationUnitTree cuTree)
+{
+  com.sun.source.tree.ClassTree clsDecl 
+    = cuTree.getTypeDecls().iterator().next(); 
+  javax.lang.model.element.Name clsSimpleName 
+    = clsDecl.getSimpleName(); 
+  String simpleName = new String(
+    clsSimpleName.toUtf(), Charset.forName("UTF-8")
+  ); 
+  return simpleName;
+}
+
+
+
+
+public static Object getSimpleName(com.sun.source.tree.ClassTree clsDecl) { javax.lang.model.element.Name clsSimpleName = clsDecl.getSimpleName(); String simpleName = new String( clsSimpleName.toUtf(), Charset.forName("UTF-8") ); return simpleName; };
+

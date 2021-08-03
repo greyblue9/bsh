@@ -1,0 +1,15 @@
+
+
+
+
+public static void printMethod(bsh.BshMethod meth) {
+  
+  System.out.println(methodToString(meth));
+}
+
+public static void printMethod(String name) {
+  
+  System.out.println(methodToString(name));
+}
+
+

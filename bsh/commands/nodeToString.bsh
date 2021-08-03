@@ -1,0 +1,54 @@
+
+public static StringBuilder nodeToString(Object n, String indent, StringBuilder sb) 
+{ 
+  if (sb == null) {
+    sb = new StringBuilder(128); 
+  }
+  
+  if (indent == null) indent = ""; 
+  String cindent = indent+"  "; 
+  
+  int len = invokeMethod(
+      n,"jjtGetNumChildren",new Object[]{  }
+  );
+    
+
+  
+  if (len > 0) {
+    sb.append(indent);
+    sb.append(n.getText());
+    
+    if (len > 1) {
+      sb.append("\n"); 
+      sb.append(cindent);
+    }
+    
+    sb.append(cindent); 
+    for (int i=0; i<len; i++) {
+      
+      ch = invokeMethod(
+        n,"jjtGetChild", new Object[]{ i }
+      );
+      
+ 
+      sb.append(
+        ch.getText().replaceAll(
+          "([A-Za-z\\(\\[])\\s+([.(\\[\\]\")])", 
+          "$1$2"
+        )
+      ); 
+      sb.append("\n");   
+    } 
+    return sb;
+  }
+  
+  // no child nodes 
+  String text = n.getText(); 
+  sb.append(text);
+  return sb;
+}
+  
+  
+  
+  
+  

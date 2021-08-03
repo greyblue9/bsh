@@ -1,0 +1,9 @@
+
+public static java.lang.Class getResolvedName
+(java.lang.String _name, bsh.NameSpace _ns) { 
+
+  java.lang.reflect.Method gnr = bsh.NameSpace.class.getDeclaredMethod("getNameResolver", new java.lang.Class[]{ java.lang.String.class  }); gnr.setAccessible(true); bsh.Name nr = null; try { nr = gnr.invoke(_ns, new java.lang.Object[]{ _name }); } catch (java.lang.Throwable nfError) { System.err.println(nfError.getCause().getMessage()); return null; } if (nr == null) return null; if (nr == java.lang.Void) return null; java.lang.reflect.Method tc = nr.getClass().getDeclaredMethod("toClass", new java.lang.Class[]{  }); tc.setAccessible(true); try { return tc.invoke(nr , new java.lang.Object[]{  }); } catch (java.lang.Throwable e) { java.lang.reflect.Field f = bsh.NameSpace.class.getDeclaredField("nsName"); f.setAccessible(true); java.lang.String nsname = f.get(_ns); System.err.println(e.getMessage() + ": " + nsname.toString()); } return null; 
+  
+  
+}
+

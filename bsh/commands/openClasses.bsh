@@ -1,0 +1,4 @@
+
+
+public static SortedMap openClasses(dalvik.system.DexPathList.Element dexElement) { String[] cns = DexFile.getClassNameList(dexElement.dexFile.mCookie); Map zm = new TreeMap(); for (String cn: cns) { dexElement.maybeInit(); ZipEntry ze = dexElement.zipFile.getEntry(ClassInfo.classNameToPath(cn, "class")); InputStream is = (ze != null)? dexElement.zipFile.getInputStream(ze): org.cojen.classfile.TypeLoaderClassFileDataLoader.getClassData(cn); byte[] cb = IOUtils.toByteArray(is); is.close(); CtClass ct = new javassist.CtClassType(new ByteArrayInputStream(cb), CollectionUtil.getClassPool()); Pair p = openCtClass(ct, zm); System.err.println(p.getKey());  }; return zm; };
+

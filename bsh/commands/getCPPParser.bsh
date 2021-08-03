@@ -1,0 +1,186 @@
+import org.eclipse.cdt.core.dom.ast.IASTTranslationUnit;
+import java.nio.charset.StandardCharsets;
+import org.eclipse.cdt.internal.core.parser.scanner.CPreprocessor;
+import org.eclipse.cdt.core.parser.FileContent;
+import org.eclipse.cdt.internal.core.parser.scanner.InternalFileContent;
+import org.eclipse.cdt.internal.core.parser.scanner.CharArray;
+import org.eclipse.cdt.internal.core.parser.scanner.IncludeSearchPathElement;
+import org.eclipse.cdt.internal.core.parser.scanner.InternalFileContent.InclusionKind;
+import org.eclipse.cdt.core.parser.IScannerInfo;
+import org.eclipse.cdt.core.parser.ExtendedScannerInfo;
+import org.eclipse.cdt.core.parser.ParserLanguage;
+import org.eclipse.cdt.core.parser.IParserLogService;
+import org.eclipse.cdt.internal.core.indexer.StdoutLogService;
+import org.eclipse.cdt.core.dom.parser.IScannerExtensionConfiguration;
+import org.eclipse.cdt.core.dom.parser.c.GCCScannerExtensionConfiguration;
+import org.eclipse.cdt.core.dom.parser.cpp.GPPScannerExtensionConfiguration;
+import java.nio.channels.FileChannel.MapMode;
+import org.eclipse.cdt.core.parser.CodeReader;
+import org.eclipse.cdt.core.parser.ParserMode;
+import org.eclipse.cdt.core.parser.IncludeFileContentProvider;
+import org.eclipse.cdt.internal.core.parser.SavedFilesProvider;
+import org.eclipse.cdt.internal.core.parser.FileContentProviderAdapter;
+import org.eclipse.cdt.core.dom.parser.cpp.ICPPParserExtensionConfiguration;
+import org.eclipse.cdt.core.dom.parser.cpp.GPPParserExtensionConfiguration;
+import org.eclipse.cdt.internal.core.dom.parser.cpp.GNUCPPSourceParser;
+import org.eclipse.cdt.core.dom.ast.IASTTranslationUnit;
+  
+import org.eclipse.cdt.core.dom.ast.IASTTranslationUnit;
+import java.nio.charset.StandardCharsets;
+import org.eclipse.cdt.internal.core.parser.scanner.CPreprocessor;
+import org.eclipse.cdt.core.parser.FileContent;
+import org.eclipse.cdt.internal.core.parser.scanner.InternalFileContent;
+import org.eclipse.cdt.internal.core.parser.scanner.CharArray;
+import org.eclipse.cdt.internal.core.parser.scanner.IncludeSearchPathElement;
+import org.eclipse.cdt.internal.core.parser.scanner.InternalFileContent.InclusionKind;
+import org.eclipse.cdt.core.parser.IScannerInfo;
+import org.eclipse.cdt.core.parser.ExtendedScannerInfo;
+import org.eclipse.cdt.core.parser.ParserLanguage;
+import org.eclipse.cdt.core.parser.IParserLogService;
+import org.eclipse.cdt.internal.core.indexer.StdoutLogService;
+import org.eclipse.cdt.core.dom.parser.IScannerExtensionConfiguration;
+import org.eclipse.cdt.core.dom.parser.c.GCCScannerExtensionConfiguration;
+import org.eclipse.cdt.core.dom.parser.cpp.GPPScannerExtensionConfiguration;
+import java.nio.channels.FileChannel.MapMode;
+import org.eclipse.cdt.core.parser.CodeReader;
+import org.eclipse.cdt.core.parser.ParserMode;
+import org.eclipse.cdt.core.parser.IncludeFileContentProvider;
+import org.eclipse.cdt.internal.core.parser.SavedFilesProvider;
+import org.eclipse.cdt.internal.core.parser.FileContentProviderAdapter;
+import org.eclipse.cdt.core.dom.parser.c.GCCParserExtensionConfiguration;
+import org.eclipse.cdt.core.dom.parser.cpp.ICPPParserExtensionConfiguration;
+import org.eclipse.cdt.core.dom.parser.cpp.GPPParserExtensionConfiguration;
+import org.eclipse.cdt.internal.core.dom.parser.cpp.GNUCPPSourceParser;
+import org.eclipse.cdt.core.dom.ast.IASTTranslationUnit;
+import org.eclipse.cdt.core.dom.parser.ISourceCodeParser;
+import org.eclipse.cdt.internal.core.dom.parser.c.GNUCSourceParser;
+
+
+public static File getBaseDir(
+  String cSourceFilePath)
+{
+  File base = new File(cSourceFilePath)
+    .getParentFile();
+  while (base != null && base.exists() &&
+         base.getPath().matches(
+     ".*/[^/]*(?:src|source|include)/.+"))
+  {
+    base = base.getParentFile();
+  }
+  return base;
+}
+
+public static ISourceCodeParser getCPPParser(String sourcePath,
+  String[] localIncludePaths, String[] systemIncludePaths, 
+  String[] includeFiles, String[] macroFiles)
+{
+  return getCPPParser(
+    sourcePath, localIncludePaths, systemIncludePaths, includeFiles,
+    macroFiles, (Map) null
+  );
+}
+
+
+public static ISourceCodeParser getCPPParser(String sourcePath,
+  String[] localIncludePaths, String[] systemIncludePaths, 
+  String[] includeFiles)
+{
+  return getCPPParser(
+    sourcePath, localIncludePaths, systemIncludePaths, includeFiles,
+    (String[]) null
+  );
+}
+
+
+public static ISourceCodeParser getCPPParser(String sourcePath,
+  String[] localIncludePaths, String[] systemIncludePaths)
+{
+  return getCPPParser(
+    sourcePath, localIncludePaths, systemIncludePaths, (String[]) null
+  );
+}
+
+
+public static ISourceCodeParser getCPPParser(String sourcePath,
+  String[] localIncludePaths)
+{
+  return getCPPParser(sourcePath, localIncludePaths, (String[]) null);
+}
+
+
+public static ISourceCodeParser getCPPParser(String sourcePath) {
+  return getCPPParser(sourcePath, (String[]) null);
+}
+
+
+public static ISourceCodeParser getCPPParser(String sourcePath,
+  String[] localIncludePaths, String[] systemIncludePaths, 
+  String[] includeFiles, String[] macroFiles,
+  Map<String__String> definedSymbols)
+{
+  CodeReader codeReader = new CodeReader(
+    sourcePath, IOStream.readFileAsString(sourcePath).toCharArray()
+  );
+  FileContent fileContent = FileContent.adapt(codeReader);
+  File base = getBaseDir(sourcePath);
+  boolean forQuoteIncludesOnly = true;
+  IncludeSearchPathElement includePathElement
+    = new IncludeSearchPathElement(base.getPath(), forQuoteIncludesOnly);
+  InternalFileContent ifc = (InternalFileContent) fileContent;
+  Reflect.setfldval(ifc, "fFileLocation", sourcePath);
+  Reflect.setfldval(ifc, "fFoundOnPath", includePathElement);
+  Reflect.setfldval(ifc, "fKind", InclusionKind.USE_SOURCE);
+  if (systemIncludePaths == null) {
+    systemIncludePaths = IOStream.readFileAsString(
+      "/external_sd/_projects/sdk/gcc/g++_include_dirs.list"
+    ).split("\n");
+  }
+  if (localIncludePaths == null) {
+    localIncludePaths = new String[]{
+      new File(sourcePath).getParentFile().getAbsolutePath(),
+      base.getPath()
+    };
+  }
+  IScannerInfo scannerInfo = new ExtendedScannerInfo(
+    // Map<String, String> definedSymbols
+    definedSymbols != null ? definedSymbols : RealArrayMap.toMap(),
+    systemIncludePaths, // includePaths
+    macroFiles != null ? macroFiles : new String[0], // macroFiles
+    includeFiles != null ? includeFiles : new String[0], // includeFiles
+    localIncludePaths // localIncludePaths
+  );
+  ParserLanguage lang = !(sourcePath.endsWith(".c"))
+    ? ParserLanguage.CPP
+    : ParserLanguage.C;
+  IParserLogService log = new StdoutLogService();
+  IScannerExtensionConfiguration extConfig = (lang != ParserLanguage.C)
+    ? GPPScannerExtensionConfiguration.getInstance()
+    : GCCScannerExtensionConfiguration.getInstance();
+  // IncludeFileContentProvider includeProvider
+  //   = SavedFilesProvider.getInstance();
+  FileContentProviderAdapter prov
+    = getFileContentAdapter(base.getAbsolutePath()); // TODO: Check
+  CPreprocessor cp
+    = new CPreprocessor(ifc, scannerInfo, lang, log, extConfig, prov);
+  ICPPParserExtensionConfiguration extConfig = (lang != ParserLanguage.C)
+    ? GPPParserExtensionConfiguration.getInstance()
+    : GCCParserExtensionConfiguration.getInstance();
+  ISourceCodeParser gcsp = (lang != ParserLanguage.C)
+    ? new GNUCPPSourceParser(cp, ParserMode.COMPLETE_PARSE, log, extConfig)
+    : new GNUCSourceParser(cp, ParserMode.COMPLETE_PARSE, log, extConfig);
+    
+  if (gcsp != null) {
+    gcsp.supportStatementsInExpressions = true;
+    gcsp.supportTypeOfUnaries = true;
+    gcsp.supportAlignOfUnaries = true;
+    gcsp.supportKnRC = true;
+    gcsp.supportAttributeSpecifiers = true;
+    gcsp.supportDeclspecSpecifiers = true;
+    gcsp.supportParameterInfoBlock = true;
+    gcsp.supportFunctionStyleAsm = true;
+    gcsp.supportExtendedSizeofOperator = true;
+  }
+  return gcsp;
+}
+
+

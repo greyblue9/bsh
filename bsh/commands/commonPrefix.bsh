@@ -1,0 +1,5 @@
+public static String commonPrefix(Iterable fns) { return commonPrefix((Object[]) CollectionUtil.toArray(fns)); }
+;
+
+public static String commonPrefix(Object[] fns) { String[] common = null; for (Object fn: fns) { String sfn = (fn instanceof String)? (String) fn: fn.toString(); String[] parts = StringUtils.split(sfn, "/"); if (sfn.length() == 0) continue; if (sfn.charAt(0) == '/') parts = ArrayUtils.add(parts, 0, ""); if (common == null) { common = parts; continue; } ; for (int i=0; i<common.length; i++) { if (i < parts.length) { if (parts[i].equals(common[i])) continue; else { common = Arrays.copyOfRange(common, 0, i); break; } } else if (i == parts.length) { System.err.println(StringUtils.join(common, "/")); common = Arrays.copyOfRange(common, 0, parts.length); break; }; };; }; return StringUtils.join(common, "/"); }
+;

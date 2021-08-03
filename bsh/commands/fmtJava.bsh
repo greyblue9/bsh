@@ -1,0 +1,6 @@
+
+
+public static String fmtJava(File file) { JavaFile jf = new JavaFile(file.getPath()); com.github.antlrjavaparser.api.visitor.DumpVisitor dmpv = new com.github.antlrjavaparser.api.visitor.DumpVisitor(); jf.cu.accept(dmpv, Void); String code = Reflect.getfldval(dmpv, "printer").toString(); if (code != null && code.length() > 100) { return code; } ; return null; }
+
+public static String fmtJava(String src) { JavaFile jf = new JavaFile(new ByteArrayInputStream(src.getBytes("UTF-8"))); com.github.antlrjavaparser.api.visitor.DumpVisitor dmpv = new com.github.antlrjavaparser.api.visitor.DumpVisitor(); jf.cu.accept(dmpv, Void); String code = Reflect.getfldval(dmpv, "printer").toString(); if (code != null && code.length() > 100) { return code; } ; return null; }
+

@@ -1,0 +1,3 @@
+
+public static Map dumpDot(jadx.core.dex.attributes.nodes.LineAttrNode node) { File dir = PosixFileInputStream.createTemporaryDirectory("tmpdot"); jadx.core.dex.visitors.DotGraphVisitor v = jadx.core.dex.visitors.DotGraphVisitor.dump(dir); v.init(root); v.visit(node); Map data = new TreeMap(); for (File subdir: dir.listFiles()) { for (File file: subdir.listFiles()) { String name = file.getName(); String text = FileUtils.readFileToString(file); data.put(name, text); file.delete(); }; subdir.delete(); }; dir.delete(); return data; };
+

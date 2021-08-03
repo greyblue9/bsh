@@ -1,0 +1,5 @@
+
+public static String col(String instr, int col1w) { if (col1w < 0) col1w = 12; StringBuilder sb = new StringBuilder(76 * 10); String indent = StringUtils.repeat(' ', col1w); List<List> lms = instr.matchLines("(%[^ ]+)  +([^ \n][^\n]*)"); for (lm: lms) { lm.set(1, lm.get(1).replaceAll("  +", " ")); wrapped = org.apache.commons.lang3.text.WordUtils.wrap(lm.get(1), 67-col1w).replace("\n", "\n".concat(indent)); sb.append(String.format(String.format("%%-%ds%%-%ds%%s\n\n", col1w / 2, col1w / 2), "", lm[0], wrapped)); }; return sb.toString(); }
+
+public static String col(String instr) { return col(instr, -1); }
+

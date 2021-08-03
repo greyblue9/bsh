@@ -1,0 +1,417 @@
+// package org.d6r;
+
+
+import soot.AbstractASMBackend;
+import soot.AbstractJasminClass;
+import soot.AbstractSootFieldRef;
+import soot.AbstractTrap;
+import soot.AbstractUnit;
+import soot.AbstractUnitAllMapTo;
+import soot.AbstractUnitBox;
+import soot.AbstractUnitPrinter;
+import soot.AbstractValueBox;
+import soot.AntTask;
+import soot.AnySubType;
+import soot.ArrayType;
+import soot.AttributesUnitPrinter;
+import soot.Body;
+import soot.BodyPack;
+import soot.BodyTransformer;
+import soot.BooleanType;
+import soot.BriefUnitPrinter;
+import soot.ByteType;
+import soot.CharType;
+import soot.ClassMember;
+import soot.ClassProvider;
+import soot.ClassSource;
+import soot.CoffiClassProvider;
+import soot.CoffiClassSource;
+import soot.CompilationDeathException;
+import soot.Context;
+import soot.DexClassProvider;
+import soot.DexClassSource;
+import soot.DoubleType;
+import soot.EntryPoints;
+import soot.EquivTo;
+import soot.EquivalentValue;
+import soot.ErroneousType;
+import soot.EscapeAnalysis;
+import soot.FastHierarchy;
+import soot.FloatType;
+import soot.HasPhaseOptions;
+import soot.Hierarchy;
+import soot.ITypeSwitch;
+import soot.IdentityUnit;
+import soot.Immediate;
+import soot.IntType;
+import soot.IntegerType;
+import soot.JastAddInitialResolver;
+import soot.JavaClassProvider;
+import soot.JavaClassSource;
+import soot.JavaToJimpleBodyPack;
+import soot.JimpleBodyPack;
+import soot.JimpleClassProvider;
+import soot.JimpleClassSource;
+import soot.Kind;
+import soot.LabeledUnitPrinter;
+import soot.Local;
+import soot.LongType;
+import soot.Main;
+import soot.MethodContext;
+import soot.MethodOrMethodContext;
+import soot.MethodSource;
+import soot.MethodToContexts;
+import soot.Modifier;
+import soot.NormalUnitPrinter;
+import soot.NullType;
+import soot.OptionsParseException;
+import soot.Pack;
+import soot.PackManager;
+import soot.PatchingChain;
+import soot.PhaseOptions;
+import soot.PointsToAnalysis;
+import soot.PointsToSet;
+import soot.PrimType;
+import soot.Printer;
+import soot.RadioScenePack;
+import soot.RefLikeType;
+import soot.RefType;
+import soot.ResolutionFailedException;
+import soot.Scene;
+import soot.ScenePack;
+import soot.SceneTransformer;
+import soot.ShortType;
+import soot.SideEffectTester;
+import soot.Singletons;
+import soot.SootClass;
+import soot.SootField;
+import soot.SootFieldRef;
+import soot.SootMethod;
+import soot.SootMethodRef;
+import soot.SootMethodRefImpl;
+import soot.SootResolver;
+import soot.SourceLocator;
+import soot.Timer;
+import soot.Timers;
+import soot.Transform;
+import soot.Transformer;
+import soot.Trap;
+import soot.TrapManager;
+import soot.TypeSwitch;
+import soot.Unit;
+import soot.UnitBox;
+import soot.UnitBoxOwner;
+import soot.UnitPrinter;
+import soot.UnknownMethodSource;
+import soot.UnknownType;
+import soot.Value;
+import soot.ValueBox;
+import soot.VoidType;
+import soot.XMLAttributesPrinter;
+import soot.coffi.AnnotationDefault_attribute;
+import soot.coffi.BBQ;
+import soot.coffi.BasicBlock;
+import soot.coffi.BootstrapMethods_attribute;
+import soot.coffi.ByteCode;
+import soot.coffi.CFG;
+import soot.coffi.CONSTANT_Class_info;
+import soot.coffi.CONSTANT_Double_info;
+import soot.coffi.CONSTANT_Fieldref_info;
+import soot.coffi.CONSTANT_Float_info;
+import soot.coffi.CONSTANT_Integer_info;
+import soot.coffi.CONSTANT_InterfaceMethodref_info;
+import soot.coffi.CONSTANT_InvokeDynamic_info;
+import soot.coffi.CONSTANT_Long_info;
+import soot.coffi.CONSTANT_MethodHandle_info;
+import soot.coffi.CONSTANT_Methodref_info;
+import soot.coffi.CONSTANT_NameAndType_info;
+import soot.coffi.CONSTANT_String_info;
+import soot.coffi.CONSTANT_Utf8_collector;
+import soot.coffi.CONSTANT_Utf8_info;
+import soot.coffi.ClassFile;
+import soot.coffi.Code_attribute;
+import soot.coffi.CoffiMethodSource;
+import soot.coffi.ConstantValue_attribute;
+import soot.coffi.Deprecated_attribute;
+import soot.coffi.Double2ndHalfType;
+import soot.coffi.EnclosingMethod_attribute;
+import soot.coffi.Exception_attribute;
+import soot.coffi.Generic_attribute;
+import soot.coffi.ICONSTANT_Methodref_info;
+import soot.coffi.Info;
+import soot.coffi.InnerClasses_attribute;
+import soot.coffi.Instruction;
+import soot.coffi.Interface_Astore;
+import soot.coffi.Interface_OneIntArg;
+import soot.coffi.LineNumberTable_attribute;
+import soot.coffi.LocalVariableTable_attribute;
+import soot.coffi.LocalVariableTypeTable_attribute;
+import soot.coffi.Long2ndHalfType;
+import soot.coffi.OutFlow;
+import soot.coffi.Signature_attribute;
+import soot.coffi.SourceFile_attribute;
+import soot.coffi.Synthetic_attribute;
+import soot.coffi.TypeArray;
+import soot.coffi.TypeStack;
+import soot.coffi.UnusuableType;
+import soot.coffi.Utf8_Enumeration;
+import soot.coffi.Util;
+import soot.coffi.annotation;
+import soot.coffi.annotation_element_value;
+import soot.coffi.array_element_value;
+import soot.coffi.attribute_info;
+import soot.coffi.class_element_value;
+import soot.coffi.constant_element_value;
+import soot.coffi.cp_info;
+import soot.coffi.element_value;
+import soot.coffi.enum_constant_element_value;
+import soot.coffi.exception_table_entry;
+import soot.coffi.field_info;
+import soot.coffi.inner_class_entry;
+import soot.coffi.line_number_table_entry;
+import soot.coffi.local_variable_table_entry;
+import soot.coffi.local_variable_type_table_entry;
+import soot.coffi.method_info;
+import soot.coffi.parameter_annotation;
+import soot.jimple.AbstractConstantSwitch;
+import soot.jimple.AbstractJimpleValueSwitch;
+import soot.jimple.AbstractRefSwitch;
+import soot.jimple.ArithmeticConstant;
+import soot.jimple.ArrayRef;
+import soot.jimple.CaughtExceptionRef;
+import soot.jimple.ClassConstant;
+import soot.jimple.ConcreteRef;
+import soot.jimple.Constant;
+import soot.jimple.ConstantSwitch;
+import soot.jimple.ConvertToBaf;
+import soot.jimple.DoubleConstant;
+import soot.jimple.EqualLocals;
+import soot.jimple.FieldRef;
+import soot.jimple.FloatConstant;
+import soot.jimple.GroupIntPair;
+import soot.jimple.IdentityRef;
+import soot.jimple.InstanceFieldRef;
+import soot.jimple.IntConstant;
+import soot.jimple.JasminClass;
+import soot.jimple.Jimple;
+import soot.jimple.JimpleBody;
+import soot.jimple.JimpleMethodSource;
+import soot.jimple.JimpleToBafContext;
+import soot.jimple.JimpleValueSwitch;
+import soot.jimple.LongConstant;
+import soot.jimple.MethodHandle;
+import soot.jimple.NaiveSideEffectTester;
+import soot.jimple.NoSuchLocalException;
+import soot.jimple.NullConstant;
+import soot.jimple.NumericConstant;
+import soot.jimple.ParameterRef;
+import soot.jimple.ReachingTypeDumper;
+import soot.jimple.RealConstant;
+import soot.jimple.Ref;
+import soot.jimple.RefSwitch;
+import soot.jimple.StaticFieldRef;
+import soot.jimple.StringConstant;
+import soot.jimple.ThisRef;
+import soot.options.JJOptions;
+import soot.options.LCMOptions;
+import soot.options.NPCOptions;
+import soot.options.Options;
+import soot.options.RenameDuplicatedClasses;
+import soot.options.ShimpleOptions;
+import javassist.bytecode.SignatureAttribute;
+import org.cojen.classfile.TypeLoaderClassFileDataLoader;
+import soot.coffi.cp_info;
+import soot.coffi.CoffiMethodSource;
+
+public static String classNameToPath(String className) {
+  return classNameToPath(className, null);
+}
+
+public static String classNameToPath(String className, String optionalExt) {
+  StringBuilder sb = new StringBuilder(
+    className.length() + ((optionalExt != null) ? optionalExt.length()+1 : 0)
+  );
+  sb.append(className);
+  int idx;
+  while ((idx = sb.indexOf(".")) != -1) sb.replace(idx, idx+1, "/");
+  return sb.append('.').append(
+    (optionalExt != null)
+      ? ((optionalExt.indexOf('.') == 0)
+          ? optionalExt.substring(1)
+          : optionalExt)
+      : ""
+  ).toString();
+}
+
+public static SootClass getSootClass(String className) {
+  int defaultResolveLevel = SootUtil.getDefaultResolveLevel();
+  boolean ignoreCpErrs = Options.v().ignore_classpath_errors;
+  boolean ignoreResolvErrs = Options.v().ignore_resolution_errors;
+  try {
+    SootUtil.setDefaultResolveLevel(3);
+    Options.v().ignore_classpath_errors = true;
+    Options.v().ignore_resolution_errors = true;
+    List<SootClass> al = new ArrayList<SootClass>();
+    for (String c: Scene.v().getBasicClasses()) { 
+      try { 
+        sc = SootUtil.getClass(c);
+        al.add(sc);
+      } catch (Throwable e) { 
+        e.printStackTrace();
+        continue;
+      }
+    }
+    
+    SootUtil.getClass(className, 3);
+    SootClass sc = Scene.v().loadClassAndSupport(className);
+    List<SootMethod> sms = sc.getMethods();
+    
+    ClassFile cf = new ClassFile(classNameToPath(className));
+    InputStream is = TypeLoaderClassFileDataLoader.getDefault().getClassData(className);
+    cf.loadClassFile(is);
+    
+    Map/*<String, method_info>*/ cmmap 
+      = new TreeMap/*<String, method_info>*/(); 
+    cp_info[] cp = cf.constant_pool; 
+    method_info[] cms = cf.methods;  
+    for (int i=0,len=cms.length; i<len; ++i) { 
+      method_info cm = cms[i];  
+      String cmname = cm.toName(cp); 
+      String cmstr = cm.prototype(cp); 
+      System.err.printf("Adding coffi method: %s %s\n", cmname, cmstr);
+      
+      String cmdesc = cp[cm.descriptor_index].s; 
+      String cmsig = StringUtils.join(new String[]{ cmname, cmdesc }, "/");
+      cmmap.put(cmsig, cm);
+    }
+    
+    Map/*<String, method_info>*/ cms = cmmap;
+    
+    for (SootMethod sm: sms) { 
+      System.err.println(sm);
+      
+      try { 
+        String smsig = sm.getName() 
+          + "/" 
+          + StringUtils.substringBeforeLast(
+              "(".concat(StringUtils.substringAfter(
+                sm.getBytecodeSignature(),"("
+              )), ">"
+              );
+        method_info cmi = cms.get(smsig);
+        if (cmi == null) {
+          System.err.printf("[WARN] No coffi method found for: %s\n", smsig);
+          continue;
+        }
+        
+        CoffiMethodSource cmsrc = new CoffiMethodSource(cf, cmi);
+        cmsrc.coffiMethod = cmi;
+        Pack jbpk = (Pack) ((Map) Reflect.getfldval(
+          PackManager.v(), "packNameToPack"
+        )).get("jb");
+        
+        JimpleBody jb = Jimple.v().newBody(sm);
+        cf.parseMethod(cmi);
+        CFG cfg = new CFG(cmi);
+        try {
+          Scene.v().setPhantomRefs(true);
+          cmi.cfg.jimplify(
+            cf.constant_pool, cf.this_class, 
+            cf.bootstrap_methods_attribute, jb
+          );
+        } finally {
+          Scene.v().setPhantomRefs(false);
+        }
+        
+        System.err.println(Debug.ToString(cmi));
+        jb = cmsrc.getBody(sm, "jb");
+        sm.setActiveBody(jb);
+        cmi.jmethod = sm;
+      } catch (Throwable ex) {
+        new RuntimeException(String.format(
+          "Error creating body for method: %s\n"
+          + "  cmsrc = %s\n"
+          + "  cmi = %s\n"
+          + "  %s caused by %s",
+          smsig, Debug.ToString(cmsrc), Debug.ToString(cmi), 
+          ex.getClass().getSimpleName(), ExceptionUtils.getRootCause(ex)
+        )).printStackTrace();
+        continue;
+      }
+    }    
+    return sc;
+  } finally {
+    SootUtil.setDefaultResolveLevel(defaultResolveLevel);
+    Options.v().ignore_classpath_errors = ignoreCpErrs;
+    Options.v().ignore_resolution_error = ignoreResolvErrs;
+  }
+}
+
+
+public static Map getMethodMap(SootClass sc, ClassFile cf) {
+  
+  List<SootMethod> sms = sc.getMethods();
+  Map/*<String, method_info>*/ cmmap 
+   = new TreeMap/*<String, method_info>*/(); 
+
+  cp_info[] cp = cf.constant_pool; 
+  method_info[] cms = cf.methods;
+  
+  for (int i=0,len=cms.length; i<len; ++i) { 
+    method_info cm = cms[i];
+    if (cm == null) continue;
+    if (cm.attributes == null) {
+      System.err.printf("Re-loading coffi class: %s\n", Debug.ToString(cf));
+      InputStream is = TypeLoaderClassFileDataLoader.getDefault().getClassData(sc.getName());
+      cf.loadClassFile(is);
+      if (cm.attributes == null) {
+        System.err.printf("Still null: %s\n", Debug.ToString(cm));    
+        continue;
+      }
+      cp = cf.constant_pool;
+      cms = cf.methods;
+      attributes.print();
+    }
+    String cmname = cm.toName(cp);
+    String cmstr = cm.prototype(cp);
+    System.err.printf("Mapping coffi method: %s %s\n", cmname, cmstr);
+    
+    String cmdesc = cp[cm.descriptor_index].s; 
+    String cmsig = StringUtils.join(new String[]{ cmname, cmdesc }, "/");
+    cmmap.put(cmsig, cm);
+  }
+  
+  Map/*<String, method_info>*/ mmap 
+   = new HashMap/*<String, method_info>*/();
+  
+  for (SootMethod sm: sms) { 
+    System.err.printf("Mapping soot method: %s\n", sm);
+    try { 
+      String smsig = StringUtils.join(Arrays.asList(
+        sm.getName(), StringUtils.substringBeforeLast(
+        "(".concat(StringUtils.substringAfter(
+        sm.getBytecodeSignature(), "(")), ">")
+      ), "/");      
+      method_info cmi = cmmap.get(smsig);
+      if (cmi == null) {
+        System.err.printf("[WARN] No coffi method found for: %s\n", smsig);
+        continue;
+      }
+      mmap.put(sm, cmi);
+      cmi.jmethod = sm;
+    } catch (Throwable ex) {
+      new RuntimeException(String.format(
+        "Error mapping SootMethod: %s\n"
+        + "  cmi = %s\n"
+        + "  %s caused by %s",
+        smsig, Debug.ToString(cmi), 
+        ex.getClass().getSimpleName(), ExceptionUtils.getRootCause(ex)
+      )).printStackTrace();
+      continue;
+    }
+  }
+  return mmap;
+}
+
+
+

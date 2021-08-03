@@ -1,0 +1,11 @@
+public static com.strobel.assembler.metadata.CompositeTypeLoader makeCompositeTypeLoader() {
+  if (ProcyonUtil.getTypeLoader() instanceof com.strobel.assembler.metadata.CompositeTypeLoader)
+    return ProcyonUtil.getTypeLoader();
+  com.strobel.assembler.metadata.ITypeLoader newTypeLoader = new com.strobel.assembler.metadata.CompositeTypeLoader(new com.strobel.assembler.metadata.ITypeLoader[] { new com.strobel.assembler.metadata.JarTypeLoader(ClassInfo.getClassResource(ClassLoader.class).openConnection().getJarFile()), new com.strobel.assembler.metadata.JarTypeLoader(ClassInfo.getClassResource(Class.class).openConnection().getJarFile()), ProcyonUtil.getTypeLoader() });
+  ProcyonUtil.typeLoader = newTypeLoader;
+  ProcyonUtil.getMetadataResolver()._typeLoader = newTypeLoader;
+  ProcyonUtil.getMetadataResolver()._types.clear();
+  return newTypeLoader;
+}
+
+ 

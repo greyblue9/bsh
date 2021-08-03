@@ -1,0 +1,127 @@
+
+import org.netbeans.modules.classfile.ClassFile;
+
+import com.android.dex.Dex;
+import com.android.dex.ClassDef;
+
+import java.util.Collection;
+import java.util.jar.JarFile;
+import java.util.jar.JarEntry;
+import java.net.URL;
+import java.net.JarURLConnection;
+
+
+
+public static 
+ClassFile getNetBeansClassFile(ClassIdentifier ci) { 
+  Class cls = (Class) ((ClassIdentifier) ci).getTargetClass();
+  return getNetBeansClassFile(cls);
+}
+
+public static ClassFile getNetBeansClassFile(Class cls) {
+  return getNetBeansClassFile(cls.getName());
+}
+
+public static ClassFile getNetBeansClassFile(String clsName) {
+  String clsResPath
+    = clsName.replace('.', '/').concat(".class"); 
+  
+  // ### Method 1 ###
+  Collection<URL> resUrls = ClassLoaders.getResources(
+    Thread.currentThread().getContextClassLoader(), 
+    clsResPath);
+  if (! resUrls.isEmpty()) {    
+    URL resUrl = resUrls.iterator().next();
+    InputStream clsInputStream
+      = resUrl.openConnection().getInputStream();
+    ClassFile cf = new ClassFile(clsInputStream); 
+    return cf;
+  }
+  
+  // ### Method 2 ###
+  Interpreter interp = CollectionUtil.getInterpreter();
+  for (String HOSTDEX_JAR_PATH: new String[] {
+    "/external_sd/_projects/sdk/jack/jack-lambda-jack-lambda/jack-tests/prebuilts/core-hostdex.jar",
+    "/external_sd/_projects/sdk/platforms/android-15/full_framework_15.jar"
+  }) {
+    try {
+      JarFile jf = new JarFile(new File(HOSTDEX_JAR_PATH));
+      interp.setu("$_jf", jf);      
+      JarEntry je = jf.getEntry(
+        clsName.replace('.', '/').concat(".class"));
+      if (je != null) {
+        interp.setu("$_je", je);      
+        InputStream clsInputStream = jf.getInputStream(je);
+        ClassFile cf = new ClassFile(clsInputStream); 
+        interp.setu("$_cf", cf);
+        return cf;
+      }
+    } catch (Throwable hdex) {
+      System.err.printf("  - Skipped [%s] ... \n",
+        HOSTDEX_JAR_PATH);
+      /*interp.setu("$_hdex", hdex);
+      System.err.printf(
+        "[M2 fail] getNetBeansClassFile (hostdex): %s: %s\n"
+        + "--> Trying Dex/PathInfo method... \n\n",
+        hdex.getClass().getSimpleName(),
+        hdex.getMessage() != null
+          ? hdex.getMessage() : "[no msg]"
+      );*/
+    }
+  }
+  
+  // ### Method 3 ###
+  if (! Capabilities.classExists(clsName)) return null;
+  try {
+    
+    Dex dex = Class.forName(clsName).getDex();
+    if (dex == null) return null;
+    interp.setu("$_dex", dex);
+    ClassDef firstDef = dex.classDefs().iterator().next();
+    int firstTypeIdx = firstDef.getTypeIndex();
+    String typeName = dex.typeNames()[firstTypeIdx]
+      .replace('/', '.').substring(1); 
+    typeName = typeName.substring(0, typeName.length() - 1);
+    String urlStr = StringCollectionUtil.toStringFilter(
+      DexUtil.lookupDexMap.entrySet(),
+      String.format("^.*=L?%s;?$", typeName)
+    )[0].getKey(); 
+    PathInfo pathInfo 
+      = PathInfo.getPathInfo(new URL(urlStr)); 
+    interp.setu("$_pinfo", pathInfo);
+    JarFile jf 
+      = ((JarURLConnection) pathInfo.url.openConnection()).getJarFile(); 
+    interp.setu("$_jf", jf);
+    JarEntry je = jf.getEntry(
+      clsName.replace('.', '/').concat(".class"));
+    interp.setu("$_je", je);      
+    InputStream clsInputStream = jf.getInputStream(je);
+    ClassFile cf = new ClassFile(clsInputStream); 
+    interp.setu("$_cf", cf);
+    return cf;
+  } catch (Throwable cfex) { 
+    CollectionUtil.getInterpreter().setu("$_cfex", cfex);
+    String msg = String.format(
+      "[M3 fail] No class file found "
+      + " (/external_sd framework Dex->Path->URL method)\n"
+      + "Reason: %s: %s\n"
+      + "(Exception stored in variable `$_cfex`)\n",
+      cfex.getClass().getSimpleName(),
+      cfex.getMessage() != null
+        ? cfex.getMessage() : "[no msg]"
+    );
+    Error shortEx = new Error(msg);
+    shortEx.setStackTrace(Arrays.copyOfRange(
+      new RuntimeException().getStackTrace(), 0, 5
+    ));
+    shortEx.printStackTrace();
+    return null;
+  }
+  
+  throw new IllegalStateException(
+    "getNetBeansClassFile: Should never get here."
+  );
+}
+  
+  
+  

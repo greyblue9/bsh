@@ -1,0 +1,59 @@
+import java.util.Map.Entry;
+  
+  public static Map introspect(Class cls) {
+    
+    Method[] propMethods = CollectionUtil2.filter(
+      cls.getMethods(),
+      Pattern.compile(
+        "[a-zA-Z0-9_$.]+\\.(?:m?_?|)[^a-z]*(get|set)[^a-z]*"
+        + "([a-zA-Z][a-zA-Z0-9_$]+)\\([^,]*\\)",
+        Pattern.CASE_INSENSITIVE | Pattern.DOTALL
+      )
+    );
+    
+    Map getters = new HashMap();
+    Map setters = new HashMap();
+    for (Method m: propMethods) {
+      String methodName = m.getName(); 
+      Matcher mchr = Pattern.compile(
+        "^(?:m?_?|)[^a-z]*(get|set)[^a-z]*([a-zA-Z][a-zA-Z0-9_$]+)$", 
+        Pattern.CASE_INSENSITIVE | Pattern.DOTALL
+      ).matcher(methodName);
+      if (! mchr.find()) continue;
+      boolean isSetter = mchr.group(1).toLowerCase().equals("set");
+      String name = mchr.group(2);
+      Map destMap = isSetter? setters: getters;
+      destMap.put(name, m);
+    }
+    
+    Map pds = new TreeMap();
+    for (Entry e: getters.entrySet()) {
+      String name = e.getKey();
+      Method getter = e.getValue();
+      Method setter = setters.containsKey(name)? setters.get(name): null;   
+      java.beans.PropertyDescriptor pd
+        = Reflect.allocateInstance(java.beans.PropertyDescriptor.class);
+      pd.readMethodRef = new java.lang.ref.SoftReference(getter); 
+      pd.writeMethodRef = setter != null
+        ? new java.lang.ref.SoftReference(setter): null;
+      pd.readMethodName = getter.getName();
+      pd.writeMethodName = setter != null
+        ? setter.getName(): null;
+      pd.propertyTypeRef = new java.lang.ref.SoftReference(
+        setter != null
+          ? setter.getParameterTypes()[0]: getter.getReturnType()
+      );
+      pd.baseName = name;
+      pd.displayName = name;
+      pd.name = com.sun.xml.internal.ws.util.StringUtils.decapitalize(name); 
+      pd.classRef = new java.lang.ref.SoftReference(
+        setter != null
+          ? setter.getDeclaringClass(): getter.getDeclaringClass()
+      );
+      pds.put(name, pd);
+    };
+    
+    return pds;
+  }
+
+

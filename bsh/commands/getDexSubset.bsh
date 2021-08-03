@@ -1,0 +1,28 @@
+
+public static byte[] getDexSubset(String apkOrDexPath, String[] classNamesToInclude) {
+  List<String> classNames = Arrays.asList(ClassInfo.typeToName(classNamesToInclude));
+  List<DexBackedClassDef> classDefs = new ArrayList<DexBackedClassDef>();
+  DexBackedDexFile dbdf = DexRemix.getDexBackedDexFile(apkOrDexPath);
+  com.android.dex.Dex dex = new com.android.dex.Dex((byte[]) Reflect.getfldval(dbdf, "buf"));
+  for (String className : classNames) {
+    int classDefIndex = ClassInfo.getDexClassDefIndex(dex, className);
+    int classDefOffset = dbdf.getClassDefItemOffset(classDefIndex);
+    DexBackedClassDef dbcd = new DexBackedClassDef(dbdf, classDefOffset);
+    classDefs.add(dbcd);
+  }
+  org.jf.dexlib2.writer.pool.DexPool dexPool = DexRemix.newDexPool();
+  org.jf.dexlib2.writer.pool.ClassPool classPool = Reflect.getfldval(dexPool, "classSection");
+  for (DexBackedClassDef classDef : classDefs) {
+    System.err.printf("Adding %s ...\n", classDef.getType());
+    classPool.intern(classDef);
+  }
+  
+  org.jf.dexlib2.writer.io.DexDataStore store = 
+    new org.jf.dexlib2.writer.io.MemoryDataStore(4096);
+  dexPool.writeTo(store);
+  store.close();
+  byte[] dexBytes = IOUtils.toByteArray(store.readAt(0));
+  return dexBytes;
+}
+
+ 

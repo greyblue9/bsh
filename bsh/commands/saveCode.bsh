@@ -1,0 +1,56 @@
+
+import bsh.*;
+import bsh.ClassIdentifier;
+
+public static String saveCode(Object ci) {
+  
+  
+  //PrintStream oldErr = this.interpreter.getErr();
+  //PrintStream newErr = null;
+  
+  try {
+      
+    //this.interpreter.setErr(newErr);
+    
+    
+    Class cls;
+    
+    if (ci instanceof ClassIdentifier) {
+      cls = ((ClassIdentifier) ci).getTargetClass();
+    } else {
+      cls = ClassResolveUtils.findInnerClass(ci);
+    }
+    
+    if (cls == null) {
+      System.err.println("cls == null");
+      return "";
+    }
+    
+    String code = getCode(cls);
+    if (code != null) {
+      code = code.replace("    ", "  ");
+      System.out.println(code);
+      
+      String outFile = String.format( 
+        "/data/media/0/%s.java",
+        cls.getName()
+      );
+      System.out.println(outFile);
+      boolean result = writeFile(outFile, code);
+      System.out.println(result? "OK": "Failed");
+      if (result) {
+        open(outFile);
+      }
+      return code;
+    }
+    return "";
+    
+  } finally {
+    
+    //this.interpreter.setErr(oldErr);
+    
+  }
+  
+}
+
+ 

@@ -1,0 +1,4 @@
+public static Map mapDex(DexFile dfk) { czm = new HashMap(); dcn = findMethod(DexFile, "defineClassNative"); gcnl = findMethod(DexFile.class, "getClassNameList"); cookie = getfldval(dfk, "mCookie"); cnl = gcnl.invoke(dfk,cookie); for (cn: cnl) { cz = dcn.invoke(null,cn,Thread.currentThread().getContextClassLoader(),cookie); czm.put(cn,cz); } return czm; }
+
+public static Map mapDex(String path) { dfk = newDexFile(path); czm = new HashMap(); dcn = findMethod(DexFile, "defineClassNative"); gcnl = findMethod(DexFile.class, "getClassNameList"); cookie = getfldval(dfk, "mCookie"); cnl = gcnl.invoke(dfk,cookie); for (cn: cnl) { cz = dcn.invoke(null,cn,Thread.currentThread().getContextClassLoader(),cookie); czm.put(cn,cz); } return czm; }
+

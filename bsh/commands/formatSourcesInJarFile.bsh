@@ -1,0 +1,85 @@
+{
+  
+  public static Map formatSourcesInJarFile(String inputFilePath) {
+    File inputFile = (inputFilePath != null && inputFilePath.length() > 0) ? new File(inputFilePath) : new File(System.getProperty("input.file", "/proc/self/fd/0"));
+    System.err.printf("Input archive: \"%s\"z\n---\n", inputFile.getPath());
+    File bkpZipFile = File.createTempFile("javasrc_formatted_partial_backup", ".zip", new File(System.getProperty("java.io.tmpdir")));
+    bkpZipFile.setWritable(true, false);
+    bkpZipFile.setReadable(true, false);
+    bkpZipFile.setExecutable(true, false);
+    Map zm2 = new TreeMap();
+    Map failed = new TreeMap();
+    ZipFile zf = new ZipFile(inputFile);
+    Map zm = RealArrayMap.toMap(
+      ZipUtil.mapBytes(zf)
+        .entrySet()
+        .filter(Pattern.compile("\\.java(?=[=,() ]|$)").matcher("")));
+    for (java.util.Map$Entry e : zm.entrySet()) {
+      System.err.printf("Processing entry: %s ...\n", e.getKey());
+      try {
+        zm2.put(e.getKey(), parseJava(TextUtil.toString(e.getValue()), true).toString().replaceAll("(?<= |\n|^)  ", "  ").replaceAll("\\), ([a-zA-Z0-9_$]+)\\(", "),\n  $1("));
+      } catch (Throwable ex) {
+        failed.put(e.getKey(), Pair.of(ex, e.getValue()));
+        Reflector.getRootCause(ex).printStackTrace();
+      }
+      if (zm2.size() % 1000 == 0) {
+        System.err.printf("writing to %s ...\n", bkpZipFile.getPath());
+        FileUtils.writeByteArrayToFile(bkpZipFile, ZipUtil.writeZip(zm2));
+      }
+    }
+    File outputZipFile = new File(new File(System.getProperty("user.dir")), String.format("%s_output.%s", org.apache.commons.io.FilenameUtils.removeExtension(System.getProperty("input.file", "javasrc.zip")), StringUtils.substringAfterLast(System.getProperty("input.file", "javasrc.zip"), ".")));
+    writeFile(outputZipFile.getPath(), ZipUtil.writeZip(zm2));
+    System.err.printf("\n---  Wrote %s (%d bytes)\n\n", outputZipFile.getPath(), outputZipFile.length());
+    return zm2;
+  }
+  
+  
+  
+  public static int script_main() {
+    Runtime.getRuntime().runFinalizersOnExit(true);
+    
+    String inputFilePath = System.getProperty("input.file");
+    if (inputFilePath == null) {
+      List<String> args = new ArrayList<String>(EnumerationUtils.toList(
+        new StringTokenizer(System.getProperty("sun.java.command", ""))
+      ));
+      Collections.reverse(args);
+      if (args.isEmpty() || !(new File(args.get(0)).exists())) {
+        printProperties();
+        System.out.println(Debug.ToString(this));
+        System.out.println(
+          Debug.ToString(Reflect.getfldval(this.namespace,"this$0"))
+        );
+        System.out.println(PosixFileInputStream.pexecSync(
+          "mksh-static-printf", "-c",
+          String.format(
+            "ll /proc/%d/fd/ 2>&1; ",
+            PosixFileInputStream.getPid()
+          )
+        ));
+        Runtime.getRuntime().runFinalization0();
+        return 1;
+      } else {
+        inputFilePath = args.get(0);
+      }
+    }
+    
+    formatSourcesInJarFile(inputFilePath);
+    Runtime.getRuntime().runFinalization0();
+    return 0;
+  };
+  
+  
+  
+  Object invtype = getBshInvocationTypeId();
+  if (invtype == INVTYPE_SCRIPT) {
+    Runtime.getRuntime().halt(script_main());
+  }
+  
+  void;
+}
+
+
+
+
+

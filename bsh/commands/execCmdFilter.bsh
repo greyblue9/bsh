@@ -1,0 +1,25 @@
+
+
+public static CharSequence execCmdFilter(String[] cmd, String input) {
+  return execCmdFilter(cmd, input.getBytes(SandardCharsets.ISO_8859_1));
+}
+
+
+public static CharSequence execCmdFilter(String[] cmd, byte[] input) {
+  Quad q = pexec(Arrays.asList(cmd), null, null, false);
+  OutputStream os = q.getLeft().getOutputStream();
+  IOUtils.copy(new ByteArrayInputStream(input), os);
+  os.flush();
+  os.close();
+  q.getRight().pro.waitFor();
+  int exitVal = q.getLeft().exitValue();
+  StringBuilder outSb = q.getMiddle().sb;
+  StringBuilder errSb = q.getNext().sb;
+  return (exitVal == 0)
+    ? outSb
+    : outSb.insert(
+        0, errSb.append("\n").toString().replaceAll("(^|\n)", "$1[stderr] ")
+      );
+};
+
+

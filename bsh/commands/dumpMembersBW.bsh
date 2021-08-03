@@ -1,0 +1,355 @@
+import bsh.*;
+
+
+import java.lang.reflect.AccessibleObject;
+import java.lang.reflect.java.lang.reflect.Member;
+import java.lang.reflect.java.lang.reflect.Field;
+import java.lang.reflect.java.lang.reflect.Method;
+import java.lang.reflect.Constructor;
+import java.lang.reflect.java.lang.reflect.Type;
+import libcore.reflect.ParameterizedTypeImpl;
+import org.d6r.ReflectionUtil;
+
+public static Map typeMapBW = new java.util.HashMap();
+
+public static void dumpMembersBW(java.lang.Object o) {
+  print(dumpMembersBW(o, false));
+}
+
+public static void dumpMembersBWv(java.lang.Object o) {
+  print(dumpMembersBW(o, true));
+}
+
+public static java.lang.String dumpMembersBW(java.lang.Object o, boolean verbose) {
+  java.lang.Class cls = null;
+  if ( o instanceof bsh.ClassIdentifier ) {
+    cls = Class.forName(
+      java.lang.String.valueOf(o).substring(
+      java.lang.String.valueOf(o).indexOf(":") + 2)
+    );
+  } else if ( o instanceof java.lang.String) {
+    cls = this.namespace.getClass((java.lang.String)o);
+  /*} else if ( o instanceof ParameterizedTypeImpl )
+    cls = ((ParameterizedTypeImpl) o).getRawType();
+    typeMapBW.put(cls, o);*/
+  } else if ( o instanceof java.lang.Class ) {
+    cls = o;
+    o = null;
+  } else if (o != null) {
+    cls = o.getClass();
+  }
+  if (cls == null) return null; 
+  return dumpMembersBW(cls, o, verbose);
+}
+
+public static java.lang.String dumpMembersBW
+(java.lang.Object o, java.lang.Class cls) {
+  return dumpMembersBW(cls, o, true);
+}
+
+public static java.lang.String dumpMembersBW
+(java.lang.Class cls, java.lang.Object o) {
+  return dumpMembersBW(cls, o, true);
+}
+
+public static java.lang.String dumpMembersBW
+(java.lang.Class cls, java.lang.Object o, boolean verbose) {
+
+  /*java.lang.reflect.Method gcn
+      = ReflectionUtil.class.getDeclaredMethod("getClassName",
+        new java.lang.Class[]{ java.lang.reflect.Type.class });*/
+  
+  
+  char lf = (char)0x0A;
+  java.lang.StringBuilder sb = new java.lang.StringBuilder(250);
+  sb.append(java.lang.String.format(
+    "%s %s {%c",
+    java.lang.reflect.Modifier.toString(cls.getModifiers()),
+    //cls.isInterface()? "interface": "class",
+    cls.getName(),
+    (char)0x0a 
+  ));
+  
+  
+  java.lang.reflect.Method[] methods = cls.getDeclaredMethods();
+  java.lang.reflect.Field[] fields = cls.getDeclaredFields();
+  java.lang.reflect.Constructor[] ctors = cls.getDeclaredConstructors();
+  
+  java.lang.reflect.Member[] members 
+    = new java.lang.reflect.Member[
+      fields.length + ctors.length + methods.length ];
+  
+  System.arraycopy(fields, 0,  
+    members, 0, 
+    fields.length);
+  System.arraycopy(ctors, 0,   
+    members, fields.length,  
+    ctors.length);
+  System.arraycopy(methods, 0, 
+    members, fields.length + ctors.length, 
+    methods.length);
+  
+  java.lang.reflect.Member m = null;
+  
+  sb.append(lf);
+  appendColor(sb, "  // As ", "1;30", new java.lang.Object[]{});
+    
+  ParameterizedTypeImpl _type = typeMapBW.get(cls);
+  if (_type != null) {
+    appendColor(sb, "%s", "1;36", new java.lang.Object[]{ 
+      ReflectionUtil.getClassName(_type) });
+  } else {
+    appendColor(sb, "%s", "1;36", new java.lang.Object[]{ cls.getName() });
+    appendColor(sb, getTypeNames(cls.getTypeParameters()),
+    "1;31", new java.lang.Object[]{});
+  }
+  
+  
+  sb.append(lf);
+  
+  
+  for (int n=0; n<members.length; n++) {
+    
+    java.lang.String secName = null;
+    if (n == fields.length + ctors.length) {
+      secName = "Methods";
+    } else if (n == fields.length) {
+      secName = "Constructors"; 
+    } else if (n == 0) {
+      secName = "Fields"; 
+    } 
+    if (secName != null) {
+      appendColor(sb, "  // ", "1;30", 
+        new java.lang.Object[]{});
+      appendColor(sb, "%s%c", "0;36",
+        new java.lang.Object[]{ secName, lf});
+    }
+    
+    
+    m = members[n];
+    
+    java.lang.String name = m.getName();
+    java.lang.String argsPart = "";
+    java.lang.String valStr = "";
+    java.lang.reflect.Type type = null;
+    
+    if(m instanceof java.lang.reflect.Method 
+    || m instanceof java.lang.reflect.Constructor) 
+    {
+      java.lang.reflect.Type[] paramClzs 
+        = m instanceof java.lang.reflect.Method
+          ? ((java.lang.reflect.Method)m).getGenericParameterTypes()
+          : m instanceof java.lang.reflect.Constructor
+            ? ((java.lang.reflect.Constructor)m).getGenericParameterTypes()
+            : new java.lang.reflect.Type[]{};
+      
+      java.lang.StringBuilder args = new java.lang.StringBuilder(
+        paramClzs.length * 12);
+      
+      for (int p=0; p<paramClzs.length; p++) {
+        if (p > 0) args.append(", "); 
+        args.append(
+          colorize(
+           typeToString( paramClzs[p] ).replace("java.lang.", "").replace("[]", colorize("[]", "1;37")),
+            "1;32"
+          )
+        );
+      }
+      argsPart = args.toString();
+      
+      retType = (m instanceof java.lang.reflect.Method)
+        ? m.getGenericReturnType()
+        : null;
+      
+    } // java.lang.reflect.Method | java.lang.reflect.Constructor m
+    else if (m instanceof java.lang.reflect.Field) 
+    {
+      
+      argsPart = null;
+      retType = m.getGenericType();
+      
+      try {
+        m.setAccessible(true);
+        java.lang.Object value = ((java.lang.reflect.Field)m).get(o);
+        if (value != null) {
+          valStr = java.lang.String.format(
+            "%s", 
+            value.getClass().isArray()
+              ? java.util.Arrays.toString(value)
+              : value.toString()
+          );
+        } else {
+           valStr = "null";
+        }
+      } catch (java.lang.Throwable e) {
+          // ignored 
+      }
+    } // java.lang.reflect.Field m
+    
+    this.namespace.importPackage("bsh");
+    java.lang.String typeStr = typeToString(retType);
+    java.lang.String modsStr 
+      = java.lang.reflect.Modifier.toString(m.getModifiers());
+    
+    java.lang.String strMember = "";
+    
+    sb.append("  ");
+    sb.append(colorize(modsStr, "1;30"));
+    if (modsStr.length() > 0) sb.append(' ');
+    sb.append(colorize(typeStr, "1;35"));
+    sb.append(' ');
+    sb.append(colorize(name,    "1;33"));
+    if (argsPart != null) {
+      sb.append(java.lang.String.format(
+        "%s%s%s", 
+        "(", 
+        colorize(argsPart, "1;32", false),
+        ")"
+      ));
+    }
+    if (valStr.length() > 0) {
+      sb.append(java.lang.String.format(
+        "%c     = %s",0x0a,valStr
+      ));
+    }
+    sb.append(';');
+    sb.append(lf);
+    //);
+    //sb.append(strMember);
+  }
+  
+  java.lang.Object[] extendsArr = new java.lang.Object[
+    cls.getGenericInterfaces().length 
+    + (cls.equals(Object.class)
+        ? (cls.getGenericSuperclass() != null? 1: 0)
+        : 0)
+  ];
+  System.arraycopy( cls.getGenericInterfaces(), 0, extendsArr, 0, cls.getGenericInterfaces().length );
+  if (extendsArr.length > cls.getGenericInterfaces().length) {
+    extendsArr[cls.getGenericInterfaces().length]
+      = cls.getGenericSuperclass();
+  }
+        
+  for (java.lang.Object extended: extendsArr)
+  {
+    java.lang.Class iCls = null;
+    if (extended instanceof ParameterizedTypeImpl) {
+      iCls = ((ParameterizedTypeImpl) extended).getRawType();
+      typeMapBW.put(iCls, extended);
+    } else {
+      iCls = (java.lang.Class) extended;
+    }
+    
+    sb.append(lf);
+    sb.append( dumpMembersBW(iCls, o, verbose) );
+  }
+  
+
+  
+  java.lang.Object oSuperType = cls.getGenericSuperclass();
+  ParameterizedTypeImpl superType 
+    = (oSuperType instanceof ParameterizedTypeImpl)
+      ? (ParameterizedTypeImpl) oSuperType
+      : null;
+  
+  java.lang.Class superCls = cls.getSuperclass();
+  
+  if (superCls != null && superCls != Object.class ) {
+    sb.append((char)0x0A);
+    sb.append(
+      dumpMembersBW(superCls, o, verbose)
+    );
+  }
+  
+  if (! ( cls.getSuperclass() instanceof Object)) {
+    sb.append(java.lang.String.format(
+      "}%c",
+      (char)0x0a 
+    ));
+  }
+  //sb.append(lf);
+  return sb.toString();
+}
+
+public static java.lang.String colorize(java.lang.String fmt, java.lang.String colorspec, boolean useColor) {
+  useColor = false;
+  
+  if (! useColor) return fmt;
+  char esc = (char)0x1b;
+  
+  return java.lang.String.format(
+    "%c[%sm%s%c[%sm", 
+    (char)0x1b, colorspec, 
+    fmt, 
+    (char)0x1b, "0"
+  )         .replace("<", 
+              java.lang.String.format("%c[0;31m<%c[1;31m",esc,esc)).replace(">", 
+              java.lang.String.format("%c[0;31m>%c[1;31m",esc,esc)).replaceAll(
+              java.lang.String.format(">%c%c[1;31m([ ])",esc,0x5c), 
+              java.lang.String.format(">%c[0m$0",esc)).replaceAll("$", 
+              java.lang.String.format("%c[0m",esc)).replace("[]", 
+              java.lang.String.format("%c[1;37m[]%c[0m",esc,esc));
+}
+
+public static java.lang.String colorize(java.lang.String fmt, java.lang.String colorspec) {
+  return colorize(fmt, colorspec, true);
+}
+
+
+
+public static java.lang.StringBuilder appendColor(java.lang.StringBuilder sb, java.lang.String fmt, java.lang.String colorspec, java.lang.Object[] args) {
+  return sb.append(java.lang.String.format(
+    colorize(fmt, colorspec, true),
+    args
+  ));
+}
+
+
+
+public static java.lang.String typeToString(java.lang.reflect.Type type) {
+  import bsh.*;
+  import org.d6r.ReflectionUtil;
+  
+  java.lang.reflect.Method gcn
+    = ReflectionUtil.class.getDeclaredMethod(
+        "getClassName",
+        new java.lang.Class[]{ java.lang.reflect.Type.class }
+      );
+  
+  java.lang.String typeStr
+    = (type != null)
+        ? ReflectionUtil.getClassName(type)
+        : "";
+       
+  while (typeStr.length() > 0 && typeStr.charAt(0) == '[') {
+    typeStr = typeStr.substring(1, typeStr.length()) + "[]";
+
+  }  
+  if (typeStr.length() > 0 && typeStr.charAt(0) == 'L' && typeStr.indexOf(';') != -1) {
+    typeStr = typeStr.substring(1);
+    typeStr = typeStr.replace(";", "");
+  }
+  return typeStr.replace(java.lang.String.valueOf((char)0x0A), "");
+  
+}
+
+
+
+public static java.lang.String getTypeNames(java.lang.reflect.TypeVariable[] tvars) { 
+  if (tvars.length == 0) return "";
+  java.lang.StringBuilder sb = new java.lang.StringBuilder(); 
+  
+  for (int i=0; i<tvars.length; i++) {
+    libcore.reflect.TypeVariableImpl tvar 
+      = (libcore.reflect.TypeVariableImpl) tvars[i]; 
+    if (i>0) sb.append(", "); 
+    
+    sb.append(tvar.getName());  
+  } 
+  sb.append(">"); 
+  sb.insert(0, "<");
+  
+  return sb.toString();
+}
+
+

@@ -1,0 +1,260 @@
+import java.util.Map.Entry;
+import org.apache.commons.lang3.builder.ToStringBuilder;
+import org.apache.commons.lang3.builder.ToStringStyle;
+import org.apache.commons.lang3.reflect.FieldUtils;
+import libcore.util.MutableInt;
+
+
+
+
+
+
+
+
+public static String ToString(Object mr) {
+  return ToString(mr, true);
+}
+
+
+
+
+
+
+
+
+public static String ToString(Object mr, boolean isInner) {
+  int end;
+  StringBuffer sb = new StringBuffer(120);
+  
+  if (mr == null) {
+    return "\u001b[1;30mnull\u001b[0m";
+  }
+  Class cls = mr.getClass();
+  if (cls.isArray()) {
+    int len = Array.getLength(mr);
+    int max = 25;
+    boolean needsCut = len > max;
+    Object array = (needsCut)
+      ? Arrays.copyOfRange(mr, 0, max)
+      : mr;
+    Class cmpType = cls.getComponentType();
+    Class unitType = cmpType;
+    while (unitType.isArray()) unitType = unitType.getComponentType();
+    StringBuilder sb = new StringBuilder();
+    int stringifiedCount = 0;
+    int maxchars = 512;
+    if (unitType.isPrimitive() || ClassUtils.isPrimitiveOrWrapper(unitType)) {
+      Object parray = (unitType.isPrimitive())
+        ? array
+        : ArrayUtils.toPrimitive(array);
+      if (cls == byte[].class) {
+        MutableInt outCount = new MutableInt(-1);
+        formatByteArray(sb, (byte[]) parray, !isInner, outCount);
+        stringifiedCount = outCount.value;
+      } else {
+        String s = (parray instanceof Object[]) 
+          ? Arrays.deepToString(parray)
+          : Arrays.toString(parray);
+        String s2 = s.substring(1, s.length()-1);
+        String s3 = s2.replace("[", "{ ").replace("]", " }");
+        sb.append(s3.replace("{", "\\{").replace("}", "\\}"));
+        stringifiedCount = Array.getLength(parray);
+      /*for (int i=0; alen=Math.min(len, max); i<alen; ++i) {
+        Object elem = Array.get(array, i);
+        if (i != 0) sb.append(", ");
+        sb.append(elem);
+        ++stringifiedCount;
+        if (sb.length() >= maxchars) break;
+        else {
+          max = i;
+          break;
+        }
+      }*/
+      }
+    } else {
+      Object[] oarray = (Object[]) array;
+      for (int i=0, alen=Math.min(len, max); i<alen; ++i) {
+        Object elem = oarray[i];
+        if (i != 0) sb.append(", ");
+        sb.append(ToString(elem, true));
+        ++stringifiedCount;
+        if (sb.length() >= maxchars) break;
+      }
+    }
+    return formatAsArray(sb, array, unitType, stringifiedCount, isInner).toString();
+  }
+  
+  ToStringBuilder tsb
+    = new ToStringBuilder(mr, ToStringStyle.JSON_STYLE, sb);
+  ToStringStyle style = tsb.getStyle();
+  
+  Field prefixFld = style.getClass().getDeclaredField("FIELD_NAME_PREFIX");
+  prefixFld.setAccessible(true);
+  prefixFld.set(tsb.getStyle(), "\u001b[1;33m");
+  
+  Pair[] settings = new Pair[]{
+    Pair.of("setContentEnd", "\u001b[0;36m}\u001b[0m"),
+    Pair.of("setContentStart", " \u001b[0;36m{\u001b[0m"),
+    Pair.of("setFieldNameValueSeparator", "\u001b[0m \u001b[0;36m=\u001b[0m "),
+    Pair.of("setUseClassName", Boolean.TRUE)
+  };
+  
+  for (Entry setting: settings) {
+     Method mtd = ToStringStyle.class.getDeclaredMethod(
+       setting.getKey(),
+       setting.getValue() instanceof CharSequence
+         ? String.class
+         : Boolean.TYPE
+     );
+     mtd.setAccessible(true);
+     mtd.invoke(style, setting.getValue());
+  }
+  
+  sb.insert(0, "\u001b[1;36m").append(" ");
+  
+  Object object = tsb.getObject();
+  Class objectCls = object != null? object.getClass(): Object.class;
+  
+  for (Field fld : FieldUtils.getAllFieldsList(objectCls)) {
+    int stf = (Modifier.STATIC | Modifier.FINAL);
+    if ((fld.getModifiers() & stf) == stf) continue;
+    Object fldVal = FieldUtils.readField(fld, object, true);
+    tsb.append(fld.getName(), fldVal, true);
+    sb.append(" ");
+  }
+  
+  tsb.toString();
+  tsb.build();
+  
+  int commaPos = sb.lastIndexOf(",");
+  if (commaPos != -1) sb.delete(commaPos, commaPos + 1);
+  
+  int bracePos = sb.lastIndexOf("}");
+  if (bracePos != -1) sb.delete(
+    sb.lastIndexOf(Character.valueOf((char) 0x1b).toString(), bracePos),
+    sb.indexOf("m", bracePos + 1) + 2
+  );
+  return sb.toString();
+}
+
+
+
+
+
+
+
+
+public static StringBuilder formatAsArray(StringBuilder sb, Object array,
+Class unitType, int stringifiedCount, boolean isInnerArray)
+{
+  Class cls = array.getClass();
+  Class cmpType = cls.getComponentType();
+  int len = Array.getLength(array);
+  boolean needsEllipsis = (stringifiedCount < len);
+  
+  String prettyCmpName = ClassInfo.typeToName(cmpType);
+  int bracketIndex = prettyCmpName.indexOf('[');
+  CharSequence prettyCmpNameWithoutBrackets = (bracketIndex != -1)
+    ? prettyCmpName.subSequence(0, bracketIndex)
+    : prettyCmpName;
+  CharSequence brackets2ToN = (bracketIndex != -1)
+    ? prettyCmpName.subSequence(bracketIndex, prettyCmpName.length())
+    : "";
+  String brackets1 = String.format("[%d]", len);
+  String prefixStr = String.format(
+    (
+      (!isInnerArray)
+        ? "\u001b[%1$sm"
+          + "%2$s"
+        : ""
+    ) + "\u001b[1;37m"
+      +   "[%3$d]%4$s"
+      + "\u001b[0;36m{\u001b[0m ",
+    (unitType.isPrimitive()) ? "1;35" : "1;36", // type color
+    prettyCmpNameWithoutBrackets,
+    len,
+    brackets2ToN
+  );
+  String suffixStr = String.format(
+    "%s \u001b[0;36m}\u001b[0m", 
+    (needsEllipsis) ? " ..." : ""
+  );
+  int idx;
+  while ((idx = sb.indexOf("\\{")) != -1) {
+    sb.replace(idx, idx+2, "\u001b[0;36m{\u001b[0m");  
+  }
+  while ((idx = sb.indexOf("\\}")) != -1) {
+    sb.replace(idx, idx+2, "\u001b[0;36m}\u001b[0m");  
+  }
+  return sb.insert(0, prefixStr).append(suffixStr);
+}
+
+
+
+
+
+
+
+
+
+public static StringBuilder formatByteArray(StringBuilder sb, byte[] bytes, 
+boolean multiLine, MutableInt outCount)
+{
+  String nlIndentStr = (multiLine) ? "\n  " : null;
+  int startIndex = 0;
+  int count = Math.min(
+    bytes.length, 
+    Math.min(
+      (multiLine) ? 0x60 : 0x10,
+      (outCount.value > 0) ? outCount.value : Integer.MAX_VALUE
+    )
+  );
+  long scaleOffset = 0L;
+  
+  HexDump.dump(bytes, startIndex, count, scaleOffset, ByteOrder.nativeOrder(), sb);
+  if (multiLine) {
+    /*int idx, ldone = -1;
+    while ((idx = sb.indexOf("\n", ldone+1)) != -1 && idx+1 <= sb.length()-1 &&
+          ((sb.charAt(idx+1) >= '0' && sb.charAt(idx+1) <= '9') ||
+           (sb.charAt(idx+1) >= 'A' && sb.charAt(idx+1) <= 'F')))
+    {
+      sb.replace(idx, idx+1, nlIndentStr);
+      ldone = idx;
+    }*/
+    sb.insert(0, "\n"); //nlIndentStr);
+  }
+  // sb.insert(0, nlIndentStr);
+  outCount.value = count;
+  return sb;
+}
+
+
+
+
+
+public static String toString(org.w3c.dom.Document doc) {
+  java.io.Writer sw = new StringWriter(32768);
+  Object lso = doc.getImplementation().createLSOutput();
+  lso.setCharacterStream(sw);
+  lso.setEncoding(java.nio.charset.StandardCharsets.UTF_8.name());
+  lso.setByteStream(new ByteArrayOutputStream());
+  lso.setSystemId("");
+  Object lser = doc.getImplementation().createLSSerializer();
+  org.w3c.dom.Node root = doc.getDocumentElement();
+  if (lser.write(root, lso)) {
+    return lso.getCharacterStream().toString();
+  }
+  return null;
+}
+
+
+
+
+
+
+
+
+
+
+
+

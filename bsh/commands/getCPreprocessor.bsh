@@ -1,0 +1,130 @@
+import java.util.Map.Entry;
+{ if (! bsh.Capabilities.classExists(
+        "org.eclipse.cdt.internal.core.parser.scanner.CPreprocessor"))
+{
+  appendClassPathFile("/external_sd/_projects/sdk/cdt/cdt.jar");
+  if (!CollectionUtil.isJRE()) { Thread.currentThread().getContextClassLoader().badClasses.clear(); };
+  this.interpreter.bcm.absoluteNonClasses.clear();
+  bsh.Capabilities.classes.clear();
+};
+
+
+
+
+import org.eclipse.cdt.internal.core.parser.scanner.InternalFileContent;
+import org.eclipse.cdt.internal.core.parser.scanner.CharArray;
+import org.eclipse.cdt.internal.core.parser.scanner.IncludeSearchPathElement;
+import org.eclipse.cdt.core.parser.ExtendedScannerInfo;
+import org.eclipse.cdt.core.parser.ParserLanguage;
+import org.eclipse.cdt.internal.core.indexer.StdoutLogService;
+import org.eclipse.cdt.core.dom.parser.c.GCCScannerExtensionConfiguration;
+import org.eclipse.cdt.internal.core.parser.SavedFilesProvider;
+import org.eclipse.cdt.internal.core.parser.scanner.CPreprocessor;
+
+
+
+public static Map getCPreprocessor(String cSourceFilePath,
+String[] includePaths, boolean argsOnly)
+{
+  String path = cSourceFilePath;
+  File file = new File(path);
+  int size = (int) file.length();
+  FileInputStream fis = new FileInputStream(file);
+  FileChannel ch = fis.getChannel();
+  Charset cs = StandardCharsets.UTF_8;
+  char[] chars = FileUtils.readFileToString(file, cs).toCharArray();
+  InternalFileContent fc
+    = Reflect.allocateInstance(InternalFileContent.class);
+  Reflect.setfldval(fc, "fSource", new CharArray(chars));
+  Reflect.setfldval(fc, "fFileLocation", path);
+  Reflect.setfldval(fc, "fFiles", new ArrayList());
+  Reflect.setfldval(fc, "fFoundOnPath",
+    new IncludeSearchPathElement(file.getParentFile().getPath(), false));
+  Reflect.setfldval(fc, "fKind", 
+    InternalFileContent.InclusionKind.USE_SOURCE);
+  Reflect.setfldval(fc, "fMacroDefinitions", new ArrayList());
+  
+  Object scannerInfo = new ExtendedScannerInfo(
+    new TreeMap(), ArrayUtils.addAll(
+      (includePaths != null)
+        ? includePaths
+        : new String[0],
+      new String[]{
+        file.getParentFile().getPath(), 
+        file.getParentFile().getParentFile().getPath()
+      }
+    )
+  );
+  ParserLanguage lang = ParserLanguage.C;
+  Object logService = new StdoutLogService();
+  Object extConfig = GCCScannerExtensionConfiguration.getInstance();
+  Object includeProvider = SavedFilesProvider.getInstance();
+  Map argsOnlyMap = RealArrayMap.toMap(
+    "fc", fc,
+    "scannerInfo", scannerInfo,
+    "lang", lang,
+    "logService", logService,
+    "extConfig", extConfig,
+    "includeProvider", includeProvider
+  );
+  if (argsOnly) return argsOnlyMap;
+  
+  CPreprocessor cp = new CPreprocessor(
+    fc, scannerInfo, lang, logService, extConfig, includeProvider
+  );
+  
+  
+  List toks = new ArrayList();
+  for (int i=0, offset = -1, lastOffset = -1; i<size; i++) { 
+    lastOffset = offset;
+    tok = cp.fetchToken();
+    offset = tok.getOffset();
+    if (offset == lastOffset) break;
+    toks.add(tok);
+  };
+  
+  Map macroDefs = cp.getMacroDefinitions();
+  Map macroExps = new TreeMap();
+  Map macroDefsToExps = new HashMap();
+  for (Entry ent: macroDefs.entrySet()) {
+    String macroName = (String) ent.getKey();
+    Object macroDef = ent.getValue();
+    char[] expansionImageChars = macroDef.getExpansionImage();
+    String expansionImage = String.valueOf(expansionImageChars);
+    macroExps.put(macroName, expansionImage);
+    macroDefsToExps.put(macroDef, expansionImage);      
+  }
+  
+  Map retMap = new RealArrayMap(argsOnlyMap);
+  retMap.putAll(RealArrayMap.toMap(
+    "defs", macroDefs,
+    "exps", macroExps,
+    "cp", cp,
+    "toks", toks,
+    "d2es", macroDefsToExps
+  ));
+  return retMap;
+};
+
+
+public static Map getCPreprocessor(String cSourceFilePath,
+String[] includePaths)
+{
+  return getCPreprocessor(cSourceFilePath, includePaths, false);
+}
+
+public static Map getCPreprocessor(String cSourceFilePath) {
+  return getCPreprocessor(cSourceFilePath, null);
+};
+
+
+
+
+
+
+
+void;
+};
+
+
+

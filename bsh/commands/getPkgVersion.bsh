@@ -1,0 +1,3 @@
+
+public static String getPkgVersion(String pkg) { boolean stop = false; for (Class c: searchClassPath(null, ("^").concat(pkg).concat("\\."))) { if (stop) break; for (Field f: StringCollectionUtil.toStringFilter(c.getDeclaredFields(), ".*static.*version.*")) { Object value = 0; try { value = f.get(null); return value.toString(); stop = true; break; } catch (Throwable e) { } }  } return "1.x"; }
+

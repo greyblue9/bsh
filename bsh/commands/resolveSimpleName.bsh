@@ -1,0 +1,5 @@
+
+public static Class resolveSimpleName(String name, BshBinding ns) { bsh.BSHAmbiguousName an = null;bsh.Factory.typeof((an = new bsh.BSHAmbiguousName(0))); Reflect.setfldval(an, "text", name); try { return Reflector.invokeOrDefault(an, "getName", new Object[]{ ns }).toClass(); } catch (Throwable e) {  }; return null; }
+
+public static Class resolveSimpleName(String name) { return resolveSimpleName(name, CollectionUtil.getInterpreter().getNameSpace()); }
+

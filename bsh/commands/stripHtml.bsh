@@ -1,0 +1,124 @@
+import org.jsoup.nodes.Document;
+import org.jsoup.nodes.Element;
+
+import java.nio.charset.CharsetDecoder;
+import libcore.icu.NativeConverter;
+import com.itextpdf.text.pdf.codec.PngImage;
+import com.itextpdf.text.Image;
+import com.itextpdf.text.Image;
+import org.json.JSONObject;
+import org.apache.commons.lang3.StringEscapeUtils;
+import org.apache.commons.lang3.time.FastDateFormat;
+import org.jsoup.nodes.TextNode;
+import org.jsoup.parser.Tag;
+import org.jsoup.nodes.Attribute;
+import org.jsoup.nodes.Attributes;
+import org.jsoup.nodes.Document;
+import org.jsoup.nodes.Element;
+import org.jsoup.select.Elements;
+import org.jsoup.parser.Parser;
+import org.jsoup.safety.Cleaner;
+import org.jsoup.safety.Whitelist;
+import org.jsoup.helper.DataUtil;
+import org.jsoup.helper.HttpConnection;
+
+
+/*{
+  patchSSL();
+  void;
+};*/
+
+
+
+
+
+public static List<Map> getComments(Document jdkDoc) {
+  String TAG = "getComments";
+  List<Element> actionDetailNodes = jdkDoc.select(".action-details");
+  List<Map> comments = new ArrayList<Map>();
+  
+  Matcher commentIdMchr
+    = Pattern.compile("^commentauthor_([0-9]+)(?:[^0-9].*|)$").matcher("");
+  FastDateFormat dateFormat 
+    = FastDateFormat.getInstance("yyyy-MM-dd HH:mm:ssZZ");
+  
+  for (Element details: actionDetailNodes) {
+    Element dateSpan = details.select("span.date.user-tz")[0];
+    Element infoSpan = dateSpan.parent();
+    TextNode textNode = infoSpan.nextSibling();
+    String textContent = textNode.getWholeText().trim();
+    if (textContent.isEmpty()) continue;
+    
+    Element authorElem = details.select("a[id^=\"commentauthor_\"]")[0];
+    String authorName = authorElem.childNodes().typeFilter(TextNode.class)[0].getWholeText().trim();
+    String authorUsername = authorElem.attr("rel");
+    Matcher mchr = commentIdMchr.reset(authorElem.attr("id"));
+    int commentId = (mchr.find())
+      ? Integer.parseInt(mchr.group(1), 10)
+      : 0;
+    String datetime = details.select("time")[0].attr("datetime");
+    Date date = dateFormat.parse(datetime.replaceFirst("T", " "));
+    String localDateStr = date.toLocaleString();
+    
+    comments.add(RealArrayMap.toMap(
+      "text", textContent,
+      "name", authorName,
+      "user", authorUsername,
+      "id", commentId,
+      "date", localDateStr
+    ));
+  }
+  return comments;
+}
+
+
+public static String textToHtml(String text) {
+  String TAG = "textToHtml";  
+  String html = StringUtils.join(
+    Arrays.asList(
+      StringUtils.splitByWholeSeparator(text, "\n\n")
+    ).select(
+      FunctionUtil.bind("""return m -> { 
+          (m.indexOf(";") != -1 || m.indexOf("{")  != -1 ||
+           m.indexOf("}") != -1 || m.indexOf("()") != -1)
+            ? String.format(
+                "<pre>%s</pre>", StringEscapeUtils.escapeHtml4(m)
+              )
+            : String.format(
+                "<p>%s</p>", StringEscapeUtils.escapeHtml4(m)
+              );
+        }""", 
+        org.apache.commons.lang3.StringEscapeUtils.class
+      )
+    ),
+    "\n\n"
+  );
+  String html2 = html; /*
+    .replaceAll("<p>(\\s*)\\}(\\s*)</p>", "<pre>$1}$2</pre>").replaceAll("</pre>((?:\\s*|\n)*)<pre>", "$1");
+  */
+  return html2;
+}
+
+
+public static Object stripHtml(String[] args) {
+  String TAG = "stripHtml";
+  try {
+    return stripHtml_main(args);
+  } catch (Throwable e) {
+    e.printStackTrace();
+    System.exit(1);
+  };
+
+}
+
+
+public static Document stripHtml(Document doc) {
+  return stripHtml_doc(doc);
+}
+
+public static org.jsoup.nodes.Node setTagName(org.jsoup.nodes.Node node,
+String tagName)
+{
+  node.tagName(tagName);
+  return node;
+}

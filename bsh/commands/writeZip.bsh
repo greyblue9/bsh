@@ -1,0 +1,66 @@
+import java.util.Map.Entry;
+import com.google.common.io.ByteStreams;
+public static ZipFile writeZip(File zfile, Map map) {
+  ZipFile zf = null;
+  File zfiledir = zfile.getParentFile();
+  if (zfiledir == null) zfiledir = new File(PosixFileInputStream.cwd());
+  if (!zfiledir.exists()) zfiledir.mkdirs();
+  try {
+    java.util.zip.ZipOutputStream zos
+      = new java.util.zip.ZipOutputStream(
+        fos = new FileOutputStream(zfile)
+        );
+    System.err.println("\n- Adding entries ...");
+    long nowMs = System.currentTimeMillis();
+    for (Entry e: map.entrySet()) {
+      String name = e.getKey();
+      if (name != null && e.getValue() != null) {
+        ZipEntry ze = new ZipEntry(name);
+        ze.setTime(nowMs);
+        zos.putNextEntry(ze);
+        byte[] _data = null;
+        
+        Object _value = e.getValue();
+        System.err.printf("_value is %s\n", _value.getClass());
+        if (_value instanceof String) {
+          String strval = (String) _value;
+          _data = strval.getBytes(java.nio.charset.StandardCharsets.UTF_8);
+        } else if (_value instanceof byte[]) {
+          _data = _value;
+        } else {
+          _data = String.valueOf(_value).getBytes(java.nio.charset.StandardCharsets.UTF_8);
+        }
+        ByteArrayInputStream bais = null;
+
+        try {
+          bais = new ByteArrayInputStream(_data);
+          ByteStreams.copy(bais, zos);
+        } finally {
+          if (bais != null) bais.close();
+          bais = null;
+        }
+        // data = null;
+        zos.closeEntry();
+        System.err.println(name);
+      } else {
+        Log.w("data for entry \"%s\" was null", e.getKey());
+      }
+    }
+    zos.finish();
+    zos.flush();
+    zos.close();
+    fos.flush();
+    fos.close();
+    System.err.printf("Finished writing %s\n", zfile);
+    zf = new ZipFile(zfile);
+    ZipEntry[] entries
+      = CollectionUtil.toArray(zf.entries());
+    System.err.println("Zip file entry listing:");
+    System.out.printf(
+      "    %s\n",
+      StringUtils.join(entries, "\n    ")
+    );
+  } finally {
+  }
+  return zf;
+}

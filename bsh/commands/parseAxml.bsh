@@ -1,0 +1,109 @@
+import android.content.res.AXMLResource;
+import android.content.res.IntReader;
+import com.google.common.collect.BiMap;
+import android.content.res.chunk.sections.StringSection;
+import android.content.res.chunk.sections.ResourceSection;
+import android.content.res.chunk.types.Attribute;
+import android.content.res.chunk.types.Chunk;
+import android.content.res.chunk.types.NameSpace;
+import android.content.res.chunk.types.StartTag;
+
+public static Object parseAxml(InputStream binaryXmlIn) {
+  
+  AXMLResource ar = new AXMLResource();
+  InputStream is = new BufferedInputStream(binaryXmlIn);
+  IntReader ir = new IntReader(is, false);
+  BiMap resTypeLookup = (BiMap) RealArrayMap.asBiMap(RealArrayMap.toMap(new Object[][] {
+    { (short) 0x0000, "ResNull" },
+    { (short) 0x0001, "ResStringPool" },
+    { (short) 0x0002, "ResTable" },
+    { (short) 0x0200, "ResTablePackage" },
+    { (short) 0x0201, "ResTableType" },
+    { (short) 0x0202, "ResTableTypeSpec" },
+    { (short) 0x0003, "ResXml" },
+    { (short) 0x0104, "ResXmlCdata" },
+    { (short) 0x0103, "ResXmlEndElement" },
+    { (short) 0x0101, "ResXmlEndNamespace" },
+    { (short) 0x0100, "ResXmlFirstChunk" },
+    { (short) 0x017f, "ResXmlLastChunk" },
+    { (short) 0x0180, "ResXmlResourceMap" },
+    { (short) 0x0102, "ResXmlStartElement" }
+  }));
+  StringSection sp = null;
+  ResourceSection rs = null;
+  
+  Map nsMap = new TreeMap();
+  List<Chunk> al = new ArrayList<Chunk>();
+  byte[] tbs = new byte[4];
+  ByteBuffer bb = ByteBuffer.wrap(tbs).order(ByteOrder.LITTLE_ENDIAN);  
+  while (is.available() >= 4) {
+    is.mark(4);
+    int pos = 0, read = 0;
+    while ((pos += (read = is.read(tbs, pos, 4 - pos))) < 4);
+    is.reset();
+    
+    bb.rewind().put(tbs).flip();
+    short typeId = bb.getShort(),
+            size = bb.getShort();
+    String resTypeName = resTypeLookup.get(typeId);
+    Chunk c = ar.read(ir);
+    StringBuilder info = new StringBuilder(80 * 4).append(String.format(
+        "type = { id: %1$04x (%1$d), name: <%3$s> },  size = %2$04x (%2$d)\n",
+        typeId, size, resTypeName
+      ));
+    
+    if (c instanceof StringSection) {
+      sp = (StringSection) c;
+    } else if (c instanceof ResourceSection) {
+      rs = (ResourceSection) c;
+    } else if (c instanceof NameSpace) {
+      NameSpace ns = c; // (NameSpace) c;
+      String uri = sp.getString(ns.getUri()),
+          prefix = sp.getString(ns.getPrefix());
+      nsMap.put(uri, prefix);
+      info.append(String.format(
+        "  ::   xmlns:%1$s=\"%2$s\"\n",
+        StringEscapeUtils.escapeXml11(prefix), StringEscapeUtils.escapeXml11(uri)
+      ));
+    } else if (c instanceof StartTag) {
+      StartTag tag = (StartTag) c;
+      int numAttrs   = tag.getAttributeCount(),
+        flags        = tag.getFlags(),
+        lineNo       = tag.getLineNumber();
+      String tagName = tag.getName(sp),
+        namespaceUri = tag.getNamespaceUri(sp),
+        classAttr    = tag.getClassAttribute(sp),
+        comment      = tag.getComment(sp),
+        nsPrefix     = nsMap.get(namespaceUri);
+      String displayTagName = (nsPrefix != null)
+        ? String.format("%s:%s", nsPrefix, tagName)
+        : tagName;
+      List<Attribute> attrs = tag.getAttributes();
+      info.append(String.format(
+        "  ::   <%1$s", StringEscapeUtils.escapeXml11(displayTagName)
+      ));
+      for (Attribute attr: attrs) {
+        String attrName = attr.getName(sp);
+        String attrValue = attr.getValueForXml(sp);
+        int attrUriIndex = Reflect.getfldval(attr, "uri").intValue();
+        String attrNsUri = (attrUriIndex != -1)? sp.getString(attrUriIndex): "";
+        String attrNsPrefix = nsMap.get(attrNsUri);
+        
+        info.append(String.format(
+          " %s%s=\"%s\"",
+          (attrNsPrefix != null)? attrNsPrefix.concat(":"): "",
+          StringEscapeUtils.escapeXml11(attrName),
+          StringEscapeUtils.escapeXml11(attrValue)
+        ));
+      }
+      info.append(">\n");
+    } else {
+      info.append(String.format("Other: %s: %s\n", c.getClass().getName(), c));
+    }
+    al.add(c);
+    System.err.println(info);
+    System.err.flush();
+    info.setLength(0);
+  }
+  return this.namespace.getVariables();
+}

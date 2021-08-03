@@ -1,0 +1,21 @@
+public static String gdbWriteString(String newstr, String destExpr) {
+  if (destExpr == null) {
+    destExpr = "((DvmGlobals) gDvm).classPathStr";
+  }
+  String expr = destExpr;
+  StringBuilder sb = new StringBuilder();
+  for (int i = 0, len = newstr.length(); i < len + 1; ++i) {
+    sb.append(String.format("set (%s)[%d] = %s\n", expr, i, (i < len) ? String.format("'%c'", newstr.charAt(i)) : "0"));
+  }
+  writeFile(path = String.format("/data/media/0/gdb_expr_s.gdb", expr.replaceAll("[^a-zA-Z0-9_]", "")), sb.toString());
+  setClip(String.format("source %s", path));
+  return sb.toString();
+}
+
+ 
+
+public static String gdbWriteString(String newstr) {
+  return gdbWriteString(newstr, null);
+}
+
+ 

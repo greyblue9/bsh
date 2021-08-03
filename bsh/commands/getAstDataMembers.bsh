@@ -1,0 +1,3 @@
+
+public static List<IMemberDefinition> getAstDataMembers(com.strobel.decompiler.languages.java.ast.AstNode node, Class memberDataClass) { return node.getDescendants().typeFilter(com.strobel.decompiler.languages.java.ast.EntityDeclaration.class).evalSelect("m => getAstData(m, "+memberDataClass.getName()+".class)").select(FunctionUtil.eval("return m -> { m; };")); }
+

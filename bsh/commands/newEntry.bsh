@@ -1,0 +1,55 @@
+import java.util.Map.Entry;
+
+
+public static Entry newEntry(key, value) {
+  return new java.util.AbstractMap$SimpleImmutableEntry(
+    key, value
+  );
+}
+
+
+public static Entry newEntry(key, value, Class cls) {
+  
+  Entry ent = new Entry() 
+  { 
+    public Class cls = cls;
+    public Object k = key; 
+    public Object v = value; 
+    public Object getKey() { return k; } 
+    public Object getValue() { return v; } 
+    public int hashCode() { return k.hashCode() + v.hashCode(); }
+    public Object setValue(Object newV) { 
+      v = newV; 
+      return v;   
+    } 
+    public boolean equals(Object other) {
+      if (other == null) return false; 
+      if (other == this) return true; 
+      if (! this.getClass().equals(other.getClass())) 
+        return false; 
+      return this.hashCode().equals(other.hashCode());
+    }
+    public String toString() {
+      try {
+        return String.format(
+          "%s=%s", 
+          k != null? k.toString(): "<null>",
+          v != null? v.toString(): "<null>"
+        );
+      } catch (Throwable e) { 
+        return String.format(
+          "%s@%x <toString() threw %s: [%s]>", 
+          getClass().getName(), 
+          hashCode(),
+          e.getClass().getSimpleName(),
+          e.getMessage() != null? e.getMessage(): "no message"
+        );
+      }
+    }
+  };
+  
+  return ent;
+}
+
+
+

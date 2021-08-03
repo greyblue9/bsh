@@ -1,0 +1,80 @@
+
+
+{
+
+
+public static Object appendClassPathFile(String path, boolean append) {
+  if ((!(path instanceof String)) || path.length() == 0) {
+    Log.w("appendClassPathFile", "Bad input argument: path == void or null (or empty)");
+    return null;
+  }
+  File file = new File(path).getCanonicalFile().getAbsoluteFile();
+  if (!file.exists()) return null;
+  
+  ClassLoader ldr = Thread.currentThread().getContextClassLoader();
+  if (ldr == null) ldr = ClassLoader.getSystemClassLoader();
+  
+  if (ldr instanceof BaseDexClassLoader) {
+    Object[] existing = ldr.pathList.dexElements.filter(Pattern.quote(file.getPath()));
+    if (existing.length != 0) return existing[0];
+  
+    int cookie = DexFile.openDexFileNative(file.getAbsolutePath(), null, 0);
+    DexFile df = Reflect.allocateInstance(DexFile.class);
+    df.mFileName = file.getAbsolutePath();
+    df.mCookie = cookie;
+    LazyMember<Constructor> ctor = LazyMember.of(
+      "dalvik.system.DexPathList$Element", "<init>",
+      File.class, Boolean.TYPE, File.class, dalvik.system.DexFile.class
+    );
+    Object dexElement = ctor.newInstance(
+      file.getAbsoluteFile(), file.isDirectory(),
+      (!file.isDirectory() && !StringUtils.endsWith(file.getName(), "dex"))
+        ? new File(file.getAbsolutePath())
+        : null,
+      df
+    );
+    Object[] existingElems = ldr.pathList.dexElements;
+    Object[] newElems = (dexElement != null)
+      ? (dalvik.system.DexPathList.Element[])
+          CollectionUtil.toArray(Arrays.asList(dexElement))
+      : new dalvik.system.DexPathList.Element[0];
+    
+    ldr.pathList.dexElements = (append)
+      ? ArrayUtils.addAll(existingElems, newElems)
+      : ArrayUtils.addAll(newElems, existingElems);
+    
+    CollectionUtil.getInterpreter().bcm.absoluteNonClasses.clear();
+    bsh.Capabilities.classes.clear();
+    if (bsh.Capabilities.classExists("dalvik.system.XClassLoader")) {
+      dalvik.system.XClassLoader.badClasses.clear();
+    };
+    return dexElement;
+  };
+  
+  if (ldr instanceof URLClassLoader) {
+    URL jarUrl = new URL(String.format("jar:file://%s!/", file.getPath()));
+    ldr.addURL(jarUrl);
+    return jarUrl;
+  };
+  
+  throw new UnsupportedOperationException(String.format(
+    "Do not know how to add a classpath element to loaders of type '%s' (path: '%s')",
+    ldr.getClass().getName(), file.getPath()
+  ));
+}
+
+
+
+
+
+
+
+  public static Object appendClassPathFile(String path) {
+    return appendClassPathFile(path, false);
+  };
+  
+  void;
+}
+
+
+

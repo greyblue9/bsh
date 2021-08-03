@@ -1,0 +1,121 @@
+import org.eclipse.cdt.core.dom.ast.IASTTranslationUnit;
+import java.nio.charset.StandardCharsets;
+import org.eclipse.cdt.internal.core.parser.scanner.CPreprocessor;
+import org.eclipse.cdt.core.parser.FileContent;
+import org.eclipse.cdt.internal.core.parser.scanner.InternalFileContent;
+import org.eclipse.cdt.internal.core.parser.scanner.CharArray;
+import org.eclipse.cdt.internal.core.parser.scanner.IncludeSearchPathElement;
+import org.eclipse.cdt.internal.core.parser.scanner.InternalFileContent.InclusionKind;
+import org.eclipse.cdt.core.parser.IScannerInfo;
+import org.eclipse.cdt.core.parser.ExtendedScannerInfo;
+import org.eclipse.cdt.core.parser.ParserLanguage;
+import org.eclipse.cdt.core.parser.IParserLogService;
+import org.eclipse.cdt.internal.core.indexer.StdoutLogService;
+import org.eclipse.cdt.core.dom.parser.IScannerExtensionConfiguration;
+import org.eclipse.cdt.core.dom.parser.c.GCCScannerExtensionConfiguration;
+import org.eclipse.cdt.core.dom.parser.cpp.GPPScannerExtensionConfiguration;
+import java.nio.channels.FileChannel.MapMode;
+import org.eclipse.cdt.core.parser.CodeReader;
+import org.eclipse.cdt.core.parser.ParserMode;
+import org.eclipse.cdt.core.parser.IncludeFileContentProvider;
+import org.eclipse.cdt.internal.core.parser.SavedFilesProvider;
+import org.eclipse.cdt.internal.core.parser.FileContentProviderAdapter;
+import org.eclipse.cdt.core.dom.parser.cpp.ICPPParserExtensionConfiguration;
+import org.eclipse.cdt.core.dom.parser.cpp.GPPParserExtensionConfiguration;
+import org.eclipse.cdt.internal.core.dom.parser.cpp.GNUCPPSourceParser;
+import org.eclipse.cdt.core.dom.ast.IASTTranslationUnit;
+  
+  
+  public static IASTTranslationUnit parseCPP(String sourcePath,
+    String[] sourceIncludePaths)
+  {
+    GNUCPPSourceParser gcsp = getCPPParser(sourcePath, sourceIncludePaths);
+    IASTTranslationUnit unit = gcsp.parse();
+    return unit;
+  }
+  
+  
+  public static IASTTranslationUnit parseCPP(String cSourceFilePath,
+    boolean addIncludes)
+  {
+    String[] incDirs = (addIncludes)
+      ? getCombinedIncludePaths(cSourceFilePath)
+      : new String[0];
+    return parseCPP(cSourceFilePath, incDirs);
+  }
+  
+  
+  public static File getBaseDir(String cSourceFilePath) {
+    File base = new File(cSourceFilePath).getParentFile();
+    while (base != null && base.exists() &&
+           base.getPath().matches(".*/[^/]*(?:src|source|include)/.+"))
+    {
+      base = base.getParentFile();
+    }
+    return base;
+  }
+  
+  
+  public static String[] getCombinedIncludePaths(String cSourceFilePath) {
+    File base = getBaseDir(cSourceFilePath);
+    Log.d("parseCPP", "Computed base = %s", base);
+    
+    String[] includePaths = StringUtils.split(
+      IOStream.readFileAsString(
+        "/external_sd/_projects/sdk/gcc/g++_include_dirs.list"
+      ),
+      "\n"
+    );
+    
+    String[] includePathsAugmented = ArrayUtils.addAll(
+      new String[]{
+        new File(cSourceFilePath).getParentFile().getPath(),
+        base.getPath()
+      },
+      (String[]) includePaths
+    );
+    
+    vars.put("includePaths", includePaths);
+    vars.put("incDirs", includePathsAugmented);
+    return includePathsAugmented;
+  }
+  
+
+
+    /*
+    char[] sourceChars = null;
+    FileDescriptor fd = (CollectionUtil.isJRE())
+      ? new FileDescriptor(sun.nio.fs.UnixNativeDispatcher.open(
+          Paths.get(sourcePath), PosixUtil.O_RDONLY, 0 
+        ))
+      : PosixUtil.open(sourcePath, PosixUtil.O_RDONLY, 0);
+      
+    FileInputStream fis = new FileInputStream(fd);
+    FileChannel ch = fis.getChannel();
+    ByteBuffer mbb = ch.map(FileChannel.MapMode.READ_ONLY, 0L, ch.size());
+    Charset charset = StandardCharsets.UTF_8;
+    CharBuffer cb = null;
+      while (cb == null) {
+        try {
+          System.err.printf("trying decode as %s ...\n", charset.name()); 
+          mbb.position((int) 0);
+          cb = charset.decode(mbb);
+        } catch (java.nio.charset.MalformedInputException ex) { 
+          System.err.println(ex);
+          charset = 
+            (charset == StandardCharsets.UTF_8) 
+              ? StandardCharsets.ISO_8859_1
+              : (charset == StandardCharsets.ISO_8859_1)
+                  ? StandardCharsets.WINDOWS_1252
+                  : null;
+          if (charset == null) charset 
+            = java.nio.charset.StandardCharsets.ISO_8859_1;
+        }
+      };
+      sourceChars = cb.array();
+      System.err.printf(
+        "Successfully decoded using charset %s (length: %d chars)\n",
+        charset.name(), sourceChars.length
+      );
+    */
+

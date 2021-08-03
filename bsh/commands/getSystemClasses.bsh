@@ -1,0 +1,4 @@
+
+
+public static Class[] getSystemClasses() { Matcher mchr = Pattern.compile(FileUtils.readFileToString(new File("/external_sd/_projects/sdk/bsh/trunk/out/sys_classes_exclude_pattern.txt"), Charset.forName("UTF-8"))); String[] cns = CollectionUtil2.filter(Iterables.concat(findFiles.iterate("/external_sd/_projects/sdk/framework/", 0, "/external_sd/_projects/sdk/framework/(?:core|ext|framework|apache|pm|wm|harmony|edm)(?:[^_-]|[_-][^d])*\\.jar").select(FunctionUtil.eval("""return m -> { var ts = new(TreeSet); Collections.addAll(ts, ClassPathUtil2.getDexClasses(m.getPath())); ts; }""")).toArray(new Iterable[0])).toSortedSet(Ordering.natural()), mchr).toArray(new String[0]); Class[] cs = cns.to(Class);  System.err.printf("%d classes\n", cs.length); return cs; };
+

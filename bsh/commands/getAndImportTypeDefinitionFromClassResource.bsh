@@ -1,0 +1,12 @@
+public static TypeDefinition getAndImportTypeDefinitionFromClassResource(String className) {
+  ZipFile zf = ClassInfo.getClassResource(DexVisitor.classForName(className)).openConnection().getJarFile();
+  Map zm = null;
+  (zm = ZipUtil.mapBytes(zf)).size();
+  Map zm2 = RealArrayMap.toMap(zm.keySet().filter(Pattern.compile("^(^(sun|java|com.sun|com.oracle|java)/((?!spec/|/Key|Cert|cert/|managememt/|resources/|swing|awt|corba|crypto/|org/apache|xml/|model/|management/|activation|accessibility|text/|2d|graphics?/|krb5/|print/|mozilla/).)*\\.class)$").matcher("")).select(FunctionUtil.bind("return m -> { Pair.of(m, zm.get(m)); }", "zm", zm)));
+  byte[] zipBytes = ZipUtil.writeZip(zm2);
+  ClassInfo.getAndAddAllJarEntries(zipBytes);
+  TypeDefinition td = ProcyonUtil.getMetadataResolver().lookupType(ClassInfo.classNameToPath(className, null)).resolve();
+  return td;
+}
+
+ 

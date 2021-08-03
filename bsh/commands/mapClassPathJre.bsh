@@ -1,0 +1,25 @@
+public static Map mapClassPathJre() {
+  List<URLClassPath> ucps = new ArrayList<URLClassPath>();
+  sun.misc.URLClassPath bootstrapUcp = ClassLoader.getBootstrapClassPath();
+  if (bootstrapUcp != null)
+    ucps.add(bootstrapUcp);
+  for (ClassLoader cl : new ClassLoader[] { Thread.currentThread().getContextClassLoader(), Reflector.invokeOrDefault(Thread.currentThread().getContextClassLoader(), "getParent", new Object[0]) }) {
+    if (cl == null)
+      continue;
+    sun.misc.URLClassPath ucp = Reflect.getfldval(cl, "ucp");
+    if (ucp == null)
+      continue;
+    ucps.add(ucp);
+  }
+  Map map = org.apache.commons.collections4.map.ListOrderedMap.listOrderedMap(new RealArrayMap(160));
+  for (sun.misc.URLClassPath ucp : ucps) {
+    java.net.URL[] urls = ucp.getURLs();
+    int count = urls.length;
+    for (int i = 0; i < count; ++i) {
+      map.put(urls[i], Reflector.invokeOrDefault(ucp, "getLoader", new Object[] { Integer.valueOf(i) }));
+    }
+  }
+  return map;
+}
+
+ 

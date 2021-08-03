@@ -1,0 +1,5 @@
+
+public static Object[] rev(Collection toRev) { Object[] reved = CollectionUtil.toArray(new ArrayDeque(toRev).descendingIterator()); CollectionUtil.toArray(new ArrayDeque(Arrays.asList(rev).indexed()).descendingIterator()).print(); return reved; }
+
+public static Object rev(Object[] toRev) { Collection reved = CollectionUtil.toArray(new ArrayDeque(Arrays.asList(Arrays.copyOf(toRev, toRev.length))).descendingIterator()); (ret = CollectionUtil.toArray(new ArrayDeque(Arrays.asList(rev.indexed())).descendingIterator())).print(); return reved; }
+

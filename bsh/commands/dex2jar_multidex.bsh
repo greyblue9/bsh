@@ -1,0 +1,115 @@
+{
+    
+  import org.apache.commons.io.FilenameUtils;
+  import org.apache.commons.lang3.time.FastDateFormat;
+  import com.googlecode.dex2jar.reader.MultiDexFileReader;
+  import com.googlecode.dex2jar.reader.DexFileReader;
+  import com.googlecode.dex2jar.reader.IDexFileReader;
+  import com.googlecode.dex2jar.v3.Dex2jar;
+  
+  public static String TAG = "dex2jar_multidex";
+  
+  
+  public static Object dex2jar_multidex() {
+    String inpath = System.getProperty("input.file");
+    String outpath = System.getProperty("output.file");
+    if (outpath == null) {
+      return dex2jar_multidex(inpath);
+    } else {
+      return dex2jar_multidex(inpath, outpath);
+    }
+  }
+  
+  public static Object dex2jar_multidex(String inpath) {
+    File outdir = new File(".").getAbsoluteFile().getCanonicalFile();
+    Log.d(TAG, "outdir = '%s'", outdir);
+    String infile = new File(inpath).getAbsoluteFile();
+    Log.d(TAG, "inpath = '%s'", inpath);
+    
+    String infileName = FilenameUtils.removeExtension(infile.getName());
+    String outfileName = String.format("%s_dex2jar.jar", infileName);
+    String outfileExt = "jar";
+    File outfile = new File(outdir, outfileName);
+    Log.d(TAG, "outfile = '%s'", outfile);
+    if (outfile.exists()) {
+      long fileTime = outfile.lastModified();
+      String backupFileName = String.format(
+        "%s.%s.bak.%s",
+        outfileName, 
+        FastDateFormat.getInstance("yyyy-MM-dd_HHmmss").format(fileTime),
+        outfileExt
+      );
+      File backupfile = new File(outdir, backupFileName);
+      Log.d(TAG, "Output file '%s' exists; renaming to %s", outfile, backupfile);
+      FileUtils.moveFile(outfile, backupfile);
+      if (outfile.exists()) {
+        throw new IOException(String.format(
+          "backup of '%s' to '%s' failed", outfile, backupfile
+        ));
+      }
+    } 
+    return dex2jar_multidex(infile.getPath(), outfile.getPath());
+  }
+  
+  
+  public static Object dex2jar_multidex(String inpath, String outpath) {
+    File infile = new File(inpath);
+    File outfile = new File(outpath);
+    
+    Map bzm = new TreeMap();
+    byte[] inbytes = FileUtils.readFileToByteArray(infile.getAbsoluteFile());
+    // DexFileReader reader = MultiDexFileReader.open(inbytes);
+    DexFileReader reader = MultiDexFileReader.open(inbytes);
+    
+    Log.d(TAG, "Opened reader for '%s': %s", infile, reader);
+    
+    Dex2jar v3 = Dex2jar.from(reader).skipDebug(false);
+    Log.d(TAG, "Created V3 instance for '%s': %s", infile.getName(), v3);
+    ByteArrayOutputStream baos = new ByteArrayOutputStream();
+    Log.d(TAG, "Translating '%s' ...", infile);
+    v3.to(baos);
+    byte[] zipBytes = baos.toByteArray();
+    Log.d(TAG, "Translation completed for '%s': result is %d bytes", 
+      infile.getName(), zipBytes.length);
+    baos.close();
+    
+    Log.d(TAG, "Preparing output archive for '%s' ...", outfile);
+    Map bzm = new TreeMap();
+    if (DexRemix.isZip(inpath)) bzm.putAll(ZipUtil.mapZip(inbytes));
+    bzm.putAll(ZipUtil.mapZip(zipBytes));
+    
+    for (String key: CollectionUtil2.filter(
+      bzm.keySet(),
+      Pattern.compile(
+        "^META-INF/(?:CERT[^/]*|MANIFEST.MF|[^/]*\\.SF|INDEX.LIST)$")))
+    {
+      bzm.remove(key);
+    }
+    Log.d(TAG, "Writing output archive '%s' (%d entries) ...", outfile, bzm.size());
+    FileUtils.writeByteArrayToFile(outfile, ZipUtil.writeZip(bzm));
+    System.err.println(outfile);
+    Log.d(TAG,
+      "Wrote output jar archive to: '%s' (%d bytes)", outfile, outfile.length());
+    return v3;
+  }
+  
+  
+
+  public static void script_main() {
+    dex2jar_multidex();
+  }
+
+
+
+  Object invtype = getBshInvocationTypeId();
+  Log.d(TAG, "invtype_id = [%s]\n", invtype.getValue());
+    // if inside "main" script, like ` if __NAME__ == "main": ` in python
+  if (invtype == INVTYPE_SCRIPT) {
+    script_main(); 
+  }
+
+  void;
+}
+
+
+ 

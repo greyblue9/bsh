@@ -1,0 +1,60 @@
+import org.apache.commons.io.filefilter.RegexFileFilter;
+import com.google.common.base.Functions;
+
+public static List<String> expandDirGlob(String path) {
+  String[] parts = StringUtils.split(path, "/");
+  Deque<String> q = new ArrayDeque<String>();
+  q.offer("/");
+  StringBuilder pb = new StringBuilder();
+  for (int i = 0; i < parts.length; i++) {
+    part = parts[i];
+    int sz = q.size();
+    int s = -1;
+    while (++s < sz) {
+      prefix = q.pollFirst();
+      if ((d = new File(prefix, part)).exists() 
+      &&   d.isDirectory())       
+      {
+        q.offerLast(d.getPath());
+      }
+      if (part.equals("*")) {
+        dirs = new File(prefix).listFiles();
+        for (int j = 0; j < dirs.length; j++) {
+          dir = dirs[j];
+          if (dir.isDirectory()) {
+            q.offerLast(dir.getPath());
+          }
+        }
+      }
+    }
+  }
+  return new ArrayList<String>(q);
+}
+
+public static List<String> expandGlob(String path) { 
+  List<String> results = new ArrayList<String>(); 
+  List<String> dirs = expandDirGlob(path); 
+  if (dirs.size() > 0) return dirs;
+  
+  String parentPath = StringUtils.substringBeforeLast(path, "/");
+  dirs = expandDirGlob(parentPath); 
+  Pattern fileRegex = Pattern.compile(
+    path.substring(parentPath.length() + 1)    
+      .replace(".", "\\.").replace("?", ".").replace("*", "[^/]*")
+    );
+  FilenameFilter filt = new RegexFileFilter(fileRegex);
+  for (String dir: dirs) { 
+    File[] files = new File(dir).listFiles(filt);
+    if (files.length > 0) { 
+      Collections.addAll(
+        results, 
+        Iterables.transform(
+          Arrays.asList(files), 
+          Functions.ToStringFunction.INSTANCE
+        ).toArray()
+      );
+    }; 
+  }
+  return results;     
+}
+

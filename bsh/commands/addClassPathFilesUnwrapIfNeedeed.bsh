@@ -1,0 +1,15 @@
+public static Object[] addClassPathFilesUnwrapIfNeedeed(Iterable<File> dexFiles) {
+  List dexElements = new ArrayList();                                               for (File dexFile : dexFiles) {
+    InputStream fis = new FileInputStream(dexFiles[0]);
+    byte[] hdr = new byte[40];
+    IOUtils.readFully(fis, hdr, 0, 40);                                               if (hdr[2] == (byte) 'y') {                                                         outDexFile = new File(dexFile.getAbsolutePath().concat("_real.dex"));             outDexFile.createNewFile();                                                       FileOutputStream fos = new FileOutputStream(outDexFile);                          IOUtils.copyLarge(fis, fos);                                                      fos.flush();                                                                      fis.close();                                                                      fos.close();
+      Object dexElement = addClassPath(outDexFile.getAbsolutePath());
+      dexElements.add(dexElement);
+    } else {
+      fis.close();
+      Object dexElement = addClassPath(dexFile.getAbsolutePath());
+      dexElements.add(dexElement);
+    }
+  }
+  return dexElements;
+}

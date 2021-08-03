@@ -1,0 +1,11 @@
+public static String parametersToInitializers(CharSequence s) {
+  return s.toString().matchAll("\\b(?!public |private |protected |abstract |final |synthetic |static |strictfp |bridge |varargs |default |native |transient )((?:boolean|byte|char|double|float|int|long|short|void|[A-Z])[a-zA-Z0-9_$]*(?:<[^,);]*>)?(?:\\[\\])*) ([a-zA-Z_][a-zA-Z0-9_$]+)", "  this.$2 = $2;").sort().uniq().join("\n").toString();
+}
+
+ 
+
+public static String parametersToInitializers(CharSequence s) {
+  return s.toString().matchAll("\\b(?!public |private |protected |abstract |final |synthetic |static |strictfp |bridge |varargs |default |native |transient )((?:boolean|byte|char|double|float|int|long|short|void|[A-Z])[a-zA-Z0-9_$]*(?:<[^);]*>)?(?:\\[\\])*) ([a-zA-Z_][a-zA-Z0-9_$]+)", "  this.$2 = $2;").sort().uniq().join("\n").toString();
+}
+
+ 

@@ -1,0 +1,6 @@
+
+
+public static Map getMapForWrite2(org.d6r.DecompilationResult dcrs, java.nio.charset.Charset charset) { Map zm = RealArrayMap.toMap(dcrs.toMap().entrySet().select(FunctionUtil.bind("return m -> { Pair.of(ClassInfo.classNameToPath(m.getKey(), \"java\"), m.getValue().getSource().getBytes(charset)); }", "charset", charset))); return zm; };
+
+public static Map getMapForWrite2(org.d6r.DecompilationResult dcrs) { return getMapForWrite2(dcrs, java.nio.charset.StandardCharsets.UTF_8); };
+

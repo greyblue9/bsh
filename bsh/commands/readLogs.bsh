@@ -1,0 +1,55 @@
+import android.os.Looper;
+import android.content.Context; 
+import android.app.ActivityThread;  
+import android.app.ContextImpl;
+import android.content.Context;
+import android.app.Application;
+import android.app.AppGlobals;
+import android.app.ActivityManager;
+
+import com.android.server.analytics.data.collection.LogCollectionManager;
+import com.android.server.analytics.data.collection.logcat.LogcatDataCollector;
+import com.android.server.analytics.data.collection.logcat.LogcatReader;
+import com.sec.analytics.data.collection.serviceif.LogCollector;
+
+
+public static Quad readLogs() {
+
+  Looper looper; 
+  if ((looper = Looper.myLooper()) == null) {
+    Looper.prepare(); 
+    looper = Looper.myLooper();
+  }
+  
+  ActivityThread main = ActivityThread.systemMain();   
+  ActivityThread at = ActivityThread.currentActivityThread();  
+  app = at.getApplication();   
+  in = at.getInstrumentation();  
+  cr = app.getContentResolver();  
+  Context bctx = app.mBase; 
+  
+  mgr = new LogCollectionManager(bctx);  
+  coll = new LogcatDataCollector();
+  cb = new LogCollector.LogCollectorCallback() { 
+    public void processLog(int i0, String s1) {
+      System.err.printf("[%d] [%s]\n", i0, s1);
+    }     
+  }; 
+  coll.registerLogCollectorCallback(cb);
+  proc = new LogcatDataCollector.MergeProcessor(coll); 
+  lr = new LogcatReader(
+    "threadtime", "main", new String[]{ "*:v" }, false, proc
+  ); 
+  coll.mActiveProcessor = proc; 
+  coll.mCallback = mgr; 
+  coll.mLogcatReader = lr; 
+  proc.buffer = new ArrayList(Arrays.asList("main"));
+
+  //coll.startLogCollection(1); 
+  
+  return Quad.of(mgr, lr, coll, proc);
+}
+
+
+  
+  

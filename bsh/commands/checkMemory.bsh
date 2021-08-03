@@ -1,0 +1,7 @@
+
+
+
+public static Pair<Triple> checkMemory(long rawAddr, int size) { long _addr1 = (0xFFFFFFFFL & ((long)rawAddr)), _addr2 = (0xFFFFFFFFL & ((long) Integer.reverseBytes((int) rawAddr)));  NavigableSet mr = UnsafeUtil.getMemoryRanges(); String info = UnsafeUtil.memInfo.get(mr.floor(Range.closed(Long.valueOf(_addr1), Long.valueOf(_addr1)))), info_rev = UnsafeUtil.memInfo.get(mr.floor(Range.closed(Long.valueOf(_addr2), Long.valueOf(_addr2))));  boolean isMem1 = UnsafeUtil.isInMemory((int)_addr1, size), isMem2 = UnsafeUtil.isInMemory((int)_addr2, size); System.err.printf("\n  - _addr1 (0x%08x - 0x%08x  [size: %d]) is in memory?: %s\n    %s\n\n  - _addr2 (0x%08x - 0x%08x  [size: %d]) is in memory?: %s\n    %s\n\n",  _addr1, _addr1+size,size, isMem1? "yes": "** NO **", info, _addr2, _addr2+size,size, isMem2? "yes": "** NO **", info_rev); return Pair.of(Triple.of(Long.valueOf(_addr1), Boolean.valueOf(isMem1), info), Triple.of(Long.valueOf(_addr2), Boolean.valueOf(isMem2), info_rev)); };
+
+
+

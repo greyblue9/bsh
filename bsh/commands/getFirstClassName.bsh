@@ -1,0 +1,3 @@
+
+public static String getFirstClassName(com.android.dex.Dex clsDex) { com.android.dex.Dex.Section s = clsDex.open(clsDex.getTableOfContents().classDefs.off); ClassDef classDef = s.readClassDef(); int typeIndex = classDef.getTypeIndex(); com.android.dex.Dex.Section s2 = clsDex.open(clsDex.getTableOfContents().stringIds.off); int typeDescIndex = clsDex.descriptorIndexFromTypeIndex(typeIndex); if (typeDescIndex > 0) s2.skip(4 * typeDescIndex); String className = ClassInfo.typeToName(s2.readString()); return className; };
+

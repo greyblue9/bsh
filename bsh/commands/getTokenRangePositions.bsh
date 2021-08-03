@@ -1,0 +1,7 @@
+
+
+
+public static Pair getTokenRangePositions(CharSequence source, bsh.Token firstTok, bsh.Token lastTok) { NumberedLines srcnl = new NumberedLines(source); com.google.common.math.StatsAccumulator accum = new com.google.common.math.StatsAccumulator(); accum.addAll(Arrays.copyOfRange(srcnl.getLengths(), 0, firstTok.beginLine-1)); accum.add((double) (firstTok.beginLine-1)); accum.add((double) (firstTok.beginColumn-1)); int start = (int) accum.sum();  com.google.common.math.StatsAccumulator accum = new com.google.common.math.StatsAccumulator(); accum.addAll(Arrays.copyOfRange(srcnl.getLengths(), 0, lastTok.endLine-1)); accum.add((double) (lastTok.endLine-1)); accum.add((double) lastTok.endColumn); int end = (int) accum.sum(); return Pair.of(Integer.valueOf(start), Integer.valueOf(end)); };
+
+
+

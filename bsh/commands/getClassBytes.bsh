@@ -1,0 +1,43 @@
+public static byte[] getClassBytes(String className) {
+  com.strobel.assembler.metadata.ITypeLoader typeLoader = ProcyonUtil.getTypeLoader();
+  com.strobel.assembler.metadata.Buffer buffer = new com.strobel.assembler.metadata.Buffer();
+  boolean ok = typeLoader.tryLoadType(ClassInfo.classNameToPath(ClassInfo.typeToName(className), ""), buffer);
+  if (!ok) {
+    return null;
+  }
+  int len = buffer.size();
+  buffer.position(0);
+  byte[] classBytes = new byte[len];
+  buffer.read(classBytes, 0, len);
+  buffer.position(0);
+  return classBytes;
+}
+
+public static byte[] getClassBytes(String className) {
+  byte[] bestClassBytes = null;
+  int maxBytes = 0;
+  String resPath = ClassInfo.classNameToPath(className, "class");
+  for (String line : lines) {
+    String name = (String) line.subSequence(0, line.indexOf('\t'));
+    if (!name.equals(className))
+      continue;
+    File file = new File((String) line.subSequence(name.length() + 1, line.length()));
+    if (!file.exists() || !file.isFile())
+      continue;
+    try {
+      classBytes = ZipUtil.toByteArray(file.getPath(), resPath);
+    } catch (Exception e) {
+      continue;
+    }
+    if (classBytes == null)
+      continue;
+    if (classBytes.length > maxBytes) {
+      bestClassBytes = classBytes;
+      maxBytes = classBytes.length;
+    }
+    System.err.printf("%s\t%d\n", className, classBytes.length);
+  }
+  return bestClassBytes;
+}
+
+ 

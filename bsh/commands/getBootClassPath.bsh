@@ -1,0 +1,5 @@
+public static String getBootClassPath() {
+  return StringUtils.join(CollectionUtil2.invokeAll(CollectionUtil2.invokeAll(ClassPathUtil.FLD_BOOT_UCP.getValue(null).loaders, "getBaseURL"), Reflect.findMethod(PathInfo.class, "getPath", URL.class), 0, new Object[] { null }), ":");
+}
+
+ 

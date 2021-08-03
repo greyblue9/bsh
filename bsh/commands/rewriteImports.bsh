@@ -1,0 +1,3 @@
+public static Collection rewriteImports(Collection ims) { for (Object im: ims.filter("Collectors|util.stream|util.func")) { idx = ims.indexOf(im); qualid = im.qualid; cur = qualid.selected; int i=0; while (++i < 10) { if (Reflect.getfld(cur.getClass(), "name") != null) { name = cur.name; System.out.println(name); if (name.toString().equals("java")) { cur.name = getName("java8"); System.out.println(qualid); break; }; cur = cur.selected; } } }; return com.sun.tools.javac.util.List.from(ims); }
+
+

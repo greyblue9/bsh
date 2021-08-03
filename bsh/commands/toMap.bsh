@@ -1,0 +1,38 @@
+
+
+public static Object toMap(Object __jo) {
+  if (!bsh.Factory.typeof(__jo).getName().startsWith("org.json"))
+    return __jo;
+  __jo = (__jo instanceof String) ? new org.json.JSONObject(__jo.toString()) : __jo;
+  String[] keys = CollectionUtil.toArray((__jo instanceof String ? new JSONObject(__jo.toString()) : __jo).keys());
+  Map retMap = new TreeMap();
+  bsh.BshMethod mtd = CollectionUtil.getInterpreter().getNameSpace().getMethodsByName().get("toMap").iterator().next();
+  for (String key : keys) {
+    try {
+      retMap.put(key, __jo.get(key) instanceof org.json.JSONArray ? __jo.get(key).values : (__jo.get(key).toString().startsWith("{") ? mtd.invoke(new Object[] { __jo.get(key) }, this.interpreter, this.callstack, null, true) : __jo.get(key)));
+    } catch (org.json.JSONException ex) {
+      retMap.put(key, __jo.get(key));
+    }
+  }
+  return retMap;
+}
+
+public static Map toMap(org.jetbrains.java.decompiler.util.VBStyleCollection vbsc) {
+  Map map = new LinkedHashMap();
+  List<Object> keys = vbsc.getLstKeys();
+  int idx = -1;
+  for (Object key : keys) {
+    map.put(key, vbsc.get(++idx));
+  }
+  return map;
+}
+
+public static Map toMap(org.w3c.dom.NamedNodeMap attrs) {
+  Map attrMap = new LinkedHashMap();
+  for (int i = 0, len = attrs.getLength(); i < len; ++i) {
+    org.w3c.dom.Node item = attrs.item(i);
+    attrMap.put(item.getName(), item.getValue());
+  }
+  return attrMap;
+}
+

@@ -1,0 +1,39 @@
+import java.util.Map.Entry;
+
+public static Object getFinalFieldString(Class cls, boolean returnMap) {
+  StringBuilder sb = new StringBuilder(76 * 10);
+  Map fmap = new TreeMap();
+  for (Field f : cls.getDeclaredFields()) {
+    if (!Modifier.isStatic(f.getModifiers()))
+      continue;
+    f.setAccessible(true);
+    Object value = f.get(null);
+    fmap.put(f.getName(), value);
+  }
+  Map ofmap = new com.google.common.collect.ImmutableMap.Builder().putAll(fmap).orderEntriesByValue(NaturalOrdering.INSTANCE).build();
+  if (returnMap)
+    return ofmap;
+  for (Entry ent : ofmap.entrySet()) {
+    String name = ent.getKey();
+    Object value = ent.getValue();
+    Class c = value != null ? value.getClass() : Object.class;
+    if (ClassUtils.isPrimitiveOrWrapper(c)) {
+      c = ClassUtils.wrapperToPrimitive(c);
+    }
+    sb.append(String.format(
+      "  public static final %s %s = %s%s%s;\n",
+      c.getSimpleName() != null ? c.getSimpleName() : c.getName(),
+      name,
+      CharSequence.class.isAssignableFrom(c) ? "\"" : "",
+      value,
+      CharSequence.class.isAssignableFrom(c) ? "\"" : ""
+    ));
+  }
+  return sb.toString();
+}
+
+
+public static String getFinalFieldString(Class cls) {
+  return (String) getFinalFieldString(cls, false);
+}
+

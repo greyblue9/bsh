@@ -1,0 +1,159 @@
+
+import bsh.ClassIdentifier;
+import java.lang.reflect.*;
+import libcore.reflect.*;
+import java.util.HashMap;
+
+public static void debug(String s) {
+  System.err.println(s);
+}
+
+Interpreter env = this.interpreter;
+PrintStream out = env.getOut();
+PrintStream err = env.getErr();
+
+
+
+public static void dumpClasses(Object o) {
+  Class cls = null;
+  Object obj = null;
+  
+  if (o == null) {
+    env.println("'o' is null");
+    return;
+  }
+  if (o instanceof Class) {
+    cls = (Class) o;
+    obj = null;
+  } else if (o instanceof ClassIdentifier) {
+    cls = (Class) ((ClassIdentifier) o).getTargetClass();
+    obj = null;
+  } else {
+    cls = o.getClass();
+    obj = o;
+    Type superType = cls.getGenericSuperclass();
+    if (superType instanceof ParameterizedTypeImpl) {
+      typeMap.put(cls, superType);
+    }
+  }
+  
+  dumpClasses(obj, cls, 0, 5);
+}
+
+
+public static void dumpClasses
+(Object o, Class cls, int depth, int maxdepth) 
+{ 
+  
+  err.println(String.format(
+    "- %s\n- %s\n- %s\n- %s\n",
+    String.format(
+      "o = (%s) [%s]",
+      o != null? o.getClass().getName(): "NULL",
+      o != null? o.toString(): "<null>"
+    ),
+    String.format(
+      "cls = (%s) [%s]",
+      cls != null? cls.getClass().getName(): "NULL",
+      cls != null? cls.toString(): "<null>"
+    ),
+    String.format(
+      "depth = (%s) %s",
+      depth != null? depth.getClass().getName(): "NULL",
+      depth != null? depth.toString(): "<null>"
+    ),
+    String.format(
+      "maxdepth = (%s) %s", 
+      maxdepth != null? maxdepth.getClass().getName(): "NULL",
+      maxdepth != null? maxdepth.toString(): "<null>"
+    )
+  ));
+  
+  if (cls == null) {
+    System.err.println("dumpClasses: argument 'o' is null");
+    return "";
+  }
+  
+    
+  Class superCls = cls;
+  
+  err.println(
+    String.format(
+      "[initial] superCls = (%s) [%s]",
+      superCls != null? superCls.getClass().getName(): "NULL",
+      superCls != null? superCls.toString(): "<null>"
+    )
+  );
+  
+  
+  while (superCls != null && superCls != Object.class) 
+  {
+    
+    err.println(String.format(
+      "%s: %d inner classes",
+      superCls.getName(), 
+      superCls.getDeclaredClasses().length
+    ));
+    
+    //if (superCls.getDeclaredClasses().length > 0) {
+      
+      
+     Type[] gifs =  superCls.getGenericInterfaces();
+     Class[] ifs =  superCls.getInterfaces();
+        
+     for (int i=0; i<ifs.length; i++) {
+        dumpMembers.typeMap.put(
+          ifs[i],
+          gifs[i]
+        );
+     }
+     
+
+    
+    //if (superCls.getDeclaredClasses().length > 0) {
+      for (Class innerCls: superCls.getDeclaredClasses()) 
+      {
+        err.println(
+          String.format(
+            "superCls = (%s) [%s]",
+            superCls != null? superCls.getClass().getName(): "NULL",
+            superCls != null? superCls.toString(): "<null>"
+          )
+        );
+        err.println(
+          String.format(
+            "innerCls = (%s) [%s]",
+            innerCls != null? innerCls.getClass().getName(): "NULL",
+            innerCls != null? innerCls.toString(): "<null>"
+          )
+        );
+        
+        
+
+        Class __superCls = innerCls;
+        while  (__superCls != null &&
+        !( __superCls.equals(Object.class))) {
+  
+          dumpMembers.typeMap.put(
+            __superCls.getSuperclass(),
+            __superCls.getGenericSuperclass()
+          );
+          __superCls =  __superCls.getSuperclass();
+        }
+        dumpMembers(innerCls);
+      }
+    //}
+    
+    superCls = superCls.getSuperclass();
+    dumpMembers.typeMap.put(
+      superCls.getSuperclass(),
+      superCls.getGenericSuperclass()
+    );
+  }
+  
+}
+
+
+
+
+

@@ -1,0 +1,17 @@
+public static File getCwd() {
+  File cwd = new File(String.format("/proc/%d/cwd", getPid())).getCanonicalFile();
+  return cwd;
+}
+
+ 
+
+public static File getCwd() {
+  File absFile = new File(".").getAbsoluteFile();
+  try {
+    return absFile.getCanonicalFile();
+  } catch (Throwable e) {
+    return absFile;
+  }
+}
+
+ 

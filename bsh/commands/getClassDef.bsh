@@ -1,0 +1,5 @@
+
+public static com.android.dex.ClassDef getClassDef(String className, com.android.dex.Dex classDex) { com.android.dex.Dex dex = classDex != null? classDex: getDex(className); Collection<ClassDef> classDefs = CollectionUtil2.filter(dex.classDefs(), Pattern.compile(String.format("^L%s; extends ", className.replace('.', '/')))); return classDefs.isEmpty()? null: classDefs.iterator().next(); }
+
+public static com.android.dex.ClassDef getClassDef(String className) { return getClassDef(className, null); }
+

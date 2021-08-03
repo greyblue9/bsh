@@ -1,0 +1,2 @@
+public static CharSequence cleanStripPassColor(String str) { Quad q = pexec(Arrays.asList("cleanstrip_passcolor"), null, null, false); OutputStream os = q.getLeft().getOutputStream(); IOUtils.copy(new ByteArrayInputStream(str.getBytes(java.nio.charset.StandardCharsets.UTF_8)), os); os.write('\n'); os.write('\u0000'); os.flush(); os.close();  q.getMiddle().join(); q.getNext().join(); q.getRight().join(); StringBuilder outText = q.getMiddle().sb; int exitVal = q.getLeft().exitValue(); return exitVal == 0? outText: q.getNext().sb; }
+

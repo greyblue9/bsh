@@ -1,0 +1,3 @@
+public static TreeMap getVarsByNsName() { TreeMap varsByName = new TreeMap(); varsByName.putAll(RealArrayMap.toMap(CollectionUtil.flatten(Arrays.asList(NameSpaceFactory.INSTANCE.nsMap.values(), BlockNameSpaceFactory.INSTANCE.nsMap.values(), NameSpace.all)).select("""m => Pair.of(m.getName(), m.getVariables())""").sort())); return varsByName;
+}
+

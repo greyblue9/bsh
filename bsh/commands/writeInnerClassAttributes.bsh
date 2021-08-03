@@ -1,0 +1,298 @@
+import javassist.bytecode.InnerClassesAttribute;
+import java.util.concurrent.ConcurrentHashMap;
+
+public static CtClass getCtClass(String className) {
+    CtClass ct = null;
+    String source = "";
+    try {
+          source = "getResources";
+          Class c = DexVisitor.classForName(className);
+          if (c != null) {
+            ct = JavassistUtil.getCtClass(className);
+            return ct;
+          }
+    } catch (Throwable e) {  }
+       
+     try {
+          source = "get()";
+          ct = CollectionUtil.getClassPool().get(className);
+          return ct;
+      } catch (Throwable e) {
+        try {
+         ct = new CtClassType(
+            ClassLoaders.getResources(
+              Thread.currentThread().getContextClassLoader(),
+              ClassInfo.classNameToPath(className, "class")
+            )[0].openConnection().getInputStream(),
+            CollectionUtil.getClassPool()
+          );
+          System.err.printf("CTCLASS = %s\n", ct);
+          return ct;
+        } catch (Throwable e) { }
+      }
+      
+      source = "cfdl";        
+      try {
+        InputStream is
+          = org.cojen.classfile.TypeLoaderClassFileDataLoader.getDefault().getClassData(className);
+        ct = new javassist.CtClassType(is, CollectionUtil.getClassPool());
+        is.close();
+        return ct;
+      } catch (Throwable e) { 
+        System.err.printf("fail:%s\n", className);
+      }
+          
+    System.err.printf("source = %s\n", source);
+    return ct;
+}
+
+public static Map getNestedParts(String className, int modifiers,
+int icStart, CtClass ct)
+{
+  int firstDollarIdx = className.indexOf('$', icStart);
+  String outerClassName = className.substring(0, firstDollarIdx); 
+  int nextDollarIdx = className.indexOf('$', firstDollarIdx + 1); 
+  String innerName = className.substring(
+    firstDollarIdx+1, 
+    nextDollarIdx != -1? nextDollarIdx: className.length()
+  );
+  boolean isSynthetic = className.matches("\\$[0-9]+\\$*?$");
+  if (innerName.matches("^[0-9$]+$")) {
+    innerName = "";
+    isSynthetic = true;
+  }
+  
+  boolean isStatic = false;
+  ct = ct == null
+    ? getCtClass(className)
+    : ct;
+  int modifiers = ct.getModifiers();
+  boolean isStatic = true;
+    try {
+      CtField cf = ct.getDeclaredField("this$0");
+      isStatic = cf == null;
+    } catch (javassist.NotFoundException exf) {
+      isStatic = true;
+    }
+  
+  
+  int blankedModifiers 
+    = modifiers & (
+        Integer.MAX_VALUE ^ (Modifier.STATIC | Modifier.SYNTHETIC)
+      );
+  int newModifiers 
+    = blankedModifiers | (isStatic?    Modifier.STATIC:     0)
+                       | (isSynthetic? Modifier.SYNTHETIC : 0);
+  return new ConcurrentHashMap(RealArrayMap.toMap(Arrays.asList(
+    Pair.of("className", className),
+    Pair.of("outerClass", outerClassName),
+    Pair.of("innerName", innerName),
+    Pair.of("accessFlags", newModifiers)
+  )));
+}
+
+
+public static void fixNullNames(InnerClassesAttribute ica) {
+  for (int i=0, len=ica.tableLength(); i<len; ++i) {
+    String innerName = ica.innerName(i);
+    if (innerName != null && innerName.length() == 0) {
+      ica.setInnerNameIndex(i, 0);
+      System.err.printf("Updated innerName index for entry %d\n", i);
+    }
+    String outerClass = ica.outerClass(i);
+    if (outerClass != null && outerClass.length() == 0) {
+      ica.setOuterClassIndex(i, 0);
+      System.err.printf("Updated outerClass index for entry %d\n", i);
+    }
+    String innerClass = ica.innerClass(i);
+    if (innerClass != null && innerClass.length() == 0) {
+      ica.setInnerClassIndex(i, 0);
+      System.err.printf(
+        "    * Updated innerClass index for entry #%d -> 0\n", i);
+    }    
+  }
+}
+
+
+public static writeInnerClassAttributes(String outerClassName,
+String outputDir)
+{  
+  Deque<String> nestedClassNames = new ArrayDeque<String>();
+  Class c = DexVisitor.classForName(outerClassName);
+  Object dexElement = null;
+  if (c != null && (dexElement = DexFinder.findDexElement(c)) != null) {
+    String[] classNames = DexFile.getClassNameList(dexElement.dexFile.mCookie);
+    Collections.addAll(
+      nestedClassNames,
+      CollectionUtil2.filter(
+        classNames, Pattern.compile(outerClassName.replace("$", ".").concat("\\$"))
+      )
+    );
+    classNames = null;
+  } else {
+    Collections.addAll(
+      nestedClassNames,
+      ClassPathUtil.searchClassPath(Pattern.compile(
+        outerClassName.replace("$", ".").concat("\\$")
+      ))
+    );
+  }
+  
+  int icStart = outerClassName.length();
+  String className;
+  
+  
+  while (!nestedClassNames.isEmpty()) {
+    
+    className = nestedClassNames.pollLast(); 
+    System.out.printf("Processing class: [%s] ...\n", className); 
+    try {
+      CtClass ct = getCtClass(className); 
+      if (ct == null) continue;
+      
+      cf = ct.getClassFile(); 
+      cp = cf.getConstPool(); 
+      ica = new InnerClassesAttribute(cp); 
+      Map parts = getNestedParts(
+        ct.getName(), ct.getModifiers(), icStart, ct
+      );
+      ica.append(
+        parts.get("className"), 
+        parts.get("outerClass"), 
+        parts.get("innerName"),
+        parts.get("accessFlags")
+      );      
+      fixNullNames(ica);
+      copy = ica.copy(cp, null); 
+      cf.addAttribute(copy); 
+      dos = new DataOutputStream(
+        fbaos = new FifoByteArrayOutputStream()
+      ); 
+      cf.write(dos); 
+      dos.flush(); 
+      dos.close(); 
+      bis = fbaos.getInputStream(); 
+      classBytes = IOUtils.toByteArray(bis); 
+      bis.close();
+      FileUtils.writeByteArrayToFile(
+        new File((path = String.valueOf(
+          PosixFileInputStream.resolve(new File(outputDir))
+        ).concat("/").concat(
+          ClassInfo.classNameToPath(className, "class")
+        ))),      
+        classBytes
+      );
+      System.err.printf("Wrote [%s]\n", path);
+      
+    } catch (ConcurrentModificationException cme) {
+      cme.printStackTrace();
+      System.err.printf(
+        "[%s] Resubmitting: %s ...\n",
+        cme.getClass().getSimpleName(),
+        className
+      );
+      nestedClassNames.offerFirst(className);
+    } catch (Throwable ex) {
+      System.err.println(Reflector.getRootCause(ex));
+    }
+  };
+  
+  
+  //
+  // Write attribute in outer class with one entry per 
+  // child class above
+  //
+  CtClass ct = CollectionUtil.getClassPool().get((
+    outerClassName
+  )); 
+  
+  cf = ct.getClassFile();
+  cp = cf.getConstPool();
+  InnerClassesAttribute ica = new InnerClassesAttribute(cp); 
+  try {
+    for (String className: nestedClassNames.toArray(new String[0])) {
+      System.err.printf(
+        "Processing class: [%s]: InnerClass attribute of [%s] ...\n",
+        className, outerClassName
+      );
+      CtClass ct = CollectionUtil.getClassPool().get(className);
+      Map parts = new ConcurrentHashMap(getNestedParts(
+        className, ct.getModifiers(), icStart, ct
+      ));
+      ica.append(
+        parts.get("className"),
+        parts.get("outerClass"),
+        parts.get("innerName"),
+        parts.get("accessFlags")
+      );
+      fixNullNames(ica);
+      copy = ica.copy(cp, null); 
+      cf.addAttribute(copy);
+    };
+    dos = new DataOutputStream(
+      fbaos = new FifoByteArrayOutputStream()
+    ); 
+    cf.write(dos);
+    dos.flush();
+    dos.close();
+    bis = fbaos.getInputStream();
+    classBytes = IOUtils.toByteArray(bis);
+    bis.close();
+    FileUtils.writeByteArrayToFile(
+      new File((path = String.valueOf(
+        PosixFileInputStream.resolve(new File(outputDir))
+      ).concat("/").concat(
+        ClassInfo.classNameToPath(outerClassName, "class")
+      ))),      
+      classBytes
+    );
+    System.err.printf("Wrote [%s] (outer class)\n", path);
+  } catch (Throwable e) {
+    e.printStackTrace();
+    CollectionUtil.getInterpreter().setu("ex", e);
+  };
+  
+}
+  
+  
+  
+public static File writeInnerClassAttributes(String[] classNames,
+File outputDir)
+{
+  if (! outputDir.exists()) outputDir.mkdirs();
+  
+  String[] cns = ClassPathUtil.searchClassPath(Pattern.compile(
+    String.format(
+      "^(?:%s)", 
+      StringUtils.join(classNames, "|").replace("$", ".")
+    )
+  )).filter("\\$");
+  
+  System.out.println(cns.length);
+  
+  for (String cn: cns) {
+    Deque parts = new ArrayDeque(Arrays.asList(StringUtils.split(cn, '$')));
+    StringBuilder cnb = new StringBuilder();
+    while (! parts.isEmpty() && parts.size() > 1) {
+      if (cnb.length()>0) cnb.append('$');
+      cnb.append(parts.pollFirst());
+      String outerClassName = cnb.toString();  
+      try {
+        writeInnerClassAttributes(outerClassName, outputDir.getPath());
+      } catch (Throwable e) {
+        System.err.println(Reflector.getRootCause(e));         
+      }
+    }
+  }
+  
+  return outputDir; 
+}
+
+
+public static File writeInnerClassAttributes(Pattern classNamePattern, File outputDir) { 
+
+  return writeInnerClassAttributes(ClassPathUtil.searchClassPath(classNamePattern), outputDir);
+
+}
+
+

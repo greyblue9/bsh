@@ -1,0 +1,3 @@
+
+public static Object getCaptures2(String url, int year) { url = url.replaceAll("^https?://", ""); List ja = getCaptures(url, year).values;   Map docs = new TreeMap(); Map capMap = RealArrayMap.toMap(CollectionUtil.flatten(ja.filter("200")[0].values.filter("200").select(FunctionUtil.eval("""return m -> { m.values; }"""))).filter("ts").select(FunctionUtil.eval("""return m -> { Pair.of(String.format("http://web.archive.org/web/%s/%s", m.get("ts").get(0).toString(), url), m.get("st").get(0)); }"""))); return capMap; }
+

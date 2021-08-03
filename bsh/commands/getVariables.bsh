@@ -1,0 +1,11 @@
+
+public static List getVariables(Class ofType) { List vals = CollectionUtil.flatten(NameSpace.all.select(FunctionUtil.bind("""return m -> { m.getVariables().values(); }"""))).select(FunctionUtil.bind("""return m -> { Reflect.getfldval(m, "value"); }""")); return vals.typeFilter(ofType); };
+
+
+public static List getVariables() { List vals = CollectionUtil.flatten(NameSpace.all.select(FunctionUtil.bind("""return m -> { m.getVariables().values(); }"""))).select(FunctionUtil.bind("""return m -> { Reflect.getfldval(m, "value"); }""")); return vals; };
+
+
+
+
+public static Object getVariables(String nsname) { BshBinding ns = null; Object vars = ((ns = IterableUtils.reversedIterable(NameSpace.all.select(FunctionUtil.bind("return m -> { m.name.startsWith(name) && !m.getVariables().isEmpty()? m.getVariables().entrySet(): null; }", "name", "global/" + nsname))))); return new bsh.NameSpace.BindingMap(RealArrayMap.toMap(Iterables.concat(vars.toList().toArray(new Iterable[0])))); };
+

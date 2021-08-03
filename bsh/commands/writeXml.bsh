@@ -1,0 +1,78 @@
+import com.thoughtworks.xstream.core.*;
+import com.thoughtworks.xstream.mapper.*;  
+import com.thoughtworks.xstream.converters.reflection.*;
+import com.thoughtworks.xstream.*; 
+import com.thoughtworks.xstream.io.*; 
+import com.thoughtworks.xstream.io.xml.*; 
+
+
+
+
+
+public static XStream writeXml(java.io.OutputStream os, java.lang.Object obj, boolean experimental) 
+{
+  XStream xs = getXStream(experimental);
+  HierarchicalStreamDriver drv = (HierarchicalStreamDriver)
+    Reflect.getfldval(xs, "hierarchicalStreamDriver");
+  HierarchicalStreamWriter hsw = drv.createWriter(os);
+  xs.marshal(obj, hsw, xs.newDataHolder());
+  hsw.flush();
+  return xs;
+}
+
+
+
+public static XStream writeXml(java.io.OutputStream os, java.lang.Object obj) {
+  return writeXml(os, obj, false);
+}
+
+
+
+
+
+public static XStream writeXml(java.io.File file, java.lang.Object obj, boolean experimental) 
+{
+  java.io.FileOutputStream fos = null;
+  try {
+    fos = new java.io.FileOutputStream(file);
+    return writeXml(fos, obj, experimental);
+  } finally {
+    if (fos != null) {
+      try {
+        fos.close();
+      } catch (java.io.IOException e) { }
+    }
+  }
+  return null;
+}
+
+
+
+
+public static XStream writeXml(java.io.File file, java.lang.Object obj) {
+  return writeXml(file, obj, false);
+}
+
+
+
+
+
+public static XStream writeXml(java.lang.String path, java.lang.Object obj, boolean experimental) {
+  return writeXml(new java.io.File(path), obj, experimental);
+}
+
+
+
+public static XStream writeXml(java.lang.String path, java.lang.Object obj) {
+  return writeXml(path, obj, false);
+}
+
+
+
+
+
+
+  public static com.thoughtworks.xstream.XStream writeXml(java.lang.Object obj, OutputStream os, boolean experimental) { com.thoughtworks.xstream.XStream xstream = writeXml(os, obj, experimental); return xstream; };
+
+
+

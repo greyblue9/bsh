@@ -1,0 +1,16 @@
+  
+public static Map getAllThreads() {
+  Map map = new TreeMap();
+  ThreadGroup root = Thread.currentThread().getThreadGroup(), next = null;
+  while ((next = root.getParent()) != null) root = next;
+  Thread[] threads = new Thread[root.activeCount()];
+  int count = root.enumerate(threads, true);
+  for (Thread t : threads) {
+    String name = t.getName();
+    int n = 0;
+    while (map.containsKey(name = String.format("%s%s", name, n++ == 0 ? "" : String.valueOf(n)))) ;
+    map.put(name, t);
+  }
+  return map;
+}
+  

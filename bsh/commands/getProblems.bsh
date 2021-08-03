@@ -1,0 +1,3 @@
+
+public static List<String> getProblems(String projDir) { List<String> problems = new ArrayList(Arrays.asList(StringUtils.split(PosixFileInputStream.pexecSync("mksh", "-c", String.format("cd \"%s\"; ", projDir).concat( """ecj_info | grep -E 'add\(Exp|not applicable.*Obj' | grep --line-buffered -E -vE '\(Object\)[^\t]*$'; """)), "\n"))); return problems; }
+

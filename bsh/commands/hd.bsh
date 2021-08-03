@@ -1,0 +1,2 @@
+public static String hd (byte[] __bytes, int __start, int __len) { return com.android.internal.util.HexDump.dumpHexString(__bytes, __start, __len).replaceAll(" ([0-9A-F]{2})\\b", "$1").replaceAll("\\b(0x[0-9A-F]{6})([0-9A-F]{2})", "$1_$2 ").replaceAll("([0-9A-F]{4})([0-9A-F]{4})", "$1 $2 ").replaceAll("0x([0-9A-F]{6})_([0-9A-F]{2})", "$1$2 "); }
+

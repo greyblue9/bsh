@@ -1,0 +1,19 @@
+
+/*libcore.io.Posix.readBytes(Native Method)
+libcore.io.Posix.read(Posix.java:128)
+libcore.io.BlockGuardOs.read(BlockGuardOs.java:149)
+libcore.io.IoBridge.read(IoBridge.java:425)*/
+
+public static Thread startProgress() {
+  
+  String spt = "\n  Object RUNNABLE = java.lang.Thread$State.RUNNABLE; Thread mainThread = Thread.currentThread();\n  mainThread.setPriority(1); Runnable progressRunnable = new Runnable() {\n    public void run() { \n      try {\n        int _iterCount = 0;\n        while (++_iterCount < 250) {\n          if (Thread.currentThread().isInterrupted()) {\n            Thread.currentThread().interrupt();\n            break;\n          }\n          Map traces = Thread.getAllStackTraces();  for (Thread entry: traces.keySet()) { if (entry == progressThread) continue; if (entry.getState()==RUNNABLE) { StackTraceElement[] elems = traces.get(entry); \n   StackTraceElement elem = elems[0];   \n           " + 
+  "if (elems[0].getClassName().equals(\"libcore.io.Posix\")\n          && " +
+  "    elems[1].getClassName().equals(\"libcore.io.Posix\")\n          && " +
+  "    elems[2].getClassName().equals(\"libcore.io.BlockGuardOs\")\n   && " +
+  "    elems[3].getClassName().equals(\"libcore.io.IoBridge\"))  break;   " + 
+  "\n          \n   for (Object elem: elems) { if (elem.getClassName().startsWith(\"java.\") || elem.getClassName().startsWith(\"bsh.\")|| elem.getClassName().startsWith(\"dalvik.\")) continue;  System.err.printf(\n            \"proessing... depth: %3d @ [%s] %s.%s()\\n\", \n            elems.length, entry.getName(), elem.getClassName(), elem.getMethodName()\n          );\n  break; }; };  } ;  }\n      } catch (InterruptedException iex) { \n        System.err.printf(\"Progress thread interrupted\\n\");\n        Thread.currentThread().interrupt();\n        return;\n      } \n      return;\n    }\n  };\n  Thread progressThread = new Thread(progressRunnable);\n  progressThread.setPriority(10);\n  progressThread.setName(\"ProgressThread\");\n  // progressThread.group.setMaxPriority(10);\n  progressThread.setPriority(10); progressThread.start();\n  \n"; 
+  
+  CollectionUtil.getInterpreter().eval(spt);
+  return CollectionUtil.getInterpreter().getu("progressThread"); 
+};
+

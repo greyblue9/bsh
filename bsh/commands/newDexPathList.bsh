@@ -1,0 +1,2 @@
+public static Object newDexPathList(String classpath) { ctor = Class.forName("dalvik.system.DexPathList").getDeclaredConstructors()[0]; ctor.setAccessible(true); dpl = ctor.newInstance(Thread.currentThread().getContextClassLoader(), classpath, System.getProperty("java.library.path"), null); return dpl; }
+

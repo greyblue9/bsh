@@ -1,0 +1,23 @@
+public static Map getHandlerRanges(Iterable<ExceptionHandler> exceptionHandlers) {
+  Map ranges = new RealArrayMap(3);
+  for (String kind : Arrays.asList("getTryBlock", "getHandlerBlock")) {
+    int minStart = Integer.MAX_VALUE, maxEnd = Integer.MIN_VALUE;
+    String type = null;
+    for (com.strobel.assembler.ir.ExceptionHandler handler : exceptionHandlers) {
+      Object handlerBlock = Reflector.invokeOrDefault(handler, kind);
+      type = (kind.equals("getTryBlock")) ? "try" : (handler.isCatch()) ? "catch" : (handler.isFinally()) ? "finally" : String.valueOf(handler.getHandlerType().name());
+      System.err.printf("%s  ->  %s\n", type, handlerBlock);
+      int start = handlerBlock.getFirstInstruction().getOffset(), end = handlerBlock.getLastInstruction().getOffset() + handlerBlock.getLastInstruction().getSize();
+      minStart = Math.min(minStart, start);
+      maxEnd = Math.max(maxEnd, end);
+    }
+    Object handlerRange = new com.strobel.decompiler.ast.Range(minStart, maxEnd);
+    ranges.put(type, handlerRange);
+  }
+  return ranges;
+}
+
+public static Map getHandlerRanges(com.strobel.decompiler.ast.AstBuilder builder) {
+  return getHandlerRanges(builder._exceptionHandlers);
+}
+

@@ -1,0 +1,82 @@
+
+
+
+public static String replaceRepeatedly(String s, String regex, String replaceExpr) {
+  Matcher mchr = Pattern.compile(
+    regex, Pattern.DOTALL | Pattern.MULTILINE | Pattern.UNIX_LINES
+  ).matcher("");
+  StringBuffer sb = new StringBuffer(s.length() + 160);
+  return replaceRepeatedly(sb, mchr, replaceExpr).toString();
+}
+
+public static String replaceRepeatedly(String s, Pattern ptrn, String replaceExpr) {
+  Matcher mchr = ptrn.matcher("");
+  StringBuffer sb = new StringBuffer(s.length() + 160);
+  return replaceRepeatedly(sb, mchr, replaceExpr).toString();
+}
+
+public static String replaceRepeatedly(String s, Matcher mchr, String replaceExpr) {
+  StringBuffer sb = new StringBuffer(s.length() + 160);
+  return replaceRepeatedly(sb, mchr, replaceExpr).toString();
+}
+
+public static StringBuffer replaceRepeatedly(StringBuffer sb, String regex,
+  String replaceExpr)
+{
+  Matcher mchr = Pattern.compile(
+    regex, Pattern.DOTALL | Pattern.MULTILINE | Pattern.UNIX_LINES
+  ).matcher("");
+  return replaceRepeatedly(sb, mchr, replaceExpr);
+}
+
+public static StringBuffer replaceRepeatedly(StringBuffer sb, Pattern ptrn,
+  String replaceExpr)
+{
+  Matcher mchr = ptrn.matcher("");
+  return replaceRepeatedly(sb, mchr, replaceExpr);
+}
+
+public static StringBuffer replaceRepeatedly(StringBuffer sb, Matcher mchr,
+  String replaceExpr)
+{
+  StringBuffer osb = new StringBuffer(sb.length() + 160);
+  boolean change = false;
+  CharSequence tailFragment = "";
+  
+  int origLen = -1, newLen = -1;
+  int i = 0;
+  int MAX_ITERATIONS = 100;
+  do {
+    if (i > 0) {
+      origLen = newLen;
+      sb.setLength(0);
+      sb.append(osb);
+      osb.setLength(0);
+    }
+    origLen = sb.length();
+    mchr.reset(sb);
+    int oldLen = sb.length();
+    osb.setLength(0);
+    int lastEnd = 0;
+    while (mchr.find()) {
+      int start = mchr.start(0), end = mchr.end(0);
+      if (start > lastEnd) osb.append(sb.subSequence(lastEnd, start));
+      
+      mchr.appendReplacement(osb, replaceExpr);
+      lastEnd = end;
+    }
+    osb.append(sb.subSequence(lastEnd, sb.length()));
+    changed = (! osb.toString().equals(sb.toString()));
+    newLen = osb.length();
+    System.err.printf(
+      "\u001b[%sm%-20s\u001b[0m Iteration %d  len: %7d  ->  %7d\n", 
+      (changed) ? "1;32": "1;30",
+      String.format("[%s]", (changed) ? "CHANGED": "Not Changed"),
+      i+1, origLen, newLen
+    );
+  } while (changed && ++i <= MAX_ITERATIONS);
+  
+  return osb;
+}
+
+

@@ -1,0 +1,68 @@
+
+setStrictJava(true);
+
+import java.util.zip.ZipFile;
+import java.util.zip.ZipEntry;
+import java.io.InputStream;
+import java.nio.ByteBuffer;
+import java.util.ArrayList;
+import java.lang.Iterable;
+import org.apache.commons.io.IOUtils;
+import com.android.dex.ClassDef;
+
+public static List<java.lang.String> classNames(java.lang.String path) {
+ 
+  ArrayList list = new ArrayList<java.lang.String>(); 
+  byte[] data; 
+  
+  if (path.indexOf(".jar") != -1) { 
+    ZipFile zf = new ZipFile(path); 
+    ZipEntry ze = null;
+    try {
+      ze = zf.getEntry("classes.dex");
+    } catch (java.lang.Exception e) {
+      return list;
+    }
+    InputStream is = zf.getInputStream(ze); 
+    data = new byte[ze.getSize()];
+    IOUtils.readFully(is, data);
+    zf.close();
+  } else {
+    data = readbytes(path);
+  }
+  
+  ByteBuffer bb = ByteBuffer.wrap(data); 
+  com.android.dex.Dex dex = com.android.dex.Dex.create(bb); 
+  
+  java.lang.reflect.Field tnFld 
+    = dex.getClass().getDeclaredField("typeNames");
+  tnFld.setAccessible(true); 
+  
+  com.android.dex.Dex$TypeIndexToDescriptorTable typeids 
+    = tnFld.get(dex);
+  java.lang.Iterable defs = dex.classDefs();
+  Iterator it = defs.iterator(); 
+  
+  ClassDef def;
+  int typeIdx;
+  java.lang.Object typeid;
+  int spos;
+  
+  while (it.hasNext()) {
+    
+    def = it.next(); 
+    typeIdx = def.getTypeIndex();
+    typeid = typeids.get(typeIdx);
+    
+    if (typeid.length() < 2) continue; 
+    
+    if ((spos = typeid.indexOf(' ')) != -1) {
+      typeid = typeid.substring(0, spos);
+    }
+    typeid = typeid.replace('/','.');
+    list.add(typeid.substring(1,typeid.length()-1));    
+  } 
+  
+  return list; 
+}
+

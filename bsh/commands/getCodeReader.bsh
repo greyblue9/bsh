@@ -1,0 +1,40 @@
+
+
+
+
+
+
+public static org.eclipse.cdt.core.parser.CodeReader getCodeReader(String name,
+Boolean forInclude) 
+{ 
+  // System.err.printf("getCodeReader(\"%s\", forInclude: %s)\n", name, forInclude);
+  Object fcf = CollectionUtil.dbg.get("f");
+  if (fcf != null) return fcf.getCodeReader(name, forInclude);
+  
+  File file = (name.startsWith("/"))
+    ? (new File(name).exists())
+        ? new File(name)
+        : null
+    : findIncludeFile(name, forInclude);
+  
+  if (file == null || ! file.exists()) {
+    // System.err.printf("getCodeReader(\"%s\") returning null\n", name);
+    return null;
+  }
+  System.err.println(file);
+  
+  return new org.eclipse.cdt.core.parser.CodeReader(
+    file.getPath(),
+    FileUtils.readFileToString(
+      file, java.nio.charset.StandardCharsets.UTF_8
+    ).toCharArray()
+  );
+}
+
+
+
+public static org.eclipse.cdt.core.parser.CodeReader getCodeReader(String name) {
+  return getCodeReader(name, (Boolean) null);
+}
+
+ 

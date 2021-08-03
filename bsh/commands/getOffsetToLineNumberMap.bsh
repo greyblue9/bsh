@@ -1,0 +1,40 @@
+
+
+
+
+
+
+
+
+
+public static Map getOffsetToLineNumberMap(MethodVisitor mv) { Map offsetLineMap = RealArrayMap.toMap(mv.getCode().getInsns("LineNumber").select(FunctionUtil.bind("return m -> { Pair.of(Reflector.invokeOrDefault(m, \"get\", \"label\").get().offset, Reflector.invokeOrDefault(m, \"get\", \"line\").get()); }"))); return offsetLineMap; };
+
+
+
+
+
+
+
+
+
+public static Map getOffsetToLineNumberMap(String className, MethodDefinition md) { DexVisitor dv = DexVisitor.from(DexVisitor.classForName(className).getDex().getBytes(), className);  dv.clsNames = CollectionFactory.newSet(className); dv.visitAnnotations = false; dv.visit(); ClassVisitor cv = dv.getSingleClass(); Iterable<MethodVisitor> dexMethodVisitors = cv.getMethods(); MethodVisitor mv = findMethodVisitor(dexMethodVisitors, md); Map offsetLineMap = getOffsetToLineNumberMap(mv); return offsetLineMap; }
+
+
+
+
+
+
+
+
+
+public static Map getOffsetToLineNumberMap(MethodDefinition md) { String className = md.getDeclaringType().getErasedSignature(); return getOffsetToLineNumberMap(className, md); };
+
+
+
+
+
+
+public static Map getOffsetToLineNumberMap(MethodDefinition md) { String className = ClassInfo.typeToName(md.getDeclaringType().getErasedSignature()); return getOffsetToLineNumberMap(className, md); };
+
+
+

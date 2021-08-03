@@ -1,0 +1,246 @@
+
+import org.netbeans.modules.classfile.ClassFile;
+import org.netbeans.modules.classfile.Parameter;
+
+import javassist.bytecode.SignatureAttribute;
+
+
+public static String dumpClass(Object obj) {
+  ClassFile classFile = null;
+  
+  if (obj instanceof ClassIdentifier) {
+    classFile = getNetBeansClassFile((ClassIdentifier) obj);
+  } else if (obj instanceof String) {
+    classFile = getNetBeansClassFile((String) obj);
+  } else if (obj instanceof ClassFile) {
+    classFile = (ClassFile) obj;
+  } else {
+    // change everything else to Class representation
+    Class objCls = (obj instanceof Class)
+      ? (Class) obj
+      : (Class) obj.getClass();    
+    classFile = getNetBeansClassFile(objCls);
+    
+  }
+  
+  if (cf == null) {
+    return dumpDexClass(objCls);
+  }
+  return dumpClass((ClassFile) classFile);
+}
+
+
+public static String dumpClass(ClassFile cf)
+{ 
+  ArrayList<Triple> al = new ArrayList<Triple>(); 
+  
+  int midx = -1; 
+  Object[] mthds = cf.getMethods().toArray(); 
+  for (Object mthd: mthds) {
+    midx += 1;     
+    Parameter.ParamIterator pi 
+      = new Parameter.ParamIterator(mthd); 
+    Parameter[] pars = CollectionUtil.toArray(pi); 
+    // TODO: Prevent this NULL in CollectionUtil
+    if (pars == null) pars = new Parameter[0];
+    
+    String mtdSigStr = mthd.getTypeSignature(); 
+    if (mtdSigStr == null) {
+      mtdSigStr = mthd.getDescriptor();
+    }
+    SignatureAttribute.MethodSignature msig;
+    if (mtdSigStr != null) {
+      msig = SignatureAttribute.toMethodSignature(mtdSigStr);
+    }
+    al.add(Triple.of(mthd, pars, msig));
+  } 
+  
+  StringBuilder sb = new StringBuilder(200 * 40);
+  sb.append('\n');
+  sb.append(
+    dumpMembers.colorize(cf.getName().toString(), "0;36")
+  );
+  sb.append(" { \n\n");
+  
+  StringBuilder msb = new StringBuilder(200); 
+  
+  for (Triple info: al.toArray(new Triple[0])) {
+    org.netbeans.modules.classfile.Method mtd 
+      = info.getLeft();
+    // modifier(s)
+    int access = mtd.getAccess(); 
+    String modStr = Modifier.toString(access); 
+    // parameter names
+    Parameter[] pars = info.getMiddle();
+    Parameter par;
+    // parameter types / return type (generic)
+    SignatureAttribute.MethodSignature msig = info.getRight();
+    SignatureAttribute.Type[] types 
+      = msig.getParameterTypes();
+    SignatureAttribute.Type type;
+    SignatureAttribute.Type returnType = msig.getReturnType();
+    
+    String mtdName = mtd.getName();     
+    
+    
+    // indent
+    msb.append("  "); 
+    if (modStr.length() > 0) {
+      // nodifier name(s)
+      msb.append(dumpMembers.colorize(modStr, "1;30"));
+      msb.append(' ');
+    }
+    // return type
+    msb.append(
+      dumpMembers.colorize(returnType.jvmTypeName(), "1;36"));
+    msb.append(' '); 
+    // name
+    msb.append(dumpMembers.colorize(mtdName, "1;33"));
+    msb.append('(');
+    
+    // ( parameter type + name pair ) *
+    int i = -1; 
+    while (++i < pars.length 
+      &&  (par = pars[i]) != null 
+      && (type = types[i]) != null)
+    { 
+      String name = par.getName(); 
+      String typeName = type.jvmTypeName(); 
+      String returnTypeName = returnType.jvmTypeName(); 
+      String dispTypeName 
+        = dumpMembers.colorize(typeName, "1;32"); 
+      String dispReturnTypeName       
+        = dumpMembers.colorize(returnTypeName, "1;36"); 
+      
+      if (i > 0) msb.append(", ");
+      msb.append(String.format("%s %s", dispTypeName, name));
+    } 
+    msb.append(')');
+    // end method render
+    
+    sb.append(msb.toString());
+    sb.append('\n'); 
+    msb.delete(0, msb.length());
+  }
+  
+  sb.append("} \n");
+  String superName = cf.getSuperClass().toString();
+  if (! "java.lang.Object".equals(superName)) {
+    ClassFile supClsFile = getNetBeansClassFile(superName);
+    if (supClsFile != null) {
+      sb.append(dumpClass(supClsFile));
+    }
+  }
+  return sb.toString();
+}
+
+
+
+public static String dumpClass(ClassFile cf)
+{ 
+  ArrayList<Triple> al = new ArrayList<Triple>(); 
+  
+  int midx = -1; 
+  Object[] mthds = cf.getMethods().toArray(); 
+  for (Object mthd: mthds) {
+    midx += 1;     
+    Parameter.ParamIterator pi 
+      = new Parameter.ParamIterator(mthd); 
+    Parameter[] pars = CollectionUtil.toArray(pi); 
+    // TODO: Prevent this NULL in CollectionUtil
+    if (pars == null) pars = new Parameter[0];
+    
+    String mtdSigStr = mthd.getTypeSignature(); 
+    if (mtdSigStr == null) {
+      mtdSigStr = mthd.getDescriptor();
+    }
+    SignatureAttribute.MethodSignature msig;
+    if (mtdSigStr != null) {
+      msig = SignatureAttribute.toMethodSignature(mtdSigStr);
+    }
+    al.add(Triple.of(mthd, pars, msig));
+  } 
+  
+  StringBuilder sb = new StringBuilder(200 * 40);
+  sb.append('\n');
+  sb.append(
+    dumpMembers.colorize(cf.getName().toString(), "0;36")
+  );
+  sb.append(" { \n\n");
+  
+  StringBuilder msb = new StringBuilder(200); 
+  
+  for (Triple info: al.toArray(new Triple[0])) {
+    org.netbeans.modules.classfile.Method mtd 
+      = info.getLeft();
+    // modifier(s)
+    int access = mtd.getAccess(); 
+    String modStr = Modifier.toString(access); 
+    // parameter names
+    Parameter[] pars = info.getMiddle();
+    Parameter par;
+    // parameter types / return type (generic)
+    SignatureAttribute.MethodSignature msig = info.getRight();
+    SignatureAttribute.Type[] types 
+      = msig.getParameterTypes();
+    SignatureAttribute.Type type;
+    SignatureAttribute.Type returnType = msig.getReturnType();
+    
+    String mtdName = mtd.getName();     
+    
+    
+    // indent
+    msb.append("  "); 
+    if (modStr.length() > 0) {
+      // nodifier name(s)
+      msb.append(dumpMembers.colorize(modStr, "1;30"));
+      msb.append(' ');
+    }
+    // return type
+    msb.append(
+      dumpMembers.colorize(returnType.jvmTypeName(), "1;36"));
+    msb.append(' '); 
+    // name
+    msb.append(dumpMembers.colorize(mtdName, "1;33"));
+    msb.append('(');
+    
+    // ( parameter type + name pair ) *
+    int i = -1; 
+    while (++i < pars.length 
+      &&  (par = pars[i]) != null 
+      && (type = types[i]) != null)
+    { 
+      String name = par.getName(); 
+      String typeName = type.jvmTypeName(); 
+      String returnTypeName = returnType.jvmTypeName(); 
+      String dispTypeName 
+        = dumpMembers.colorize(typeName, "1;32"); 
+      String dispReturnTypeName       
+        = dumpMembers.colorize(returnTypeName, "1;36"); 
+      
+      if (i > 0) msb.append(", ");
+      msb.append(String.format("%s %s", dispTypeName, name));
+    } 
+    msb.append(')');
+    // end method render
+    
+    sb.append(msb.toString());
+    sb.append('\n'); 
+    msb.delete(0, msb.length());
+  }
+  
+  sb.append("} \n");
+  String superName = cf.getSuperClass().toString();
+  if (! "java.lang.Object".equals(superName)) {
+    ClassFile supClsFile = getNetBeansClassFile(superName);
+    if (supClsFile != null) {
+      sb.append(dumpClass(supClsFile));
+    }
+  }
+  return sb.toString();
+}
+
+
+
+
+

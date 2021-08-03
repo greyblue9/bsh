@@ -1,0 +1,10 @@
+
+
+public static org.jsoup.nodes.Element getLongestElement(org.jsoup.nodes.Element doc) {
+  com.google.common.collect.ImmutableSetMultimap sm = com.google.common.collect.ImmutableSetMultimap.builder().orderKeysBy(org.d6r.NaturalOrdering.INSTANCE).orderValuesBy(new ToStringComparator(false, false)).putAll(doc.select("*").filter("^<").select(FunctionUtil.bind("return m -> { Pair.of(m.text().length(), m); }"))).build();
+  List al = new ArrayList(Arrays.asList(CollectionUtil.toArray(IterableUtils.reversedIterable(Arrays.asList(CollectionUtil.toArray(sm.entryIterator()))))));
+  while (ArrayUtils.contains(new String[] { "#root", "html", "head", "body", "footer", "script", "style" }, al.iterator().next().getValue().tagName()) || al.iterator().next().getValue().equals(doc)) al.remove(0);
+  return al.iterator().next().getValue();
+}
+
+

@@ -1,0 +1,17 @@
+public static String printableString(byte[] stringBytes) { 
+  return printableString(stringBytes, String.format("%c[1;31m?%c[0m", 0x1b, 0x1b));
+}
+                                                     public static String printableString(byte[] stringBytes, String replacement) { 
+  return Pattern.compile("[^~`\\{\\}\\|\\+:\\?!@#$%\\^\\\\&\\*'\"/;A-Za-z0-9_<>,.\\(\\)=\n\t\\x1b\\[\\] -]").matcher(CpioFile.stringFromBytes(bytes)).replaceAll(replacement);
+}
+
+
+public static String printableString(String badString) { 
+  return printableString(badString, String.format("%c[1;31m?%c[0m", 0x1b, 0x1b));
+}
+
+
+public static String printableString(String badString, String replacement) { 
+  return Pattern.compile("[^~`\\{\\}\\|\\+:\\?!@#$%\\^\\\\&\\*'\"/;A-Za-z0-9_<>,.\\(\\)=\n\t\\x1b\\[\\] -]").matcher(badString).replaceAll(replacement);
+}
+

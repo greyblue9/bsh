@@ -1,0 +1,16 @@
+public static String getDocText(org.jsoup.nodes.Document doc, Member mtd) {
+  List<String> pl = new ArrayList();
+  for (Class c : mtd.getParameterTypes()) {
+    String name = ClassInfo.typeToName(c.getName());
+    pl.add(name);
+  }
+  String anchor = String.format("%s(%s)", mtd instanceof Constructor ? ClassInfo.getSimpleName(mtd.getDeclaringClass().getName()) : mtd.getName(), StringUtils.join(pl, ", "));
+  String anchor2 = String.format("%s-%s-", mtd instanceof Constructor ? ClassInfo.getSimpleName(mtd.getDeclaringClass().getName()) : mtd.getName(), StringUtils.join(pl, "-").replace("[]", ":A"));
+  String sel = String.format("a[name=\"%s\"], a[name=\"%s\"]", anchor, anchor2);
+  org.jsoup.nodes.Node node = doc.select(sel).firstOrDefault();
+  while (node != null && !(node instanceof org.jsoup.nodes.Element) || !"pre".equals(node.tagName())) node = node.nextSibling();
+  String text = ((org.jsoup.nodes.Element) node).text();
+  return text;
+}
+
+ 

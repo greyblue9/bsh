@@ -1,0 +1,7 @@
+
+public static Object findDexPair(Dex dex) { Object block = dex.data.block; long start = block.address, end = start + block.size; Range range = Range.closedOpen(start, end); Range alloc = UnsafeUtil.getMemoryRanges().floor(range); String info = UnsafeUtil.memInfo.get(alloc); Matcher mchr = Pattern.compile("^([a-z- ]{4}) ([0-9]{8}) ([0-9a-f]{1,}:[0-9a-f]{1,}) ([1-9][0-9]*) +([^\n]+)").matcher(info); if (!mchr.find()) return null; String rawPath = mchr.group(5); String path = Pattern.compile("^(.*)@([^@]+)$").matcher(StringUtils.substringAfter(rawPath, "/data/dalvik-cache")).replaceFirst("$1!/$2").replace('@', '/'); String jarPath = StringUtils.substringBeforeLast(path, "!"); String entryName = StringUtils.substringAfterLast(path, "!/"); return Pair.of(jarPath, entryName); };
+
+public static Object findDexPair(Class cls) { return findDexPair((Dex) org.d6r.ClassInfo.getDex(cls)); };
+
+public static Object findDexPair(String className) { return findDexPair((Dex) ((Class) DexVisitor.classForName(className)).getDex()); };
+

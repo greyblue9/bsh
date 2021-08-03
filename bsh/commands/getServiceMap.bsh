@@ -1,0 +1,106 @@
+import java.util.Map.Entry;
+public static Map getServiceMap() {
+  
+  Set badKeys 
+    = new HashSet(Arrays.asList(
+      "servicediscovery", "knox_enterprise_policy"
+      )); 
+  import android.os.Looper; 
+  import android.content.Context; 
+  import android.app.ActivityThread;  
+  Looper looper; 
+  if ((looper = Looper.myLooper()) == null) {
+    Looper.prepare(); 
+  }
+  
+  looper = Looper.myLooper(); 
+  if (Thread.currentThread().getName().indexOf("main") != -1) 
+  {
+    CollectionUtil.getInterpreter().setu(
+      "looper", looper);
+    System.err.println(
+      "Main Looper assigned to variable `looper`"
+    );  
+  }
+  
+  main = ActivityThread.systemMain();   
+  at = ActivityThread.currentActivityThread();  
+  app = at.getApplication();
+  inst = at.getInstrumentation();  
+  cr = app.getContentResolver();  
+  Context bctx = app.mBase;
+
+  CollectionUtil.getInterpreter().setu("main", main);
+  System.err.println(
+    "systemMain assigned to variable `main`"
+  );  
+  
+  CollectionUtil.getInterpreter().setu("bctx", bctx);
+  System.err.println(
+    "Base system context assigned to variable `bctx`"
+  );
+  
+  CollectionUtil.getInterpreter().setu("inst", inst);
+  System.err.println(
+    "Instrumentation assigned to variable `inst`"
+  );
+  
+  CollectionUtil.getInterpreter().setu("app", app);
+  System.err.println(
+    "Application context assigned to variable `app`"
+  );
+  
+  Map serviceMap 
+    = new java.util.concurrent.ConcurrentHashMap();
+  for (Entry mEntry:
+       bctx.SYSTEM_SERVICE_MAP.entrySet()) 
+  { 
+    if (badKeys.contains(mEntry.getKey())) continue;
+    System.err.println(mEntry.getKey());
+    
+    Thread mThread = new Thread( new Runnable() { 
+      public void run() { 
+        System.err.println("  "+mEntry.getKey()); 
+        Looper.prepare(); 
+        try {  
+          Object ctx 
+            = mEntry.getValue().getService(bctx);
+          System.err.printf(
+            "    %s: %s\n", mEntry.getKey(), ctx
+          ); 
+          serviceMap.put(mEntry.getKey(), ctx); 
+          System.err.printf(
+            "    done: %s\n", mEntry.getKey()
+          );
+        } catch (Throwable exIgnore) { ;; }; 
+      } 
+    }); // end of new Thread ... new Runnable
+    mThread.start(); 
+    mThread.join();
+  }
+  
+  Map byClassName = RealArrayMap.toMap(
+    serviceMap.values().select(evalJexl("""
+      m -> { 
+        Pair.of(
+          m.getClass().getSimpleName(),
+          Pair.of(Debug.ToString(m), m)
+        );
+      }
+    """))
+  );
+  
+  CollectionUtil.getInterpreter().setu(
+    "m2", byClassName
+  );
+  System.err.println(
+    "alternate map assigned to variable `m2`"
+  );
+  return serviceMap;
+}
+
+
+
+  
+
+

@@ -1,0 +1,6 @@
+
+
+public static Object invokeOrDefault(Object target, String name, Object[] args, Object defaultRet) { Class tcls = target.getClass(); while (tcls != null) { for (Method tm: tcls.getDeclaredMethods()) { if (tm.getName().matches(name) && (tm.isVarArgs() || tm.getParameterTypes().length == args.length)) { tm.setAccessible(true); if (tm.getReturnType() != Void.TYPE) { try { return tm.invoke(target, args); } catch (Throwable e) { continue;  } } try { tm.invoke(target, args); return defaultRet; } catch (Throwable e) { continue;  }; } } tcls = tcls.getSuperclass(); } return defaultRet; }
+
+public static Object invokeOrDefault(Object target, String name, Object[] args) { return invokeOrDefault(target, name, args, target); } 
+

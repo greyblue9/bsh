@@ -1,0 +1,2 @@
+public static int openFds() { return new File(String.format("/proc/%d/fd", org.d6r.PosixFileInputStream.getPid())).listFiles().length; }
+

@@ -1,0 +1,73 @@
+
+import jadx.api.JadxDecompiler;
+import jadx.core.dex.instructions.args.ArgType;
+import jadx.core.dex.nodes.ClassNode;
+import jadx.core.dex.nodes.DexNode;
+import jadx.core.dex.nodes.MethodNode;
+import jadx.core.dex.nodes.ProcessState;
+
+public static MethodNode getMethodNode(String message) {
+  if (message == null) {
+    message = "WARN jadx.core.utils.ErrorsCounter - " +
+    "NullPointerException in pass: RegionMakerVisitor in method: " + 
+    "org.chromium.content.browser.ScreenOrientationProvider" + 
+    ".unlockOrientation(org.chromium.ui.base.WindowAndroid):void"; 
+  }
+  Matcher mchr = Pattern.compile(
+    "\\b((?:[a-zA-Z0-9_$.]|\\[\\])+)\\.([a-zA-Z0-9_$<>]+)" +
+    "(?:\\(([^)]*)\\)(?::((?:[a-zA-Z0-9_$.]|\\[\\])+)|)|)(?:$|[^a-zA-Z0-9_$])",
+    Pattern.DOTALL | Pattern.UNIX_LINES
+  ).matcher(message.replace(", ", ","));
+  
+  if (mchr.find()) {
+    String className = mchr.group(1), 
+          methodName = mchr.group(2),
+           paramsStr = mchr.group(3),
+      returnType = mchr.group(4);
+    Log.v(
+      "getClassNode", "Match returned: " +
+      "{className: `%s`, methodName: `%s`, paramsStr: `%s`, returnType: `%s`}",
+      className, methodName, paramsStr, returnType
+    );
+    return getMethodNode(className, methodName, paramsStr, returnType);
+  }
+  return null;
+}
+
+public static MethodNode getMethodNode(Object clazzObj, String methodName,
+String paramsStr, String returnType)
+{
+  ClassNode classNode = (clazzObj instanceof ClassNode)
+    ? (ClassNode) classNode
+    : getClassNode(clazzObj, null);
+  String className = classNode.getFullName();
+  
+  List<MethodNode> methods = classNode.getMethods();
+ 
+  StringBuilder sb = new StringBuilder(16).append("%s.%s(");
+  if (paramsStr  != null && !  paramsStr.isEmpty()) sb.append("%s)");
+  if (returnType != null && ! returnType.isEmpty()) sb.append(":%s");
+  Pattern filter = Pattern.compile(Pattern.quote(String.format(
+    sb.toString(),
+    className.replace('$', '.'), methodName, paramsStr, returnType
+  )));
+  
+  List<MethodNode> filtered = CollectionUtil2.filter(methods, filter);
+  if (!filtered.isEmpty()) {
+    return filtered.iterator().next();
+  } else { // empty
+    Log.w("getClassNode", "No methods in class `%s` matched filter: %s(\"\")",
+      classNode.getFullName(), filter.getClass().getSimpleName(),
+      filter.pattern());
+    Log.w("getClassNode", "  - The choices are:");
+    for (MethodNode mn: methods) Log.w("getMethodNode", mn.toString());
+    for (MethodNode mn: methods) {
+      if (mn.getName().equals(methodName)) return mn;
+    }
+    return null;
+  }
+}
+
+
+
+

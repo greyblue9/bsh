@@ -1,0 +1,11 @@
+getmstatic(clz) { 
+  if (p == null) return;
+  clz = p instanceof java.lang.Class? p: p.getClass();
+  mlist = clz.getMethods(); 
+  outlist = new ArrayList();
+  for(i=0; i<mlist.length; i++) { 
+    if ((int)(mlist[i].getModifiers() & 8 ) <= 0) continue; 
+    outlist.add( mlist[i] ); 
+  }
+  return outlist.getArray();
+}

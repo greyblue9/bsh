@@ -1,0 +1,5 @@
+
+
+public static File[] dexedJars(Object _files) { File[] files, jars; if (_files instanceof Iterable || _files instanceof Iterator) _files = CollectionUtil.toArray(_files); else _files = CollectionUtil.toArray(Arrays.asList((Object[]) _files)); if (_files.getClass().isArray() && _files.getClass().getComponentType() != File.class) _files = CollectionUtil2.to((Object[]) _files, File.class); files = (File[]) _files; File tmpFileList = new File(String.format("/tmp/%x.list", System.currentTimeMillis())); FileUtils.writeStringToFile(tmpFileList, StringUtils.join(files, "\n"), Charset.defaultCharset()); String output; File[] dexedJars = CollectionUtil2.to((output = PosixFileInputStream.pexecSync("mksh", "-c", cmd ="cat ".concat(tmpFileList.getPath()).concat(" | xargs -d $'\\n' -n1 \"-I{}\" unzip -l \"{}\" classes.dex; "))).matchAll("Archive:  ([^\n]+)\n(?:[^\n]+\n){2}[^\n]+\\bclasses.dex").toArray(), File.class); return dexedJars.sort().uniq(); }
+
+

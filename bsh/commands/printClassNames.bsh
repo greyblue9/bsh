@@ -1,0 +1,18 @@
+
+setStrictJava(true);
+
+
+public static void printClassNames(java.lang.String[] paths) { 
+
+  java.util.List classNames = getClassNames(paths);
+  java.util.Iterator it = classNames.iterator();
+  java.lang.String className = null;
+  
+  while (it.hasNext()) {
+    className = it.next();
+    System.out.println(className);
+  }
+  
+}
+
+

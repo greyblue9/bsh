@@ -1,0 +1,60 @@
+
+public static void blogspot() { 
+
+  String curl = PosixFileInputStream.pexecSync(
+    "blogspot", System.getProperty("post")
+  ); 
+  
+  Matcher mchr = Pattern.compile("^(.+)/feeds/([0-9]+)/").matcher(curl); 
+  System.out.printf("[%s]", curl); 
+  mchr.find(); 
+  
+  String furl = String.format(
+    "%1$s/feeds/%2$s/posts/default", mchr.group(1), mchr.group(2)
+  );
+   
+  Object doc = getDocWithBaseUrl(furl); 
+  
+  /*addClassPath(Arrays.asList("/external_sd/_projects/sdk/lib/awt_sswing_s.jar", "/external_sd/_projects/sdk/lib/java.beans.jar")); */
+  
+  for (Object entry: doc.select("entry")) {
+    
+    String title = entry.select("title").text(); 
+    Object edoc = doc.createShell(doc.baseUri()); 
+    edoc.dataset().putAll(doc.dataset()); 
+    edoc.select("body")[0].html(entryHtml = entry.select("content").text()); 
+    Object ttl = entry.select("title").clone()[0]; 
+    edoc.select("head")[0].addChildren(new org.jsoup.nodes.Node[]{ ttl }); 
+    edoc.select("[style]").removeAttr("style"); 
+    
+    Object brs = edoc.select("br");
+    brs.before("\n"); 
+    brs.remove(); 
+    
+    for (Object n: edoc.select("span, i")) { 
+      n.before(n.text()); 
+      n.remove(); 
+    }
+    
+    for (Object n: edoc.select("[href]")) { 
+      String href = n.attr("href");
+      if (href.indexOf('#') != -1) {
+        n.attr("href", "#".concat(StringUtils.substringAfter(href, "#")));
+      }
+    }
+     
+    File f = new File(
+      "/data/media/0/David/www/entry_" 
+      + title.replaceAll("[^a-zA-Z0-9_]+", "_") + ".html"
+    );
+     
+    FileUtils.writeStringToFile(f, edoc.html()); 
+    System.err.println(f); 
+    try { 
+      stripHtml(new String[]{  "http://localhost/" + f.getName() }); 
+    } catch (Throwable e) {
+      e.printStackTrace(); 
+    } 
+  }
+  
+}

@@ -1,0 +1,3 @@
+import java.util.Map.Entry;
+public static Throwable dumpStack(String filter) { Entry threadEntry = StringCollectionUtil.toStringFilter(Thread.getAllStackTraces().entrySet(), String.format("^Thread\\[.*(?:%s).*?\\]=\\[Ljava.lang.StackTraceElement;@[0-9A-Fa-f]*$", filter))[0]; Thread thread = threadEntry.getKey(); StackTraceElement[] stackTraceElements = threadEntry.getValue(); Throwable threadThrowable = new Error(String.format("Stack dump of thread: %s", thread.getName())); threadThrowable.setStackTrace(stackTraceElements); threadThrowable.printStackTrace(); return threadThrowable; }
+

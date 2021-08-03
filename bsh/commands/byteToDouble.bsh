@@ -1,0 +1,58 @@
+import java.nio.ByteBuffer;
+
+/**
+I actually ran into problems with upper and lower of the double, this seems to be the only code I have seen that corrects for that. I hope it assists others searching for answers in this area. if you do go for some other code, make sure you test the full range of values, you should write a loop that converts to and from for all values and assert them to be sure.
+*/
+// byteToDouble method - extracts doubles from byte array
+// source: http://www.java2s.com/Code/Java/Data-Type/bytetoDouble.htm
+public static double[] byteToDouble(byte[] inData, boolean byteSwap) {
+    int j = 0, upper, lower;
+    int length = inData.length / 8;
+    double[] outData = new double[length];
+    if (!byteSwap)
+      for (int i = 0; i < length; i++) {
+        j = i * 8;
+        upper = (((inData[j] & 0xff) << 24)
+            + ((inData[j + 1] & 0xff) << 16)
+            + ((inData[j + 2] & 0xff) << 8) + ((inData[j + 3] & 0xff) << 0));
+        lower = (((inData[j + 4] & 0xff) << 24)
+            + ((inData[j + 5] & 0xff) << 16)
+            + ((inData[j + 6] & 0xff) << 8) + ((inData[j + 7] & 0xff) << 0));
+        outData[i] = Double.longBitsToDouble((((long) upper) << 32)
+            + (lower & 0xffffffffl));
+      }
+    else
+      for (int i = 0; i < length; i++) {
+        j = i * 8;
+        upper = (((inData[j + 7] & 0xff) << 24)
+            + ((inData[j + 6] & 0xff) << 16)
+            + ((inData[j + 5] & 0xff) << 8) + ((inData[j + 4] & 0xff) << 0));
+        lower = (((inData[j + 3] & 0xff) << 24)
+            + ((inData[j + 2] & 0xff) << 16)
+            + ((inData[j + 1] & 0xff) << 8) + ((inData[j] & 0xff) << 0));
+        outData[i] = Double.longBitsToDouble((((long) upper) << 32)
+            + (lower & 0xffffffffl));
+      }
+    return outData;
+}
+
+public static final short byteArrayToShort(byte[] bytes) {
+    return ByteBuffer.wrap(bytes).getShort();
+}
+
+public static final int byteArrayToInt(byte[] bytes) {
+    return ByteBuffer.wrap(bytes).getInt();
+}
+
+public static final float byteArrayToFloat(byte[] bytes) {
+    return ByteBuffer.wrap(bytes).getFloat();
+}
+
+public static double byteArrayToDouble(byte[] bytes) {
+    return ByteBuffer.wrap(bytes).getDouble();
+}
+
+public static final long byteArrayToLong(byte[] bytes) {
+    return ByteBuffer.wrap(bytes).getLong();
+}
+

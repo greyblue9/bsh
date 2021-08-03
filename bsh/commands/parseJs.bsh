@@ -1,0 +1,48 @@
+
+import org.mozilla.javascript.ast.AstRoot;
+import org.mozilla.javascript.ast.ParseProblem;
+import org.mozilla.javascript.CompilerEnvirons;
+import org.mozilla.javascript.ErrorReporter;
+import org.mozilla.javascript.IRFactory;
+import org.mozilla.javascript.Parser;
+
+
+public static AstRoot parseJs(String source, boolean transform) {
+
+  CompilerEnvirons compEnv = getCompilerEnvirons();
+  ErrorReporter errorReporter = getErrorReporter();  
+  int sizeBefore = errorReporter.getErrors().size();
+  
+  org.mozilla.javascript.Parser parser = new org.mozilla.javascript.Parser(
+    compEnv, errorReporter
+  );
+  
+  AstRoot ast = parser.parse(new StringReader(source), "<stdin>.js", 1);
+  int sizeAfter = errorReporter.getErrors().size();
+  
+  if (sizeAfter > sizeBefore) {
+    List<ParseProblem> newProblems
+      = errorReporter.getErrors().subList(sizeBefore, sizeAfter);
+    String parsedStringRep = ast.toSource(2);
+    
+    System.err.printf(
+      "%d problem%s during parse; recovered source is below:\n" +
+      "\n" +
+      "      %s\n" +
+      "\n" +
+      "  - %s\n\n",
+      (newProblems.size() == 1)? "": "s",
+      newProblems.size(), 
+      parsedStringRep, 
+      StringUtils.join(newProblems, "\n  - ")
+    );
+  }
+  
+  return (transform)
+    ? (new IRFactory(compEnv, errorReporter).transformTree(ast))
+    : ast;
+};
+
+public static AstRoot parseJs(String source) {
+  return parseJs(source, true);
+}

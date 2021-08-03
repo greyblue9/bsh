@@ -1,0 +1,80 @@
+
+public static void printStackTrace(Throwable ex) {
+  printStackTrace(ex, true);
+}
+
+public static void printStackTrace(Throwable ex, boolean doFilter) {
+  printStackTrace(ex, 5, doFilter);
+}
+
+
+
+
+public static void printStackTrace(Throwable ex, int ctxSize) {
+  printStackTrace(ex, ctxSize, doFilter);
+}
+
+public static void printStackTrace(Throwable ex, int ctxSize, boolean doFilter) {
+  Throwable t = filterStack(ex, doFilter);
+  StackTraceElement[] stes = t.getStackTrace();
+  for (StackTraceElement ste: stes) {
+    Class steCls;
+    if (ste.getLineNumber() < 1) {
+      System.out.printf(
+        "\u001b[1;33m%s\u001b[0m\n", ste.toString()
+      );
+      continue;
+    }
+    try {
+      if (! Capabilities.classExists(ste.getClassName())) {
+        if (!CollectionUtil.isJRE()) {
+          Thread.currentThread().getContextClassLoader().badClasses.clear();
+        };
+        CollectionUtil.getInterpreter().bcm.absoluteNonClasses.clear();
+        Capabilities.classes.clear(); 
+        if (! Capabilities.classExists(ste.getClassName())) {
+          
+          try {
+            String className = ste.getClassName();
+            String src = IOUtils.toString(new URL(String.format(
+              "https://raw.githubusercontent.com/" +
+              "frohoff/jdk8u-jdk/master/src/share/classes/%s",
+              ClassInfo.classNameToPath(className, "java")
+            )));
+            System.out.println(
+              dumpMembers.colorize(ste.toString(), "1;33")
+            );
+            System.out.printf("\n  %s\n\n",
+              getContext(src.replace("\r", ""), ste.lineNumber, ctxSize));
+            continue;
+            
+          } catch (Exception e) {
+            e.printStackTrace();
+          };
+          
+          System.err.printf(
+            "\u001b[1;31mWarning\u001b[0m: " +
+            "Skipping StackTraceElement because class is unavailable:\n    %s\n\n",
+            ste
+          );
+          continue;
+        }
+      }
+      steCls = DexVisitor.classForName(ste.getClassName());
+    } catch (Throwable e) {
+      System.err.println(e);
+      continue;
+    }
+    
+    System.out.println(
+      dumpMembers.colorize(ste.toString(), "1;33")
+    );
+    System.out.printf("\n  %s\n\n",
+      getContext(steCls, ste.lineNumber, ctxSize).replace("\n", "\n  ")
+    );
+  }
+}
+
+public static void printStackTrace(Throwable ex, boolean doFilter, int ctxSize) {
+  printStackTrace(ex, ctxSize, doFilter);
+}

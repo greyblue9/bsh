@@ -1,0 +1,92 @@
+{
+  public static ClassVisitor getClassVisitor(DexVisitor dv, String className) {
+    Set clsNames = Reflect.getfldval(dv, "clsNames");
+    if (clsNames == null ||
+      ! clsNames.contains(className) ||
+      dv.getClass(className) == null)
+    {
+      Reflect.setfldval(
+        dv, "clsNames", DexVisitor.newSet(Arrays.asList(className))
+      );
+      Reflect.setfldval(dv, "visited", Boolean.FALSE);
+      dv.visit();
+    };
+    ClassVisitor cv = dv.getClass(className);
+    return cv;
+  };
+  
+  public static List<MethodVisitor> findDexMethod(Iterable<Member> mtds,
+    boolean quiet)
+  {
+    Collection dmvs = null;
+    Map bysig = new TreeMap();
+    Iterator it = mtds.iterator();
+    if (!it.hasNext())
+      return Arrays.asList();
+    Member firstMtd = it.next();
+    Class dc = firstMtd.getDeclaringClass();
+    Dex dex = org.d6r.ClassInfo.getDex(dc);
+    DexVisitor dv = dumpDexClass2.dexVisitorCache.get(dex);
+    if (dv == null) {
+      dv = DexVisitor.from(dc).visit();
+      dumpDexClass2.dexVisitorCache.put(dex, dv);
+    }
+    ClassVisitor cv = getClassVisitor(dv, dc.getName());
+    Collection<MethodVisitor> dmvs = cv.getMethods();
+    List ret = new ArrayList();
+    for (Member mtd : mtds) {
+      for (MethodVisitor dmv : dmvs) {
+        if ((mtd instanceof Method && !dmv.name.equals(mtd.getName())) || (mtd instanceof Constructor && !dmv.name.equals("<init>")))
+          continue;
+        String _sig = dmv.method.desc;
+        if (_sig == null) {
+          _sig = String.format("(%s)%s", StringUtils.join(dmv.method.parameterTypes, ""), dmv.method.returnType);
+        }
+        bysig.put(_sig, dmv);
+      }
+      String sig = ProcyonUtil.getErasedSignature(mtd);
+      if (bysig.containsKey(sig))
+        ret.add(bysig.get(sig));
+    }
+    if (!quiet) {
+      Thread t = new Thread(new Runnable() {
+        public void run() {
+          Thread.sleep(500);
+          CollectionUtil.getInterpreter().setShowResults(true);
+        }
+      });
+      CollectionUtil.getInterpreter().setShowResults(false);
+      String title = String.format("Matching members (%d)", ret.size());
+      System.out.printf("\n%s\n%s\n%s\n\n\n", title, title.replaceAll(".", "="), StringUtils.join(ret, "\n\n"));
+      t.start();
+    }
+    return ret;
+  }
+   
+  public static List findDexMethod(Iterable mtds) {
+    return findDexMethod(mtds, false);
+  };
+  
+  public static Object findDexMethod(Member mtd, boolean quiet) {
+    return findDexMethod(Arrays.asList(mtd), quiet);
+  };
+  
+  public static Object findDexMethod(Member mtd) {
+    return findDexMethod(mtd, true);
+  };
+  
+  public static List<MethodVisitor> findDexMethod(
+    java.lang.reflect.AnnotatedElement[] mtds)
+  {
+    return findDexMethod((Iterable) Arrays.asList((Object[]) mtds));
+  };
+  
+  void;
+};
+
+
+
+
+
+
+

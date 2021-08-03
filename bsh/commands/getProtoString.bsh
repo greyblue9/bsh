@@ -1,0 +1,75 @@
+import org.benf.cfr.reader.bytecode.analysis.variables.NamedVariableFromHint;
+import org.benf.cfr.reader.bytecode.analysis.variables.VariableNamer;
+import org.benf.cfr.reader.bytecode.analysis.types.MethodPrototype;
+import org.benf.cfr.reader.bytecode.analysis.types.JavaTypeInstance;
+
+
+public static String getProtoString(org.benf.cfr.reader.entities.Method md) {
+  MethodPrototype proto = md.getMethodPrototype();
+  boolean computed = proto.parametersComputed();
+  if (!computed) {
+    md.analyse();
+  }
+  
+  Collection<JavaTypeInstance> params = proto.getArgs();
+  System.err.printf("\u001b[1;30margs = %su001b[0m\n", params);
+  
+  VariableNamer namer = md.getVariableNamer();
+  // System.err.printf("namer = %s\n", Debug.ToString(namer));
+  
+  List<NamedVariable> nvarsRaw = namer.getNamedVariables();
+  // System.err.printf("nvarsRaw = %szn", nvarsRaw);
+  List<NamedVariableFromHint> nvars
+    = nvarsRaw.typeFilter(NamedVariableFromHint.class);
+  // System.err.println(nvars);
+  /*
+    public void forceName(String name)
+    public String getStringName()
+    public int hashCode()
+    public boolean isGoodName()
+    public String toString()
+  */
+  Map variableNameMap = new TreeMap();
+  for (NamedVariableFromHint var: nvarsRaw) {
+    Integer _slot = Reflect.getfldval(var, "slot"),
+            _idx  = Reflect.getfldval(var, "idx");
+    int slot = _slot != null? _slot.intValue(): -1,
+         idx =  _idx != null?  _idx.intValue(): -1;
+    String name = var.getStringName(); // Reflect.getfldval(var, "name");
+    /*System.err.printf(
+      "%s { slot: %s, idx: %s, name: %s }\n  %s\n\n",
+      ClassInfo.getSimpleName(ClassInfo.typeToName(var.getClass())),
+      slot, idx, name,
+      ToString(var)
+    );*/
+    variableNameMap.put(Integer.valueOf(slot), name);
+  }
+  
+  List<String> pstrs = new ArrayList<String>();
+  int pidx = 0;
+  for (JavaTypeInstance type: params) {
+    pidx++;
+    String typeName = type.getRawName();
+    String variableName = (variableNameMap.containsKey(Integer.valueOf(pidx)))
+      ? variableNameMap.get(Integer.valueOf(pidx))
+      : String.format("p%d", pidx); // suggestVarName();
+    pstrs.add(String.format("%s %s", typeName, variableName));
+  }
+  
+  String paramsStr = StringUtils.join(pstrs, ",");
+  
+  String retTypeName = (proto.getReturnType() != null) 
+    ? String.format("%s ", proto.getReturnType().getRawName())
+    : "";
+  String name = (md.isConstructor())
+    ? md.getClassFile().getRefClasstype().getRawShortName()
+    : md.getName();
+  String modsStr = (md.getAccessFlags().size() != 0) 
+    ? String.format("%s ", StringUtils.join(md.getAccessFlags(), " "))
+    : "";
+  String protoStr = String.format(
+    "%s%s%s(%s)", modsStr, retTypeName, name, paramsStr
+  );
+  return protoStr;
+}
+

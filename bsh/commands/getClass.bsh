@@ -1,0 +1,6 @@
+
+{
+  public static Class getClass() { return bsh.Interpreter.class; };
+  void;
+};
+

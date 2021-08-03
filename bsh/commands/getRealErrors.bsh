@@ -1,0 +1,2 @@
+public static List getRealErrors() { return CollectionUtil2.filter(CollectionUtil2.filter(CollectionUtil2.typeFilter(Arrays.asList(Interpreter.errors.toArray()), bsh.TargetError.class), Pattern.compile("^(?:(?!typeFilter|method.*not found.*(java\\.|bsh\\.|org.d6r\\.)|Interpreter.error|\\$_e).)*$", Pattern.DOTALL)), Pattern.compile("at ((?!global)[a-zA-Z0-9_$.])+\\([^\n]*?(\\.bsh|\\.java):[0-9]+", Pattern.DOTALL)); }
+

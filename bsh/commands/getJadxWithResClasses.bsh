@@ -1,0 +1,100 @@
+import bsh.NameSpace.BindingMap;
+import libcore.io.IoUtils;
+import jadx.api.JadxDecompiler;
+import jadx.api.ResourceFile;
+import jadx.api.ResourceType;
+import jadx.core.dex.nodes.DexNode;
+import jadx.core.dex.nodes.RootNode;
+
+public static BindingMap getJadxWithResClasses(String apkPath) {
+  File apkFile = new File(apkPath);
+  byte[] dexBytes = generateDexWithResClasses(apkPath);
+  Map zm = ZipUtil.mapZip(FileUtils.readFileToByteArray(apkFile));
+  zm.put("classes.dex", dexBytes);
+  File tmpApk = File.createTempFile(
+    "tmp_apk", ".apk", PosixFileInputStream.createTemporaryDirectory("tmp_dex_res")
+  );
+  ZipFile zipFile = writeZip(tmpApk, zm);
+  File apkFile = new File(tmpApk.getPath());
+  String path = apkFile.getPath();
+  BindingMap jx = getJadx(
+    ZipUtil.toByteArray(FileUtils.readFileToByteArray(apkFile), "classes.dex")
+  );
+  Map jadxVars = RealArrayMap.toMap(jx.values());
+  File outDir = PosixFileInputStream.createTemporaryDirectory("jadx_out");
+  JadxDecompiler dc = jadxVars.get("dc");
+  dc.setOutputDir(outDir);
+  DexNode dexNode = jadxVars.get("dexNode");
+  dexNode.initInnerClasses();
+  dexNode.loadClasses();
+  RootNode root = jadxVars.get("root");
+  root.dexNodes.add(dexNode);
+  String pkg = PosixFileInputStream.pexecSync("pkgname", apkFile.getPath());
+  root.appPackage = pkg;
+  ResourceFile fwkarsc = new ResourceFile(dc, "resources.arsc", ResourceType.ARSC);
+  fwkarsc.setZipRef(new ResourceFile.ZipRef(
+    new File("/external_sd/_projects/sdk/platf/framework_res.apk"), 
+    "resources.arsc"
+  ));
+  ResourceFile apkarsc = new ResourceFile(dc, "resources.arsc", ResourceType.ARSC);
+  apkarsc.setZipRef(new ResourceFile.ZipRef(apkFile, "resources.arsc"));
+  dexNode.root().loadResources(Arrays.asList(fwkarsc, apkarsc));
+  root.appPackage = pkg;
+  dexNode.root().initClassPath();
+  root.appPackage = pkg;
+  dexNode.root().initAppResClass();
+  System.err.printf(
+    "root.appResClass = %s\ndexNode.root.getClsp() = %s\n",
+    root.getAppResClass(), dexNode.root().getClsp()
+  );
+  return this.namespace.getVariables();
+};
+
+
+
+
+public static BindingMap getJadxWithResClasses(String apkPath, boolean mergeWithOriginalClassesDex) {
+  File apkFile = new File(apkPath);
+  Pair p = generateDexWithResClasses(apkPath, mergeWithOriginalClassesDex);
+  ZipFile zipFile = p.getRight();
+  byte[] dexBytes = p.getLeft();
+  Map zm = ZipUtil.mapBytes(zipFile); // FileUtils.readFileToByteArray(apkFile));
+  /*
+  zm.put("classes.dex", dexBytes);
+  File tmpApk = File.createTempFile(
+    "tmp_apk", ".apk", PosixFileInputStream.createTemporaryDirectory("tmp_dex_res")
+  );
+  ZipFile zipFile = writeZip(tmpApk, zm);
+  */
+  File apkFile = new File(zipFile.getName()); // new File(tmpApk.getPath());
+  String path = apkFile.getPath();
+  BindingMap jx = getJadx(dexBytes);
+  Map jadxVars = RealArrayMap.toMap(jx.values());
+  File outDir = PosixFileInputStream.createTemporaryDirectory("jadx_out");
+  JadxDecompiler dc = jadxVars.get("dc");
+  dc.setOutputDir(outDir);
+  DexNode dexNode = jadxVars.get("dexNode");
+  dexNode.initInnerClasses();
+  dexNode.loadClasses();
+  RootNode root = jadxVars.get("root");
+  root.dexNodes.add(dexNode);
+  String pkg = PosixFileInputStream.pexecSync("pkgname", apkFile.getPath());
+  root.appPackage = pkg;
+  ResourceFile fwkarsc = new ResourceFile(dc, "resources.arsc", ResourceType.ARSC);
+  fwkarsc.setZipRef(new ResourceFile.ZipRef(
+    new File("/external_sd/_projects/sdk/platf/framework_res.apk"), 
+    "resources.arsc"
+  ));
+  ResourceFile apkarsc = new ResourceFile(dc, "resources.arsc", ResourceType.ARSC);
+  apkarsc.setZipRef(new ResourceFile.ZipRef(apkFile, "resources.arsc"));
+  dexNode.root().loadResources(Arrays.asList(fwkarsc, apkarsc));
+  dexNode.root().initClassPath();
+  dexNode.root().initAppResClass();
+  System.err.printf(
+    "root.appResClass = %s\ndexNode.root.getClsp() = %s\n",
+    root.getAppResClass(), dexNode.root().getClsp());
+  return this.namespace.getVariables();
+};
+
+
+

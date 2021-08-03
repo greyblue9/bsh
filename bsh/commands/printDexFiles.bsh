@@ -1,0 +1,2 @@
+public static void printDexFiles() { for (Object dexElement: dexElements) { File file = Reflect.getfldval(dexElement, "file"); int hashCode = dexElement.hashCode(); DexFile df = Reflect.getfldval(dexElement, "dexFile"); int dfHashCode = df != null? df.hashCode(): 0; String toString = dexElement.toString(); String sn = toString.substring(0, toString.indexOf(' ')); String dfsn = df != null? df.getClass().getSimpleName(): ""; System.out.printf("%s @ %8x %s %s\n", dfsn, dfHashCode, sn, file.getAbsolutePath()); } }
+

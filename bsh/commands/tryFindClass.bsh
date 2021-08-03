@@ -1,0 +1,13 @@
+public static Map tryFindClass(String className) {
+  File dex = new File(StringUtils.substringAfter(CollectionUtil.firstOrDefault(CollectionUtil2.filter(PosixFileInputStream.pexecSync("finddex2", className).split("\n"), "==")), "==> "));
+  String jar = StringUtils.substringBeforeLast(dex.getPath().replace("/data/dalvik-cache", "").replaceAll("@", "/"), "/"), entryName = StringUtils.substringAfterLast(dex.getPath().replace("/data/dalvik-cache", "").replaceAll("@", "/"), "/");
+  if (!new File(jar).exists() || !new File(jar).isFile()) {
+    jar = String.format("%s/%s", jar, entryName);
+    entryName = null;
+  }
+  ClassInfo.appendClassPathFile(jar);
+  byte[] zipBytes = ClassInfo.importDexClasses(className, true, true);
+  return ClassInfo.getAndAddAllJarEntries(zipBytes);
+}
+
+ 

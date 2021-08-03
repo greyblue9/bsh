@@ -1,0 +1,102 @@
+
+import java.lang.reflect.*;
+import java.util.*;
+import libcore.reflect.*;
+import bsh.*;
+
+
+
+public static String prettyPrint(AccessibleObject[] mArr) {
+  StringBuilder sb = new StringBuilder();
+  int idx = 0;
+  for (AccessibleObject m: mArr) {
+    boolean showType = (idx++) == 0;
+    sb.append(prettyPrint(m, showType));
+  }
+  return sb.toString();
+}
+
+public static String prettyPrint(AccessibleObject m)
+{
+  return prettyPrint(m, true);
+}
+
+
+public static String prettyPrint
+(AccessibleObject m, boolean withType)
+{
+  
+  StringBuilder sb = new StringBuilder();
+  char lf = '\n';
+  
+  Type _type = m.getDeclaringClass();
+  String name = m.getName();
+  String argsPart = "";
+  String valStr = "";
+  Type type = null;
+  Type retType = null;
+  Type[] paramClzs = null; 
+  
+  // declaring type
+  sb.append(dumpMembers.colorize(
+    dumpMembers.typeToString(_type),
+    "1;36"
+  ));
+  sb.append('\n');
+  
+  if (m instanceof Method) {
+   retType = ((Method)m).getGenericReturnType();
+   paramClzs = ((Method)m).getGenericParameterTypes();
+  } else if (m instanceof Constructor) {
+   retType = TypeUtils.wrap(cls).getType();
+   paramClzs 
+    = ((Constructor)m).getGenericParameterTypes();
+   name = "<init>";
+  }
+  String typeStr = dumpMembers.typeToString(retType);
+  String modsStr = Modifier.toString(m.getModifiers());
+  String strMember = "";
+  
+  StringBuilder args = new StringBuilder(paramClzs.length*12); 
+  for (int p=0; p<paramClzs.length; p++) {
+    if (p > 0) args.append(", "); 
+      args.append(
+        dumpMembers.colorize(
+         dumpMembers.typeToString( paramClzs[p] ).replace("java.lang.","").replace("", "").replace("[]", dumpMembers.colorize("[]", "1;37")),
+          "1;32"
+        )
+     );
+  }
+  argsPart = args.toString();
+  
+  sb.append("  ");
+  sb.append(dumpMembers.colorize(modsStr, "1;30"));
+  if (modsStr.length() > 0) sb.append(' ');
+  sb.append(dumpMembers.colorize(
+      typeStr.replace("java.lang.",""), 
+      "1;36"
+  ));
+  sb.append(' ');
+  sb.append(dumpMembers.colorize(name,    "1;33"));
+  if (argsPart != null) {
+    sb.append(String.format(
+      "%s%s%s", 
+      "(", 
+      dumpMembers.colorize(argsPart.replace("java.lang.",""), 
+      "1;32", false),
+      ")"
+    ));
+  }
+  if (valStr.length() > 0) {
+    sb.append(String.format(" = %s", valStr));
+  }
+  sb.append(';');
+  sb.append(lf);  
+  
+  
+  return sb.toString();
+}
+
+
+
+

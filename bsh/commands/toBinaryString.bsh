@@ -1,0 +1,12 @@
+public static String toBinaryString(long longval) { 
+  StringBuilder sb = new StringBuilder(Long.toBinaryString((long) longval)); 
+  while (sb.length() < 32) sb.insert(0, "0"); 
+  return sb.toString().replaceAll("(.{8})", "  $1").trim();
+}
+
+public static String toBinaryString(int intval) { 
+  StringBuilder sb = new StringBuilder(Integer.toBinaryString((int) intval));
+  while (sb.length() < 16) sb.insert(0, "0"); 
+  return sb.toString().replaceAll("(.{8})", "  $1").trim();
+}
+

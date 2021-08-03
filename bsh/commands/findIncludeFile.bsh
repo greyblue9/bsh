@@ -1,0 +1,88 @@
+
+public static File findIncludeFile(String name) {
+  return findIncludeFile(name, (Boolean) null);
+}
+
+
+public static File findIncludeFile(String name, Boolean forTransUnit) {
+  if (name.startsWith("/")) {
+    System.err.printf(
+      "findIncludeFile(\"%s\"): got absolute path\n", name
+    );
+    File f = new File(name);
+    if (f.exists()) {
+      System.err.printf(
+        "  --> findIncludeFile(\"%s\") returning [%s]\n", name, f
+      );
+      return f;
+    } else {
+      System.err.printf("  --> returning null (non-existent absolute path)\n");
+      return null;
+    }
+  }
+  
+  File[] incDirs = CollectionUtil.dbg.get("incDirs");
+  
+  if (incDirs == null) {
+    incDirs = new String(
+      FileUtils.readFileToByteArray(
+        new File("gcc_macro_defs_android")        
+      ), "ISO-8859-1"
+    ).split(" ").filter(
+      Pattern.compile("^/")
+    ).to(File).select(FunctionUtil.bind(
+      "return m -> { m.isDirectory()? m: null; }"
+    ));
+    
+    CollectionUtil.dbg.put("incDirs", incDirs);
+  };
+  
+  System.err.printf(
+    "findIncludeFile(\"%s\"): pass 1\n", name
+  );
+  for (int i=0, len=incDirs.length; i<len; ++i) {
+    File incDir = incDirs[i];
+    if (!incDir.exists()) continue;
+    if (!incDir.isDirectory()) {
+      incDir = incDir.getParentFile();
+      if (incDir.isDirectory()) incDirs[i] = incDir;
+      else continue;
+    }
+    if (new File(incDir, name).exists()) {
+      System.err.printf(
+        "findIncludeFile(\"%s\"): match on [%s], direct child\n",
+        name
+      );
+      return new File(incDir, name);
+    }
+  }
+  
+  System.err.printf(
+    "findIncludeFile(\"%s\"): pass 2\n", name
+  );
+  Pattern ptrn = Pattern.compile(
+    String.format(".*(?<=/)(?:%s)(?:\\.h(?:xx|pp)?)?$", name)
+  );
+  System.err.printf(
+    "findIncludeFile(\"%s\"): pattern: \"%s\"\n",
+    name, StringEscapeUtils.escapeJava(ptrn.pattern())
+  );
+  for (File incDir: incDirs) {
+    Iterable<File> files = findFiles.iterate(incDir, 2, ptrn); 
+    for (File file: files) {
+      System.err.printf(
+        "findIncludeFile(\"%s\"): FF match on [%s]: [%s]\n",
+        name, incDir, file
+      );
+      if (!file.isDirectory() && file.length() != 0L) {
+        System.err.printf(
+          "  --> findIncludeFile(\"%s\") returning [%s]\n", name, file
+        );
+        return file;
+      }
+    }
+  }
+  System.err.printf("  --> findIncludeFile(\"%s\") returning NULL!!!\n", name);
+  return null;
+}
+

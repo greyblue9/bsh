@@ -1,0 +1,4 @@
+public static String getSystemSetting(String name, String defaultValue) { Map result = new TreeMap(); String outputLine = PosixFileInputStream.pexecSync("sqlite3", "/data/data/com.android.providers.settings/databases/settings.db", String.format("select T.name, T.value from (select name, value from global T union select name, value from secure U union select name, value from system V) T where lower(T.name) = '%s'", name.toLowerCase())); int delimpos = outputLine.indexOf('|'); if (delimpos >= 1) { String outName = outputLine.substring(0, delimpos); String value = outputLine.substring(delimpos+1); if (name.toLowerCase().equals(outName.toLowerCase())) { return value; }; }; if (String.valueOf(outputLine).trim().length() == 0) return defaultValue; System.err.printf("Trouble getting system setting by name '%s': output was:\n%s\n", name, outputLine); return null; }
+
+public static String getSystemSetting(String name) { return getSystemSetting(name, null); }
+

@@ -1,0 +1,8 @@
+import java.util.Map.Entry;
+
+
+
+public static Map getNativeLibrariesFromApk(String jarPath) { File file = new File(jarPath); Object dexElement = ClassPathUtil2.findDexElement(Thread.currentThread().getContextClassLoader(), file); byte[] zipBytes = null; if (dexElement != null) { Reflector.invokeOrDefault(dexElement, "maybeInit"); ZipFile zipFile = Reflect.getfldval(dexElement, "zipFile"); InputStream is = null; try { is = ZipUtil.toInputStream(zipFile); zipBytes = IOUtils.toByteArray(new org.apache.commons.io.input.AutoCloseInputStream(is)); } catch (IOException ioe) { ioe.printStackTrace(); } finally { if (is != null) IOUtils.closeQuietly(is); }; }; if (zipBytes == null) zipBytes = FileUtils.readFileToByteArray(file); SortedMap result = null; try { Map retMap = new TreeMap(); Map zm = ZipUtil.mapBytes(zipBytes); return RealArrayMap.toMap(zm.entrySet().filter("lib/.*arm((?!8|64)[^/])*/.*\\.so[0-9.]*(?:=|, ?)").toArray(new Entry[0])); } finally { zipBytes = null; result = null; }; }
+
+
+

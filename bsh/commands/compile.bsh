@@ -1,0 +1,80 @@
+
+import org.apache.commons.io.output.StringBuilderWriter;
+import java.io.Writer;
+import java.io.PrintWriter;
+import java.util.*;
+
+public static List compile(String src) { 
+  
+  System.setProperty(
+    "sun.boot.class.path", 
+    "/external_sd/_projects/sdk/platforms/android-21/android.jar"
+  );
+  
+  String clsname = null;
+  String csrc = src; 
+  int i = csrc.indexOf("class"); 
+  if (i != -1) {
+    csrc = src.substring(i + 6);
+    i = csrc.indexOf(' ');
+    if (i != -1) {
+      csrc = csrc.substring(0, i);
+      clsname = csrc;
+    }
+  }
+  if (clsname == null) {
+    System.err.printf("Could not determine class name. Please provide it by calling compile(String className, String source) instead.\n");
+    return null;
+  }
+  
+  return compile(clsname, src);
+}
+  
+
+public static List compile(String clsname, String src) { 
+  
+  System.setProperty(
+    "sun.boot.class.path", 
+    "/external_sd/_projects/sdk/platforms/android-21/android.jar:/storage/extSdCard/_projects/sdk/dx/dx_110.jar"
+  );
+  
+  File javaf = new File("/data/local/tmp", clsname + ".java");
+  FileUtils.writeStringToFile(javaf, src);
+  
+  ArrayList args = new ArrayList(Arrays.asList(new String[]{ 
+    "-g:lines,vars,source", 
+    "-verbose",
+    "-d", 
+    "/data/local/tmp_clazzes"
+  }));
+  args.add(javaf.getPath());
+  
+  StringBuilder sb = new StringBuilder(76 * 100); 
+  StringBuilderWriter sbw = new StringBuilderWriter(sb);
+  PrintWriter pw = new PrintWriter(sbw);
+  
+  com.sun.tools.javac.Main.compile(
+    args.toArray(new String[0]),
+    pw
+  );
+  
+  String[] lines = sb.toString().replaceAll("\r?\n", "\n").split("\n");
+  
+  String[] paths = StringUtils.join(
+    StringCollectionUtil.toStringFilter(lines, ".*\\.class\\]?"),
+    ','
+    ).replaceAll(",?\\[wrote |\\],?|^\\[?,? ?", "\n").replaceAll("^\\n+|(?<=\n)\n", "").split("\n");
+  
+  if (paths.length == 0 || paths[0].length() == 0) {
+    System.err.println(
+      StringUtils.join(Arrays.asList(lines), "\n")
+    );
+    return null;
+  }
+  
+  return new ArrayList(Arrays.asList(paths));
+}
+
+public static Object compile(String _src) { ClassPool cp = getClassPool(); String clsName = String.format("org.d6r.Anon$%s", String.valueOf(System.currentTimeMillis()).substring(6)); CtClass ct = cp.makeClass(clsName); ConstPool ctp = new ConstPool(clsName);  Bytecode bc = new Bytecode(ctp); public static CtMethod makeMethod(CtClass cls, String src) {src = src.replace("''", "\""); System.err.println(src); CtMethod cm = CtMethod.make(src, ct); return cm; } CtMethod cm = makeMethod(ct, _src); ct.addMethod(cm); Class cls = ct.toClass(); return cls.newInstance(); }
+
+public static Object compile(String[] _srces) { ClassPool cp = getClassPool(); String clsName = String.format("org.d6r.Anon$%s", String.valueOf(System.currentTimeMillis()).substring(6)); CtClass ct = cp.makeClass(clsName); this.interpreter.set("ct", ct); ConstPool ctp = new ConstPool(clsName); this.interpreter.set("ctp", ctp); Bytecode bc = new Bytecode(ctp); this.interpreter.set("bc", bc); public static CtMethod makeMethod(CtClass cls, String src) {src = src.replace("''", "\""); System.err.println(src); CtMethod cm = CtMethod.make(src, ct); return cm; } for (String _src: _srces) { CtMethod cm = makeMethod(ct, _src); ct.addMethod(cm); } Class cls = ct.toClass(); return cls.newInstance(); }

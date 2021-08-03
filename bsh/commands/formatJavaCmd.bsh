@@ -1,0 +1,63 @@
+File[] files = StringUtils.split(
+  System.getProperty("paths"), ":"
+).to(File); 
+System.err.println(StringUtils.join(files, ", "));   
+
+for (File file: files) {
+  String path = file.getPath();
+  System.err.printf("Processing: %s\n", path);
+  try {
+    String src = formatJava(path).replaceAll(
+      "</?[a-z]+[1-6]?> ?", ""
+    ).replaceAll(
+      "\\{@(?:code|see|link) ([^}]+)\\}", "`$1'"
+    ).replaceAll(
+      "([A-Za-z]+)( *\\t *|   *)([A-Za-z])", "$1 $2"
+    ).replaceAll(
+      "(/\\*\\* *\n *[^ \n]+\\.) *\n   *([^\\*])", "$1\n  \n  $2"
+    ).replaceAll(
+      "([^\n \t])(?:\t|  +)+([^\n\t ])", "$1 $2"
+    ); 
+    com.sun.source.tree.Tree jct = null; 
+    try {
+      jct = getJcTree(src); 
+    } catch (Throwable e1) { 
+      e1.printStackTrace();
+      continue; 
+    }
+    if (jct != null) { 
+      if (writeFile(bkpPath = String.format(
+        "%s.%s.fmt.bak", 
+        path, 
+        Long.toHexString(System.currentTimeMillis()).replaceAll(
+          "^.*([0-9a-f]{6})(?:$|\\.).*$", "$1"
+        )
+      ), readstring(path)))
+      {
+        System.err.printf("Backed up to [%s]\n", bkpPath);
+        int result = writeFile(path, src)? 0: 1; 
+        System.err.printf(
+          "[ %d ] Wrote formatted file: [%s]\n",
+          result, path
+        );
+        if (System.getProperty("noopen") == null) {
+          opena(path);
+        }
+      } else {
+        System.err.printf(
+          "backup of file [%s] failed!\n", bkpPath
+        );
+        continue; 
+      }
+    } else {
+      System.err.printf("jct is null for %s !\n", path);
+      continue; 
+    }
+  } catch (Throwable e0) { 
+    e0.printStackTrace();
+    System.err.printf("fail on: %s\n", file);
+    continue; 
+  };
+}
+
+

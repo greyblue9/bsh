@@ -1,0 +1,7 @@
+
+
+
+public static String dvmDumpJniReferenceTables() { if ((CollectionUtil2.filter(Thread.currentThread().getContextClassLoader().pathList.dexElements, Pattern.compile("dvm_utils.jar"))).length == 0) { Object dexElement = appendClassPathFile("/external_sd/_projects/sdk/dvm_utils/dvm_utils.jar"); Map nls = LibUtil.load(org.d6r.DvmUtil.class); }; PosixFileInputStream.pexecSync("logcat", "-c"); org.d6r.DvmUtil.dvmDumpJniReferenceTables(); return StringUtils.join(Logcat.getProcessMessages(), "\n"); }
+
+
+

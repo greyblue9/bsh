@@ -1,0 +1,35 @@
+
+
+public static Map getApkResRefMap(String apkPath) {
+  Map refMap = new IdentityHashMap();
+  Map apkRes = getApkRes(apkPath, false);
+  int pkg = 0x7f;
+  String[] typeNames = apkRes.get("kinds").toArray(new String[0]);
+  for (int type = 1; type <= typeNames.length; ++type) {
+    if (type == 6 || type == 7) continue; 
+    String typeName = typeNames[type - 1];
+    System.err.printf("type: %d (%s)\n", type, typeName);
+
+    String valuesFile = String.format("res/values/%ss.xml", typeName);
+    byte[] xmlBytes = apkRes.get(valuesFile);
+    String xml = new String(xmlBytes, java.nio.charset.StandardCharsets.UTF_8);
+    doc = org.jsoup.Jsoup.parse(xml, "urn:android", org.jsoup.parser.Parser.xmlParser());
+    Element root = CollectionUtil.firstOrDefault(doc.children());
+    Element[] items = CollectionUtil.toArray(root.children());
+    for (int entry = 0; entry < items.length; ++entry) {
+      int id = ((pkg << 24) | (type << 16) | entry);
+      int idPlus = ((pkg << 24) | ((type + 1) << 16) | entry);
+      int rawId = idPlus;
+      int pkg = ((rawId >> 24) & 0xFF);
+      int type = ((rawId >> 16) & 0xFF) - 1, entry = (rawId & 0xFF);
+      Element item = items[entry];
+      String textValue = item.text().trim();
+//      String resName = item.attr("name");
+//      String resRef = String.format("@%s%s/%s", (pkg == 1) ? "android:" : (pkg == 127) ? "" : String.format("package!%02x:", pkg), typeName, resName);
+//      brut.androlib.res.data.ResID resId = new brut.androlib.res.data.ResID(pkg, type, entry, id);
+//      refMap.put(id, resRef);
+//      refMap.put(String.format("@%08X", idPlus), resRef);
+    }
+  }
+  return refMap;
+}

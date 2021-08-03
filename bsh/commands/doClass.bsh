@@ -1,0 +1,140 @@
+import java.io.PrintStream;
+import java.util.List;
+import org.benf.cfr.reader.bytecode.analysis.types.JavaTypeInstance;
+import org.benf.cfr.reader.entities.ClassFile;
+import org.benf.cfr.reader.entities.Method;
+import org.benf.cfr.reader.state.DCCommonState;
+import org.benf.cfr.reader.state.TypeUsageCollector;
+import org.benf.cfr.reader.state.TypeUsageInformation;
+import org.benf.cfr.reader.util.CannotLoadClassException;
+import org.benf.cfr.reader.util.ConfusedCFRException;
+import org.benf.cfr.reader.util.getopt.BadParametersException;
+import org.benf.cfr.reader.util.getopt.GetOptParser;
+import org.benf.cfr.reader.util.getopt.GetOptSinkFactory;
+import org.benf.cfr.reader.util.getopt.Options;
+import org.benf.cfr.reader.util.getopt.OptionsImpl;
+import org.benf.cfr.reader.util.getopt.PermittedOptionProvider;
+import org.benf.cfr.reader.util.output.Dumper;
+import org.benf.cfr.reader.util.output.DumperFactory;
+import org.benf.cfr.reader.util.output.NopSummaryDumper;
+import org.benf.cfr.reader.util.output.SummaryDumper;
+import org.benf.cfr.reader.util.output.ToStringDumper;
+import org.benf.cfr.reader.util.output.DumperFactoryImpl;
+import org.benf.cfr.reader.util.output.IllegalIdentifierDump;
+import org.benf.cfr.reader.util.output.IllegalIdentifierReplacement;
+import org.benf.cfr.reader.util.output.Dumpable;
+import java.io.ByteArrayOutputStream;
+import java.io.PrintStream;
+import org.benf.cfr.reader.util.getopt.OptionsImpl;
+import org.benf.cfr.reader.state.ClassFileSourceImpl;
+import org.benf.cfr.reader.api.ClassFileSource;
+import org.benf.cfr.reader.util.CannotLoadClassException;
+
+public static Map optMap = new LoggingHashMap();
+public static ClassFileSource cfs;
+
+  public static String doClass(Class cls) {
+    ClassPool cp = CollectionUtil.getClassPool();
+    URL url = cp.find(cls.getName());
+    PathInfo pi = PathInfo.getPathInfo(url);    
+    String path = pi.path;
+    Options opts = new OptionsImpl(path, null, optMap);
+    cfs = new ClassFileSourceImpl(opts);
+    DCCommonState dccs = new DCCommonState(opts, cfs);
+    ClassFile cf = null;
+    String resPath 
+      = cls.getName().replace('.', '/').concat("class");
+    try {
+      cf = dccs.getClassFile(resPath);
+    } catch (IOException ex) {
+      // CannotLoadClassException ex
+      ClassPathUtil.getAllClasspathEntries().select(
+        """m => PathInfo pi = PathInfo.getPathInfo(m); String path = (pi.jarPath != null)? pi.jarPath: pi.path; System.err.println(path); (("""+cfs.getClass().getName()+""") CollectionUtil.getInterpreter().getNameSpace().getVariable("cfs", false)).addJar(path); return path;"""
+      );
+      cf = dccs.getClassFile(resPath);
+    }
+    return doClass(dccs, cf);
+  }
+
+  public static String doClass(DCCommonState dcCommonState, 
+  ClassFile cf) 
+  {
+    Options options = dcCommonState.getOptions();
+    Dumper d = new ToStringDumper();
+
+    try {      
+      NopSummaryDumper summaryDumper = new NopSummaryDumper();
+      ClassFile c = cf;
+      dcCommonState.configureWith(c);
+      try {
+      //c = dcCommonState.getClassFile(c.getClassType());
+      } catch (CannotLoadClassException e) {
+        // empty catch block
+      }
+      c.loadInnerClasses(dcCommonState);
+      c.analyseTop(dcCommonState);
+      TypeUsageCollector collectingDumper 
+        = new TypeUsageCollector(c);
+      c.collectTypeUsages(collectingDumper);
+      DumperFactoryImpl factory = new DumperFactoryImpl(options);
+      JavaTypeInstance classType = c.getClassType();
+      TypeUsageInformation typeUsageInformation 
+        = collectingDumper.getTypeUsageInformation();
+      IllegalIdentifierDump illegalIdentifierDump
+        = IllegalIdentifierReplacement.getInstance();
+      d = factory.getNewTopLevelDumper(
+        // org.benf.cfr.reader.util.getopt.Options 
+        options, 
+        // JavaTypeInstance
+        classType,
+        // org.benf.cfr.reader.util.output.SummaryDumper 
+        summaryDumper, 
+        // org.benf.cfr.reader.state.TypeUsageInformation 
+        typeUsageInformation, 
+        // org.benf.cfr.reader.util.output.IllegalIdentifierDump 
+        illegalIdentifierDump
+      );
+      return dumpString(d, c);
+    } catch (ConfusedCFRException e) {
+      System.err.println(e.toString());
+      for (StackTraceElement x : e.getStackTrace()) {
+        System.err.println(x);
+      }
+    } catch (CannotLoadClassException e) {
+      System.err.println("Can't load the class specified:");
+      System.err.println(e.toString());
+    } catch (RuntimeException e) {
+      System.err.println(e.toString());
+      for (StackTraceElement x : e.getStackTrace()) {
+        System.err.println(x);
+      }
+    } finally {
+      d.close();
+    }    
+  }
+  
+  public static String dumpString(Dumper d, Dumpable c) {
+    ByteArrayOutputStream baos = null;
+    PrintStream ps = null;
+    PrintStream out = System.out;
+    String src = null;
+    try {
+      System.setOut(ps = new PrintStream(
+        baos = new ByteArrayOutputStream()
+      ));
+      c.dump(d);
+      d.print("");
+    } finally {        
+      System.setOut(out);
+      try {
+        ps.flush(); 
+        baos.flush(); 
+      } catch (IOException ioe) {}
+      src = new String(baos.toByteArray()); 
+      IOUtils.closeQuietly(ps);
+      IOUtils.closeQuietly(baos);
+    }
+    return src;
+  }
+  
+  

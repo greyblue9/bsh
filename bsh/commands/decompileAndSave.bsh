@@ -1,0 +1,21 @@
+
+public static String decompileAndSave(Class cls) { 
+  String src = decompile(cls);
+  String path = String.format(
+    "/data/media/0/src/%s.java", 
+    cls.getName().replace(".","/")
+  ); 
+  if (writeFile(path, src)) { 
+    openb(path);
+  } 
+  return src;
+}
+
+public static String decompileAndSave(bsh.ClassIdentifier ci) {   
+  return decompileAndSave(
+    (Class) ((bsh.ClassIdentifier)ci).getTargetClass()
+  );
+}
+
+
+

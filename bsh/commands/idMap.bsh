@@ -1,0 +1,4 @@
+
+
+public static Map idMap(Class resCls) { Map map = new HashMap(); Object dexElement = DexFinder.findDexElement(resCls); if (dexElement.dexFile == null) { dexElement.dexFile = new DexFile(dexElement.file.getPath()); }; for (Class dc: DexFile.getClassNameList(DexFinder.findDexElement(resCls).dexFile.mCookie).filter(Pattern.compile(String.format("^(?:%s)(?:[$.].*|)$", Pattern.quote(resCls.getName()))).matcher("")).to(Class)) { System.err.println(ClassInfo.typeToName(dc.getName()));  map.putAll(RealArrayMap.asBiMap(getStaticFieldMap(dc, true)).inverse());  }; Map nm = RealArrayMap.toMap(map.entrySet().select(FunctionUtil.bind("return m -> { Pair.of(intArrCls.isInstance(m.getKey())? Arrays.asList(ArrayUtils.toObject(m.getKey())): Arrays.asList(Integer.valueOf(m.getKey())), m.getValue()); }", "intArrCls", int[].class)));  return nm; };
+

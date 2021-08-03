@@ -1,0 +1,115 @@
+
+public static List<String> getClips(int maxClips) { 
+
+  Random rand = new Random(); 
+  String separator = String.format("@@_%d_%f_@@", Long.valueOf(System.currentTimeMillis()), Double.valueOf(rand.nextDouble())); 
+  List clips = new ArrayList(); 
+  
+  String output = PosixFileInputStream.pexecSync(
+    "sqlite3", 
+    "/data/data/fi.rojekti.clipper/databases/Clipper2.sqlite3",
+    String.format(
+      StringUtils.join(
+        "select '%s', T.contents from (",
+        "  select _id, contents ",
+        "  from clippings ",
+        "  order by _id desc ",
+        "  limit %d ",
+        ") T ",
+        "order by T._id asc;"
+      ), 
+      separator.replace("\"", "\\\""), 
+      maxClips
+    )
+  );
+
+  int end = output.indexOf(separator); 
+  int begin; 
+  do { 
+    begin = end + separator.length(); 
+    end = output.indexOf(separator, begin); 
+    if (end == -1) { 
+      clips.add(output.substring(begin+1)); 
+      break;
+    }
+    clips.add(output.substring(begin+1, end).trim());
+  } while (end != -1); 
+  
+  return clips;
+}
+
+
+
+public static List<String> getClips() { 
+  return getClips(10);
+}
+
+
+public static List<String> getClips(String search) {
+  List<String> clips = Collections.emptyList();
+  int[] fetchSizes = { 200, 500, 1500, 5000, 15000, 50000 };
+  int nextFetchIdx = -1;
+  if (search.indexOf('%') == -1) {
+    search = String.format("%%%s%%", search);
+  }
+  while (clips.isEmpty() && (++nextFetchIdx) < fetchSizes.length) {
+    int fetchSize = fetchSizes[nextFetchIdx];
+    org.d6r.Log.d("getClips", "Fetching %d LIKE \"%s\" ...\n", fetchSize, 
+      StringEscapeUtils.escapeJava(search));
+    clips = getClips(search, fetchSize);
+  }
+  
+  return clips;
+}
+
+
+public static List<String> getClips(String search, int maxClips) {
+
+  Random rand = new Random(); 
+  String separator = String.format(
+    "@@_%d_%f_@@",
+    Long.valueOf(System.currentTimeMillis()),
+    Double.valueOf(rand.nextDouble())
+  ); 
+  List<String> clips = new ArrayList<String>();
+  
+  String output = PosixFileInputStream.pexecSync(
+    "sqlite3", 
+    "/data/data/fi.rojekti.clipper/databases/Clipper2.sqlite3",
+    String.format(
+      StringUtils.join(Arrays.asList(
+        "select \"%s\", contents ",
+        "  from clippings ",
+        "  where contents like \"%s\"",
+        "  order by _id asc ",
+        "  limit %d "
+      ), ""),
+      separator.replace("\"", "\\\""),
+      search.replace("\"", "\\\""),
+      maxClips
+    )
+  );
+  
+  int end = output.indexOf(separator); 
+  
+  int begin; 
+  if (end != -1) {
+    do { 
+      begin = end + separator.length(); 
+      end = output.indexOf(separator, begin); 
+      if (end == -1) { 
+        clips.add(output.substring(begin+1)); 
+        break;
+      }
+      clips.add(output.substring(begin+1, end).trim());
+    } while (end != -1); 
+  }
+  
+  return clips;
+}
+
+
+
+
+  
+  

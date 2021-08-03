@@ -1,0 +1,152 @@
+import java.nio.charset.StandardCharsets;
+// import org.apache.commons.io.output.AutoCloseOutputStream;
+
+public static boolean writeFile(File file, String contents) {
+  return writeFile(file, contents, (Charset) null);
+} 
+
+public static boolean writeFile(File file, String contents, Charset encoding) {
+  if (file == null) throw new IllegalArgumentException("file == null");
+  File dir = new File(file.getParent());
+  if (dir == null) throw new IllegalArgumentException(String.format(
+    "File(\"%s\").getParent() == null", file.getPath()
+  ));
+  boolean dirsCreated = dir.exists();
+  if (!dirsCreated) {
+    dirsCreated = dir.mkdirs();
+    if (!dirsCreated) {
+      throw new RuntimeException(String.format(
+        "Failed to create dirs: [%s/]", dir.getPath()
+      ));
+    }
+  }
+  
+  OutputStream _os = null, _fos = null;
+  {
+    _os = new BufferedOutputStream(_fos = new FileOutputStream(file));
+    byte[] data = contents.getBytes(
+      (encoding != null)? encoding: StandardCharsets.UTF_8
+    );
+    try {
+      IOUtils.writeChunked(data, _os);
+      _os.flush();
+      _fos.flush();
+      _os.close();
+      _fos.close();
+    } catch (IOException e1) {
+      e1.printStackTrace();
+      _os.close();
+      _fos.close();
+      System.err.println(e1);
+      return false;
+    }
+    
+    return (((int) new File(file.getPath()).length()) == data.length);
+    // return !(Boolean.FALSE.equals(Reflector.invokeOrDefault(_fos,"checkError")));
+  };
+}
+
+
+
+public static boolean writeFile(File file, byte[] bytes) {
+  if (file.exists()) {
+    String tmpRenamedFile = new File(
+      file.getParent(), 
+      Long.toString(
+        (System.currentTimeMillis() * 135427L), 16
+      ).concat("._tmp_.").concat(file.getName())
+    );
+    if (! tmpRenamedFile.createNewFile()) {
+      throw new IOException(String.format(
+        "Failed to back up existing file: [%s]: "
+        + "new File(\"%s\").createNewFile() returned false!",
+        file.getAbsolutePath(), 
+        tmpRenamedFile.getPath()
+      ));
+    };
+    tmpRenamedFile.delete();
+    Quad quad = PosixFileInputStream.pexec(
+      "mksh", "-c", String.format(
+        "rename %c%s%c %c%s%c; echo $?; ", 
+        39, file.getAbsolutePath().replaceAll(
+          "(" + Character.valueOf((char) 39).toString() + ")",
+          "$1\"$1\"$1"
+        ), 39, 
+        39, tmpRenamedFile.getAbsolutePath().replaceAll(
+          "(" + Character.valueOf((char) 39).toString() + ")",
+          "$1\"$1\"$1"
+        ), 39
+      )
+    );
+    String stdout = quad.getMiddle().sb.toString();
+    String stderr = quad.getNext().sb.toString();
+    int exstat = quad.getRight().retValue;
+    if (exstat != 0) {
+      throw new IOException(String.format(
+        "Failed to back up existing file: [%s]: "
+        + "rename exited with status [ %d ]: %s",
+        file.getAbsolutePath(), exstat, stderr
+      ));
+      return false;
+    }
+    
+    boolean existsBefore = file.exists();
+    if (existsBefore) {
+      throw new IllegalStateException("existsBefore == true");
+    }
+    FileUtils.writeByteArrayToFile(file, bytes);
+    boolean existsNow = file.exists();
+    if (!existsNow) {
+      System.err.printf(
+        "Rolling back failed write of file [%s] "
+        + "using backup [%s] ...\n", 
+        file, tmpRenamedFile
+      );
+      
+      Quad quad = PosixFileInputStream.pexec(
+        "mksh", "-c", String.format(
+          "rename %c%s%c %c%s%c; echo $?; ", 
+          39, tmpRenamedFile.getAbsolutePath().replaceAll(
+            "(" + Character.valueOf((char) 39).toString() + ")", 
+            "$1\"$1\"$1"
+          ), 39, 
+          39, file.getAbsolutePath().replaceAll(
+            "(" + Character.valueOf((char) 39).toString() + ")", 
+            "$1\"$1\"$1"
+          ), 39
+        )
+      );
+      System.err.printf(
+        "[ %d ] Restore result\n"
+        + "- stderr: [%s]\n"
+        + "- stdout: [%s]\n\n", 
+        quad.getRight().retValue, 
+        quad.getNext().sb.toString(),
+        quad.getMiddle().sb.toString()
+      );
+      return false;
+    }
+    if (tmpRenamedFile.exists()) {
+      System.err.printf(
+        "Wrote backup to: [%s]\n",
+        tmpRenamedFile.getAbsolutePath()
+      );
+    }
+    return file.exists();
+  };
+  
+  FileUtils.writeByteArrayToFile(file, bytes);
+  return file.exists();
+}
+
+
+public static boolean writeFile(String path, String contents) {
+  return writeFile(new File(path), contents);  
+}
+
+public static boolean writeFile(String path, byte[] bytes) {
+  return writeFile(new File(path), bytes);  
+}
+
+
+

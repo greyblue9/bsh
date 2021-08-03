@@ -1,0 +1,29 @@
+
+public static String methodToString(String name) {
+  
+  StringBuilder sb = new StringBuilder(256);
+  importCommands("/");
+  
+  bsh.BshMethod[] meths = this.caller.namespace.getMethods();
+  for (bsh.BshMethod meth: meths) {
+    if (meth.getName().equals(name)) {
+      sb.append(methodToString(meth));
+      sb.append("\n\n");
+    }
+  }
+  
+  return sb.toString();
+}
+
+
+public static String methodToString(bsh.BshMethod meth) {
+  
+  Object root = getfldval(getfldval(meth, "methodBody"),"children")[0];
+  
+  StringBuilder sb = nodeToString(root, null, null);
+  
+  return meth.toString() + "\n" 
+    + sb.toString().replace("\n", "\n  ")
+    + "\n}";
+    
+}

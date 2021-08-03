@@ -1,0 +1,185 @@
+{
+  boolean exists = bsh.Capabilities.classExists("pxb.android.axml.AxmlReader");
+  if (exists) {
+    for (String _sn: Arrays.asList("AxmlReader")) {
+      this.namespace.importClass("pxb.android.axml.".concat(_sn));
+    }
+  }
+
+  if (!exists) System.err.printf(
+      "Adding to classpath: %s ...\n", appendClassPathFile(
+      "/external_sd/_projects/sdk/android_toolkit/android_toolkit.jar"
+  ));
+  System.out.println(
+    bsh.Capabilities.classExists("pxb.android.axml.AxmlReader")? "OK": "Failed");
+  if (bsh.Capabilities.classExists("pxb.android.axml.AxmlReader")) {
+    for (String _sn: Arrays.asList("AxmlReader")) {
+      this.namespace.importClass("pxb.android.axml.".concat(_sn));
+    }
+  };
+  
+  void;
+}
+
+
+import pxb.android.axml.Axml;
+import pxb.android.axml.AxmlReader;
+import pxb.android.axml.AxmlWriter;
+
+
+
+
+
+public static Axml.Node getRoot(Axml axml) {
+  Axml.Node root = CollectionUtil.firstOrDefault(axml.firsts);
+  return root;
+}
+
+public static Axml.Node findChildWithName(Axml.Node node, String nodeName) {
+  TreeSet ts = new TreeSet(Comparators.comparingString("name"));
+  ts.addAll(node.children);
+  Axml.Node search = new Axml.Node();
+  search.name = nodeName;
+  return CollectionUtil.firstOrDefault(ts.tailSet(search));
+}
+
+public static Axml.Node.Attr findAttrWithName(Axml.Node node, String name) {
+  TreeSet ts = new TreeSet(Comparators.comparingString("name"));
+  ts.addAll(node.attrs);
+  Axml.Node.Attr search = new Axml.Node.Attr();
+  search.name = name;
+  return CollectionUtil.firstOrDefault(ts.tailSet(search));
+}
+
+
+
+
+
+
+
+public static Axml makeDebuggable(Axml axml) {
+  Axml.Node appNode
+    = findChildWithName(getRoot(axml), "application");
+  
+  Axml.Node.Attr existing = findAttrWithName(appNode, "debuggable");
+  if (existing != null) {
+    existing.value = Boolean.TRUE;
+  } else {
+    Axml.Node.Attr attr = new Axml.Node.Attr();
+    attr.name = "debuggable";
+    attr.ns = "android";
+    attr.resourceId = 16842767;
+    attr.type = 18;
+    attr.value = "true";
+    System.err.println(appNode.attrs.add(attr));
+  };
+  
+  return axml; 
+};
+
+public static byte[] makeDebuggable(byte[] manifBytes) {
+  
+  import pxb.android.axml.Axml;
+  import pxb.android.axml.AxmlReader;
+  AxmlReader r = new AxmlReader(manifBytes);
+  Axml axml = new Axml();
+  r.accept(axml);
+  Object node = findChildWithName(getRoot(axml), "application");
+  Object a = new pxb.android.axml.Axml$Node$Attr();
+  a.ns = "http://schemas.android.com/apk/res/android";
+  a.name = "debuggable"; 
+  a.type = 18;
+  a.value = true;
+  a.resourceId = 16843392;
+  node.attrs.add(0,a);
+  AxmlWriter w = new AxmlWriter();
+  axml.accept(w);
+  w.end();
+  byte[] newManifBytes = w.toByteArray();  
+  return newManifBytes;
+}
+ 
+public static File makeDebuggable(File manifestFile) {
+  byte[] manifBytes = FileUtils.readFileToByteArray(manifestFile);
+  byte[] newManifBytes = makeDebuggable(manifBytes);
+  FileUtils.writeByteArrayToFile(manifestFile, newManifBytes);
+  return manifestFile;
+}
+
+public static String makeDebuggable(String path) {
+  if (StringUtils.endsWith(path, ".xml")) {
+    File manifestFile = new File(path);
+    return makeDebuggable(manifestFile).getAbsolutePath();
+  }
+  
+  byte[] manifBytes = ZipUtil.toByteArray(path, "AndroidManifest.xml");
+  byte[] newManifBytes = makeDebuggable(manifBytes);
+  
+  return finishApkFile(path, newManifBytes);
+}
+
+public static String makeDebuggable() {
+  String apkPath = PosixFileInputStream.pexecSync("topwinapk");
+  return makeDebuggable(apkPath);
+}
+
+public static File finishApkFile(String apkPath, byte[] manifestBytes) {
+  File apkFile = new File(apkPath);
+  ZipFile apkZipFile = new ZipFile(apkFile);
+  Map/*<String, byte[]>*/ zm = ZipUtil.mapBytes(apkZipFile);
+  
+  zm.put("AndroidManifest.xml", manifestBytes);
+  
+  File apkOutFile = new File(
+    new File("/tm/tmp"),
+    apkFile.getName()
+  );
+  
+  File apkOutDir = apkOutFile.getParentFile();
+  if (! apkOutDir.exists() && ! apkOutDir.mkdirs()) {
+    throw apkOutDir.mkdirErrno();
+  }
+  Object apkOutZipFile = writeZip(apkOutFile, zm);
+  
+  // Sign the intermediate zip file to make final output file (apk)
+  /*File apkFinalOutFile = new File(
+    new File("/data/media/0/.tmp"),
+    String.format(
+      "%s_s.%s",
+      StringUtils.substringBeforeLast(apkOutFile.getName(), "."),
+      StringUtils.substringAfterLast(apkOutFile.getName(), ".")
+    )
+  );*/
+  
+  System.err.printf(
+    "Signing the output file '%s' ...\n",
+    apkOutFile.getAbsolutePath()
+  );
+  System.err.printf(
+    "Result: %s\n\n",
+    PosixFileInputStream.pexecSync(
+      "jarsigner_wrapper", apkOutFile.getAbsolutePath()
+    )
+  );
+  System.out.printf("Wrote %s\n", apkOutFile.getAbsolutePath());
+  
+  String doit = System.getProperty("doit");
+  if ("true".equals(doit)) {
+    System.err.printf(
+      "Installing the output file '%s' ...\n", apkOutFile.getAbsolutePath()
+    );
+    System.err.printf(
+      "Result: %s\n\n",
+      PosixFileInputStream.pexecSync(
+        "installinteractive", apkOutFile.getAbsolutePath()
+      )
+    );
+  };
+  return apkOutFile.getAbsolutePath();
+};
+
+
+
+
+
+

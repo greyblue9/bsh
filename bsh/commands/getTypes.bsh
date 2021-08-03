@@ -1,0 +1,67 @@
+
+
+
+
+
+
+
+
+
+public static List<TypeReference> getTypes(com.strobel.decompiler.languages.java.ast.AstNode theAst, boolean resolve) { return CollectionUtil2.typeFilter(theAst.getDescendantsAndSelf(), com.strobel.decompiler.languages.java.ast.AstType.class).select(FunctionUtil.eval(String.format("return m -> { var resolve = %s; var dataItem = ProcyonUtil.getDataList(m)[0]; return (resolve)? dataItem.resolve(): dataItem; }", Boolean.valueOf(resolve).toString()))); }
+
+
+
+
+
+
+
+public static List<TypeDefinition> getTypes(com.strobel.decompiler.languages.java.ast.AstNode theAst) { return getTypes(theAst, true); }
+
+
+
+
+
+
+
+
+
+public static List<TypeDefinition> getTypes(com.strobel.decompiler.languages.java.ast.AstNode ast, boolean doImport) { import com.strobel.decompiler.languages.java.ast.SimpleType; Collection<SimpleType> stypes = CollectionFactory.newSet(CollectionUtil2.typeFilter(ast.getDescendants(), SimpleType.class)); List<TypeDefinition> typeDefs = typeNodes.select(FunctionUtil.bind("return m -> { var dataList = ProcyonUtil.getDataList(m); return dataList.iterator().hasNext()? dataList.iterator().next().resolve(): null; }"));  if (doImport) { tds.select(FunctionUtil.eval("return m -> { CollectionUtil.getInterpreter().getNameSpace().importClass(ClassInfo.typeToName(m.getErasedSignature())); m; }")); }; return typeDefs.sort().uniq(); };
+
+
+
+
+
+
+
+
+
+public static List<TypeDefinition> getTypes(com.strobel.decompiler.languages.java.ast.AstNode ast, boolean doImport) { import com.strobel.decompiler.languages.java.ast.SimpleType; Set meta = new HashSet(); for (com.strobel.decompiler.languages.java.ast.AstNode node: ast.getDescendants()) { List data = ObjectUtil.searchObject(node, TypeReference.class, 4); meta.addAll(data); }; List<TypeDefinition> typeDefs = meta.select(FunctionUtil.bind("return m -> { m.resolve(); }"));  if (doImport) { typeDefs.select(FunctionUtil.bind("return m -> { Reflector.invokeOrDefault(m, \"getErasedSignature\") != null? ns.importClass(ClassInfo.typeToName(m.getErasedSignature())): null; err.println(String.valueOf(m)); return m; }", "typeDefs", typeDefs, "ns", CollectionUtil.getInterpreter().getNameSpace(), "err", System.err)); }; return typeDefs.sort().uniq(); };
+
+
+
+
+
+
+
+public static List<TypeReference> getTypes(com.strobel.assembler.metadata.MethodReference mr) { MethodDefinition md = (MethodDefinition) ProcyonUtil.getMethodDefinition(mr); if (md == null) return Collections.emptyList(); Object methodBody = md.getBody(); Collection<Instruction> insns = methodBody.getInstructions(); Deque iq = new ArrayDeque(); Collections.addAll(iq, insns.toArray()); List operands = new ArrayList();  while (!(iq.isEmpty())) {       com.strobel.assembler.ir.Instruction insn = iq.poll();   Object operand = insn._operand;   if (operand instanceof Object[]) { for (Object o: (Object[]) operand) {   if (o instanceof com.strobel.assembler.ir.Instruction) { iq.offer(o); } else if (o == null) { } else { operands.add(o); } } } else if (operand instanceof com.strobel.assembler.ir.Instruction) { iq.offer(operand); } else if (operand == null) { } else { operands.add(operand); }; };  List<TypeReference> typeRefs = operands.select(FunctionUtil.bind("return i -> { var ret = (VariableReference.isInstance(i)) ? i.getVariableType(): (TypeReference.isInstance(i)) ? i : (IMetadataTypeMember.isInstance(i)) ? i.getDeclaringType(): null; while (TypeReference.isInstance(ret) && ret.isArray()) ret = ret.getElementType(); return (TypeReference.isInstance(ret))? ret: (IMetadataTypeMember.isInstance(i)) ? i.getDeclaringType(): null; }", com.strobel.assembler.ir.Instruction.class, com.strobel.assembler.metadata.VariableReference.class, com.strobel.assembler.metadata.TypeReference.class, com.strobel.assembler.metadata.IMetadataTypeMember.class)); return typeRefs.sort().uniq(); }
+
+
+
+
+
+
+public static List<TypeReference> getTypes(com.strobel.assembler.metadata.MethodDefinition md) { if (md == null) return Collections.emptyList(); Object methodBody = md.getBody(); Collection<Instruction> insns = methodBody.getInstructions(); Deque iq = new ArrayDeque(); Collections.addAll(iq, insns.toArray()); List operands = new ArrayList();  while (!(iq.isEmpty())) {       com.strobel.assembler.ir.Instruction insn = iq.poll();   Object operand = insn._operand;   if (operand instanceof Object[]) { for (Object o: (Object[]) operand) {   if (o instanceof com.strobel.assembler.ir.Instruction) { iq.offer(o); } else if (o == null) { } else { operands.add(o); } } } else if (operand instanceof com.strobel.assembler.ir.Instruction) { iq.offer(operand); } else if (operand == null) { } else { operands.add(operand); }; };  List<TypeReference> typeRefs = operands.select(FunctionUtil.bind("return i -> { var ret = (VariableReference.isInstance(i)) ? i.getVariableType(): (TypeReference.isInstance(i)) ? i : (IMetadataTypeMember.isInstance(i)) ? i.getDeclaringType(): null; while (TypeReference.isInstance(ret) && ret.isArray()) ret = ret.getElementType(); return (TypeReference.isInstance(ret))? ret: (IMetadataTypeMember.isInstance(i)) ? i.getDeclaringType(): null; }", com.strobel.assembler.ir.Instruction.class, com.strobel.assembler.metadata.VariableReference.class, com.strobel.assembler.metadata.TypeReference.class, com.strobel.assembler.metadata.IMetadataTypeMember.class)); return typeRefs; }
+
+
+
+
+
+
+public static Set<String> getTypes(com.github.javaparser.ast.Node decl) {
+  JavaParserVisitor jpv = new JavaParserVisitor(com.github.javaparser.ast.type.ClassOrInterfaceType.class);
+  decl.accept(jpv, null);
+  Set types = jpv.toSet();
+  return CollectionFactory.newSet(types.select(FunctionUtil.bind("return m -> { while (ClassOrInterfaceType.isInstance(m) && ClassOrInterfaceType.isInstance(Reflect.getfldval(m, \"parentNode\"))) { m = Reflect.getfldval(m, \"parentNode\"); }; return (m.scope.isPresent()? m.asString(): CollectionUtil.getInterpreter().getNameSpace().importedClasses.containsKey(m.getNameAsString())? CollectionUtil.getInterpreter().getNameSpace().importedClasses.get(m.getNameAsString()): m.asString()); }", com.github.javaparser.ast.type.ClassOrInterfaceType.class)).sort().uniq());
+}
+
+

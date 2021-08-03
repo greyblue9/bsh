@@ -1,0 +1,37 @@
+public static byte[] eraseLineNumberAttributes(String className) {
+  CtClass ct = CollectionUtil.getClassPool().get(ClassInfo.typeToName(className));
+  ct.wasFrozen = false;
+  ct.wasPruned = false;
+  List<CtBehavior> cbs = Iterables.concat(new Iterable[] { Arrays.asList(ct.getDeclaredMethods()), Arrays.asList(ct.getDeclaredConstructors()) }).toList();
+  for (CtBehavior cb : cbs) {
+    javassist.bytecode.CodeAttribute codeAttr
+      = cb.getMethodInfo().getCodeAttribute();
+    if (codeAttr == null) continue;
+    List<Attribute> attributes = codeAttr.attributes;
+    if (attributes == null) continue;
+    javassist.bytecode.LineNumberAttribute attr =
+      CollectionUtil.firstOrDefault(
+        CollectionUtil2.typeFilter(
+          attributes, javassist.bytecode.LineNumberAttribute.class
+        )
+      );
+    if (attr == null)
+      continue;
+    Map map = new TreeMap();
+    for (int i = 0, len = attr.tableLength(); i < len; ++i) {
+      int lineNumber = attr.lineNumber(i), pc = attr.startPc(i);
+      map.put(pc, lineNumber);
+    }
+    if (map.containsKey(-1)) {
+      System.err.println(cb);
+    }
+    System.err.println(map);
+    cb.getMethodInfo().getCodeAttribute().attributes.remove(attr);
+  }
+  byte[] classBytes = ct.toBytecode();
+  ct.wasFrozen = false;
+  ct.wasPruned = false;
+  return classBytes;
+}
+
+ 

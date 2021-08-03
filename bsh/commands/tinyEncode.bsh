@@ -1,0 +1,4 @@
+
+
+public static String tinyEncode(byte[] inBytes) { ByteArrayOutputStream baos = new ByteArrayOutputStream(); OutputStream gzos = new java.util.zip.GZIPOutputStream(baos); IOUtils.copy(new ByteArrayInputStream(inBytes), gzos); gzos.flush(); gzos.close(); baos.close(); return new java.math.BigInteger(baos.toByteArray()).toString(32); };
+

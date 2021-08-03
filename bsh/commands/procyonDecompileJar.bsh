@@ -1,0 +1,393 @@
+import org.apache.commons.io.FilenameUtils;
+import org.apache.commons.io.input.AutoCloseInputStream;
+import org.apache.commons.lang3.exception.ExceptionUtils;
+import com.strobel.assembler.ir.attributes.EnclosingMethodAttribute;
+import com.strobel.assembler.ir.attributes.SourceAttribute;
+import com.strobel.assembler.ir.attributes.InnerClassesAttribute;
+import com.strobel.assembler.ir.attributes.AttributeNames;
+import com.strobel.assembler.ir.attributes.InnerClassEntry;
+import com.strobel.assembler.metadata.ITypeLoader;
+import com.strobel.assembler.metadata.ClasspathTypeLoader;
+import com.strobel.assembler.metadata.CompositeTypeLoader;
+import com.strobel.assembler.metadata.JarTypeLoader;
+import com.strobel.decompiler.languages.java.ast.Keys;
+import com.strobel.decompiler.languages.java.ast.CompilationUnit;
+import com.strobel.decompiler.languages.java.ast.TypeDeclaration;
+import com.strobel.decompiler.languages.java.ast.PrimitiveExpression;
+import com.strobel.decompiler.languages.java.ast.MethodDeclaration;
+import javassist.ClassPool;
+import javassist.ClassPoolTail;
+import com.strobel.decompiler.languages.java.ast.transforms.EliminateSyntheticAccessorsTransform;
+import com.strobel.decompiler.languages.java.ast.transforms.AddStandardAnnotationsTransform;
+import com.strobel.decompiler.languages.java.ast.transforms.IntroduceInitializersTransform;
+import com.strobel.assembler.metadata.Flags;
+import com.strobel.assembler.metadata.MetadataHelper;
+
+
+{
+
+public static Object procyonDecompileJar(String jarPath, String filter, boolean exit) {
+  String TAG = "procyonDecompileJar";
+  
+  appendClassPathFile("/external_sd/_projects/sdk/ares/ares.jar");
+  System.err.printf(
+    "procyonDecompileJar((%s) %s, %s, %s)", 
+    ClassInfo.getSimpleName(jarPath), jarPath,
+    filter,
+    exit
+  );
+  
+  File apkFile = new File(jarPath);
+  
+  if (apkFile.getPath().trim().length() == 0 ||
+      !apkFile.exists() ||
+      !apkFile.isFile() ||
+      !(new File(apkFile.getAbsolutePath()).exists()))
+  {
+    throw new RuntimeException(String.format(
+      "file does not exist: (%s) [%s]", ClassInfo.getSimpleName(apkFile), apkFile
+    ));
+  }
+  try {    
+    apkFile = apkFile.getCanonicalFile();
+  } catch (IOException ioe) {
+    throw new RuntimeException(String.format(
+      "file does not exist: (%s) [%s]", ClassInfo.getSimpleName(apkFile), apkFile
+    ), ioe);
+  }
+  
+  File jar = new File(apkFile.getPath());
+  ZipFile zipFile = new ZipFile(jar);
+  List<String> classNames = ClassInfo.getClassNamesFromEntries(zipFile, false).toArray(new String[0]);
+  
+  classNames = ArrayUtils.removeElements(
+    classNames,
+    CollectionUtil2.filter(classNames, Pattern.compile("^(?:[a-z]\\.)*[a-z]$"))
+  );
+  
+  
+  if (System.getProperty("filter") != null) {
+    filter = System.getProperty("filter");
+  } else if (System.getProperty("input.filter") != null) {
+    filter = System.getProperty("input.filter");
+  }
+  
+  Closeable suppress = null;
+  if (Boolean.parseBoolean(System.getProperty("suppress.handlers", "false"))) {
+    try {
+      suppress = Reflect.getfldval(
+        com.strobel.assembler.metadata.ExceptionHandlerMapper.class,
+        "suppressionDepth"
+      );
+      if (suppress != null) {
+         suppressionLevel = suppress.incrementAndGet();
+         Log.d(TAG, "Permanently suppressing exception handlers during session: %d",
+           suppressionLevel);
+      }
+    } catch (Throwable e) {
+      Log.e(TAG, String.format("exceptionHandler suppression is unavailable: %s",
+        Reflector.getRootCause(e)));
+    }
+  }
+  
+  int count;
+  if (filter != null) {
+    int count0 = classNames.length;
+    Log.d(TAG, "Using filter: \"%s\"", StringEscapeUtils.escapeJava(filter));
+    classNames = CollectionUtil2.filter(classNames, filter);
+    int count1 = classNames.length;
+    Log.d(TAG, "Filtered out %d classes (excluding nested)", count0 - count1);
+    count = count1;
+  } else {
+    count = classNames.length;
+  }
+  
+  Log.v(TAG, "Found %d top-level classes in jar '%s' ...\n", count, jarPath);
+  
+  File jar = new File(jarPath);
+  
+  ZipFile zipFile = new ZipFile(jar);
+  ZipEntry zipEntry = zipFile.getEntry("resources.arsc");
+  Map map = null;
+  
+  if (zipEntry == null) {
+    ZipFile zipFile2 = new ZipFile("/system/framework/framework-res.apk");
+    ZipEntry zipEntry2 = zipFile2.getEntry("resources.arsc");
+    if (zipEntry2 != null) {
+      map = arscApply(new AutoCloseInputStream(zipFile2.getInputStream(zipEntry2)));
+    }
+  } else {
+    map = arscApply(new AutoCloseInputStream(zipFile.getInputStream(zipEntry)));
+  }
+  
+  String jarFileName = jar.getName();
+  File cwd = new File(".").getAbsoluteFile().getCanonicalFile();
+  String jarName = FilenameUtils.removeExtension(jarFileName);
+  String outDirName = String.format(
+    "%s.%d.src_decompiled", 
+    jarName, (int) (System.currentTimeMillis() / 1000)
+  );
+  File outDir = new File(cwd, outDirName);
+  outDir.mkdirs();
+  Log.v(TAG, "Using source output directory '%s' ...\n", outDir);
+  
+  Log.v(TAG, "Added jar typeLoader's jar collection ...\n");
+  ITypeLoader typeLoader = ProcyonUtil.getTypeLoader();
+  
+  JarFile zipFile = new JarFile(jar);
+  ITypeLoader newTypeLoader = new CompositeTypeLoader(
+    new ITypeLoader[] {
+      new JarTypeLoader(zipFile),
+      typeLoader
+    }
+  );
+  ProcyonUtil.typeLoader = newTypeLoader;
+  ProcyonUtil.metadataResolver._typeLoader = typeLoader;
+  MetadataSystem.instance()._typeLoader = newTypeLoader;
+  
+  System.err.printf(
+    "Added jar '%s@%08x' to typeLoader '%s@%08x' ...\n",
+    zipFile.getClass().getSimpleName(),
+    System.identityHashCode(zipFile),
+    newTypeLoader.getClass().getSimpleName(),
+    System.identityHashCode(newTypeLoader)
+  );
+  
+  long start = System.currentTimeMillis();
+  int i = 0;
+  int completed = 0;
+  int failed = 0;
+  List failedNames = new ArrayList();
+  int classNameCount = classNames.length;
+  
+  boolean clearSynthetic = true;
+  boolean clearNamespace = true;
+  boolean manualRunInitXform = false;
+  String PROGRESS_LINE_FMT
+    = "\n\u001b[1;33m===== Processing (%d / %d) %s =====\u001b[0m\n" +
+      "   Decompiling to:  '%s'\n";
+  
+  outer:
+  for (String className: classNames) {
+    if (((i + 250) % 500) == 0) System.gc();
+    
+    TypeDefinition td = null;
+    bsh.NameSpace.all.clear();
+    
+    try {
+      File outFile = new File(String.format(
+        "%s/%s", outDir, ClassInfo.classNameToPath(className, "java")
+      ));
+      new File(StringUtils.substringBeforeLast(outFile.getPath(), "/")).mkdirs();
+      outFile.createNewFile();
+      System.err.printf(
+        PROGRESS_LINE_FMT, (++i), classNameCount, className, outFile);
+      
+      CompilationUnit ast = null;
+      try {
+        td = ProcyonUtil.getTypeDefinition(className);
+        ast = ProcyonUtil.decompileToAst(td);
+      } catch (Throwable e) {
+        if (e instanceof StackOverflowError || 
+            Reflector.getRootCause(e) instanceof StackOverflowError)
+        {
+          StackOverflowError soe = (StackOverflowError) (
+            (e instanceof StackOverflowError) ? e: Reflector.getRootCause(e));
+          soe.stackTrace = soe.getStackTrace().uniq();
+          e.stackTrace = e.getStackTrace().uniq();
+          if (e != soe) Reflect.setfldval(e, "cause", soe);
+          e.printStackTrace();
+        } else {
+          e.printStackTrace();
+        }
+      } // catch
+      
+      
+      // ________ ________ ________ ________ ________ ________ ________ ________
+      
+      try {
+        AddStandardAnnotationsTransform xform
+          = new AddStandardAnnotationsTransform(ProcyonUtil.getDecompilerContext());
+        xform.run(ast);
+      } catch (Throwable e) {
+        Log.e(TAG, new RuntimeException(String.format(
+          "Error thrown during manual run of AddStandardAnnotationsTransform: %s",
+          Reflector.getRootCause(e)), e));
+      }
+      
+      
+      if (manualRunInitXform) {
+        try {
+          IntroduceInitializersTransform xform2
+            = new IntroduceInitializersTransform(
+                ProcyonUtil.getDecompilerContext());
+          xform2.run(ast);
+        } catch (Throwable e) {
+          manualRunInitXform = false;
+          Log.e(TAG, new RuntimeException(String.format(
+            "Error thrown during manual run of IntroduceInitializersTransform: %s",
+            Reflector.getRootCause(e)), e));
+        }
+      }
+      
+      
+      try {
+        if (map != null && ast != null) {
+          Iterable<PrimitiveExpression> its = CollectionUtil2.filter(
+            CollectionUtil2.typeFilter(
+              ast.getDescendants(), PrimitiveExpression.class
+            ),
+            Pattern.compile("^[0-9]{4,}$|^0x[0-9a-fA-F]{4,}$")
+          );
+          for (PrimitiveExpression it: its) {
+            Object intValue = it.getValue();
+            if (!(intValue instanceof Integer)) continue;
+            String name = map.get(intValue);
+            if (name == null) continue;
+            it.setLiteralValue(name);
+          }
+        }
+      } catch (Throwable e) {
+        Log.e(TAG, new RuntimeException(String.format(
+          "Error thrown during Resource ID replacement: %s",
+          Reflector.getRootCause(e)), e));
+      }
+      
+      String text = (ast != null)? ast.getText(): "";
+      FileUtils.writeStringToFile(outFile, text);
+      long outSize = outFile.length();
+      if (outFile.length() > 0) {
+        Log.v(TAG, "[OK]   Wrote file '%s' (%d bytes)\n", outFile, outSize);
+        ++completed;
+      } else {
+        Log.e(TAG, String.format(
+          "[FAIL] Failed on file '%s' (%d bytes)\n", outFile, outSize));
+        ++failed;
+        failedNames.add(className);
+      }
+    } catch (Throwable e) {
+      if (! (Reflector.getRootCause(e) instanceof StackOverflowError)) {
+        e.printStackTrace();
+        Log.e(TAG, new RuntimeException(
+         String.format("FATAL ERROR: UNCAUGHT: %s", Reflector.getRootCause(e)), e));
+      } else {
+        try {
+          Reflector.getRootCause(e).printStackTrace();
+        } catch (Throwable x) {  };
+        Log.e(TAG,
+          new RuntimeException("FATAL ERROR: UNCAUGHT STACK OVERFLOWERROR", e));
+      }
+      if (Reflector.getRootCause(e) instanceof StackOverflowError) {
+        StackOverflowError soe = (StackOverflowError) Reflector.getRootCause(e);
+        StackTraceElement[] stes = soe.getStackTrace();
+        soe.stackTrace = stes.uniq();
+        e = soe;
+        soe.printStackTrace();
+      } else if (e instanceof StackOverflowError) {
+        StackOverflowError soe = (StackOverflowError) e;
+        StackTraceElement[] stes = soe.getStackTrace();
+        soe.stackTrace = stes.uniq();
+        e = soe;
+        soe.printStackTrace();
+      } else {
+        Reflector.getRootCause(e).printStackTrace();
+        e.printStackTrace();
+      }
+      
+      Runnable ru = new Runnable() {
+        public void run() { 
+          Thread.sleep(4000);
+        }
+      };
+      Thread th = new Thread(ru);
+      th.start();
+      th.join();
+      
+      ++failed;
+      try {
+        source("/data/media/0/bsh/commands/getAllVariables2.bsh");
+        CollectionUtil.getInterpreter().getNameSpace().getVariables().putAll(
+          getAllVariables2().get("procyonDecompileJar"));
+        dumpMembers(ProcyonUtil.getDecompilerContext());
+        dumpMembers(td);
+        printMap(getAllVariables2().get("procyonDecompileJar"));
+        System.out.println(
+          String.format(
+            "\n\n\u001b[1;31mFailed to decompile \u001b[1;37m%s\u001b[0m\n\n",
+            className
+          )
+        );
+        System.err.println(
+          String.format(
+            "\n\n\u001b[1;31mFailed to decompile \u001b[1;37m%s\u001b[0m\n\n",
+            className
+          )
+        );
+        Runnable ru = new Runnable() {
+          public void run() { 
+            Thread.sleep(2000);
+          }
+        };
+        Thread th = new Thread(ru);
+        th.start();
+        th.join();
+      } catch (Throwable t) {
+        t.printStackTrace();  
+      }
+    };
+  }
+  long end = System.nanoTime();
+  int timeSec = (int) (((double) (end - start)) / 1000.0 / 1000.0);
+  int min = (int) Math.floor(timeSec / 60.0);
+  int sec = timeSec - (min * 60);
+  
+  if (suppress != null) {
+    Log.d(TAG, "Decrementing exceptionHandler suppressionLevel: %d",
+      suppress.decrementAndGet());
+  }
+  
+  System.err.printf(
+    "\n\n" +
+    "*** Decompilation completed in %d minute%s and %d second%s! ***\n" +
+    "Summary:\n" +
+    "        %4d succeeded\n" +
+    "        %4d failed\n" +
+    "        ----------------\n" +
+    "        Failures:\n" +
+    "          %s\n\n" +
+    "Total:  %4d\n\n",
+    min, ((min != 1)? "s": ""), sec, ((sec != 1)? "s": ""),
+    completed, failed,
+    StringUtils.join(failedNames, "\n          "),
+    count
+  );
+  
+  if (exit) {
+    System.exit(Integer.valueOf((completed > 0 && failed == 0)? 0: 1).intValue());
+  }
+  return Pair.of(zipFile, outDir);
+}
+
+
+
+public static Object procyonDecompileJar(String jarPath, String filter) {
+  return procyonDecompileJar(jarPath, filter, false);
+}
+
+public static Object procyonDecompileJar() {
+  String TAG = "procyonDecompileJar";
+  String inputFileProp = System.getProperty("input.file");
+  if (inputFileProp != null) {
+    String filterProp = System.getProperty("input.filter");
+    String filter = (filterProp != null) ? filterProp : ".";
+    return procyonDecompileJar(inputFileProp.trim(), filter, true);
+  }
+  return procyonDecompileJar(jarPath, filter, false);
+}
+
+
+  Object invtype = getBshInvocationTypeId();
+  if (invtype == INVTYPE_SCRIPT) {
+    procyonDecompileJar();
+  }
+}

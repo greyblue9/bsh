@@ -1,0 +1,222 @@
+import org.eclipse.jdt.internal.compiler.problem.ProblemReporter;
+import org.eclipse.jdt.internal.compiler.parser.Parser;
+import org.eclipse.jdt.internal.compiler.parser.Parser.LocalTypeKind;
+import org.eclipse.jdt.internal.compiler.CompilationResult;
+import org.eclipse.jdt.internal.compiler.ast.CompilationUnitDeclaration;
+import org.eclipse.jdt.internal.compiler.ast.ASTNode;
+import org.eclipse.jdt.internal.compiler.ast.TypeDeclaration;
+import org.eclipse.jdt.internal.compiler.lookup.ClassScope;
+import org.eclipse.jdt.internal.compiler.lookup.SourceTypeBinding;
+import org.eclipse.jdt.internal.compiler.lookup.PackageBinding;
+import org.eclipse.jdt.internal.compiler.ast.ImportReference;
+import org.eclipse.jdt.internal.compiler.lookup.LookupEnvironment;
+import org.eclipse.jdt.internal.compiler.lookup.CompilationUnitScope;
+
+import org.eclipse.jdt.internal.compiler.batch.FileSystem;
+import org.eclipse.jdt.internal.compiler.IErrorHandlingPolicy;
+import org.eclipse.jdt.internal.compiler.DefaultErrorHandlingPolicies;
+import org.eclipse.jdt.internal.compiler.tool.EclipseCompilerRequestor;
+import org.eclipse.jdt.internal.compiler.tool.EclipseCompiler;
+import org.eclipse.jdt.internal.compiler.tool.EclipseCompilerImpl;
+import org.eclipse.jdt.internal.compiler.IProblemFactory;
+import org.eclipse.jdt.internal.compiler.problem.DefaultProblemFactory;
+import org.eclipse.jdt.internal.compiler.problem.ProblemReporter;
+import org.eclipse.jdt.internal.compiler.impl.CompilerOptions;
+import javax.tools.DiagnosticCollector;
+
+public static int[] ensureSwitchInitialized(Class tableLocClass,
+Class<E> enumClass) {
+  String fieldName = new StringBuilder("$SWITCH_TABLE$").append(enumClass.getName().replace('.', '$')).toString();
+  Field lookupField;
+  try {
+    lookupField = tableLocClass.getDeclaredField(fieldName);
+  } catch (ReflectiveOperationException ex) {
+    return new int[0];
+  }
+  lookupField.setAccessible(true);
+  int ENUM_VALUE_MODIFIERS
+    = Modifier.PUBLIC | Modifier.STATIC | Modifier.FINAL;
+  List<Integer> ordinals = new LinkedList<Integer>();
+  for (Field valueField: enumClass.getDeclaredFields()) {
+    if (! valueField.getType().equals(enumClass)) continue;
+    if (valueField.getModifiers() != ENUM_VALUE_MODIFIERS) continue;
+    valueField.setAccessible(true);
+    Object enumValue = valueField.get(null);
+    System.err.printf(
+      "Found enum value: %s = %s (ordinal=%d)\n",
+      valueField.getName(), enumValue, enumValue.ordinal()
+    );
+    ordinals.add(Integer.valueOf(enumValue.ordinal()));
+  }
+  int[] tableValue
+    = ArrayUtils.toPrimitive(ordinals.toArray(new Integer[0]));
+  System.err.printf(
+    "  - Table value: %s (length=%d): %s\n",
+    tableValue, tableValue.length,
+    Arrays.toString((int[]) tableValue)
+  );
+  lookupField.set(null, tableValue);
+  return (int[]) lookupField.get(null);
+}
+
+public static List<TypeDeclaration> getJdtTree(
+Object srcUrlPathFileOrString)
+{
+  InputStream srcIn = Reflector.invokeOrDefault(
+    IOStream.class, "from", new Object[]{ srcUrlPathFileOrString }
+  );
+  if (!( srcIn instanceof InputStream)) {
+    throw new IllegalArgumentException(String.format(
+      "Could not create stream from %s: [%s] via IOStream.from(..)", 
+      srcUrlPathFileOrString.getClass().getSimpleName(),      
+      srcUrlPathFileOrString
+    ));
+  };
+  
+  String src = IOUtils.toString(srcIn, Charset.forName("UTF-8"));
+  Matcher startMchr = Pattern.compile(
+    "((?:(?:public|private|protected|static|final)\\s+)*"
+    + "(?:class|@?interface)\\s+)([a-zA-Z0-9_$]+)",
+    Pattern.DOTALL | Pattern.MULTILINE | Pattern.UNIX_LINES
+  ).matcher("");
+  startMchr.reset(src);
+  
+  ensureSwitchInitialized(Parser.class, Parser.LocalTypeKind.class);
+  
+  
+  ASTNode[] clsBodyDecls = new ASTNode[0];
+  
+  do {
+    if (! startMchr.find()) {
+      throw new IllegalArgumentException(String.format(
+        "Cannot find start of class declaration in source:\n  %s",
+        src.length() > 255
+          ? src.subSequence(0, 255).concat("...")
+          : src
+      ));
+    }
+    
+    String simpleName = startMchr.group(2);
+    String javaFileName = String.format("%s.java", simpleName);
+    System.err.printf(
+        "File: \"%s\"\n"
+      + "Simple Name: %s\n",
+      javaFileName,
+      simpleName
+    );
+    
+    
+    int start = startMchr.start(1), end = src.length();
+    String classDeclSrc = (String) src.subSequence(start, end);
+    char[] classDeclChars = classDeclSrc.toCharArray();
+    
+    
+    /*
+    FileSystem environment = new FileSystem(
+      new String[0], new String[0], null // encoding
+    );
+
+    Map settings = new TreeMap();
+    EclipseCompiler main = new EclipseCompilerImpl(
+      new PrintWriter(System.out), new PrintWriter(System.err), true
+    );
+    DiagnosticCollector diag = new DiagnosticCollector();
+    EclipseCompilerRequestor requestor 
+      = new EclipseCompilerRequestor(main, diag, problemFactory);
+    */
+    
+    IErrorHandlingPolicy policy
+      = DefaultErrorHandlingPolicies.proceedWithAllProblems();
+    CompilerOptions options = new CompilerOptions();
+    IProblemFactory problemFactory = new DefaultProblemFactory();
+
+    ProblemReporter probRep
+      = new ProblemReporter(policy, options, problemFactory);
+    
+    
+    // ProblemReporter probRep
+    //   = tryGetInstance(ProblemReporter.class, 0, 4);
+    Parser p = new Parser(probRep, true);
+    Arrays.fill(p.identifierStack, "(nothing)".toCharArray());
+    CompilationResult compResult
+      = new CompilationResult(javaFileName.toCharArray(), 0, 1, 100);
+    CompilationUnitDeclaration cuDecl
+      = new CompilationUnitDeclaration(
+          probRep, compResult, end - start
+        );
+    clsBodyDecls = p.parseClassBodyDeclarations(
+      classDeclChars, start, end, cuDecl
+    );
+    if (clsBodyDecls == null || clsBodyDecls.length == 0) {
+      throw new IllegalStateException(String.format(
+        "%s.parseClassBodyDeclarations("
+        + "char[] classDeclChars = \"%s\"%s (length=%d), "
+        + "start = %d, end = %d, cuDecl = %s"
+        + ") returned %s!",
+        p.getClass().getName(),
+        (classDeclChars.length > 255)
+          ? new String(classDeclChars, 0, 255)
+          : String.valueOf(classDeclChars),
+        (classDeclChars.length > 255)? " ...": "",
+        classDeclChars.length,
+        start, end, Dumper.tryToString(cuDecl),
+        (clsBodyDecls != null)
+          ? String.format(
+              "array: %s[%d]",
+              clsBodyDecls.getClass().getComponentType().getName(),
+              clsBodyDecls.length)
+          : "NULL"
+      ));
+    }
+    
+    TypeDeclaration td;
+    
+    if (clsBodyDecls != null && clsBodyDecls.length > 0) {
+      List tds = new ArrayList(Arrays.asList(clsBodyDecls));
+      Collections.sort(tds, FunctionUtil.delegate(
+        Comparator.class,
+        ""
+          +"return (a, b) -> {"
+          +"  Integer.compare(size(b.toString()), size(a.toString()));"
+          +"}"
+      ));
+      td = tds.iterator().next();
+    }
+    
+    pkg = getPackage(src).toString(); 
+    pkgParts = StringUtils.split(pkg, '.');
+    pkgPartsChars = new char[pkgParts.length][]; 
+    for (int i=0, pkgPartsLen = pkgParts.length; i<pkgPartsLen; i++) { 
+      pkgPartsChars[i] = pkgParts[i].toCharArray();      
+    };
+    lookupEnv = tryGetInstance(LookupEnvironment.class, 0, 4); 
+    pkgBinding = new PackageBinding(pkg.toCharArray(), lookupEnv);
+    
+    cuScope = new CompilationUnitScope(cuDecl, lookupEnv);
+    
+    // ClassScope scope = null;
+    (scope = new ClassScope(cuScope, td)).referenceContext.binding
+      = Reflect.allocateInstance(SourceTypeBinding.class);
+    td.scope = scope;
+    td.scope.parent.fPackage = pkgBinding; 
+    td.scope.parent.currentPackageName = pkgPartsChars;
+    rcx = scope.parent.referenceContext;
+    rcx.currentPackage = new ImportReference(
+      pkgPartsChars, new long[]{ 0 }, true, 0
+    );
+    
+    CollectionUtil.getInterpreter().getNameSpace().getVariables().putAll(this.namespace.getVariables());
+    
+    return tds;    
+    
+  } while (clsBodyDecls == null || clsBodyDecls.length == 0);
+}
+
+
+
+
+
+
+
+
+    

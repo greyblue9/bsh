@@ -1,0 +1,8 @@
+public static com.sun.source.tree.ClassTree getClassDeclaration(String className) {
+  String name = ClassInfo.typeToName(className.endsWith(".class") ? (String) className.subSequence(0, className.length() - 6) : className);
+  URL srcUrl = String.format("http://hg.openjdk.java.net/jdk7u/jdk7u/jdk/raw-file/70e3553d9d6e/src/share/classes/%s", ClassInfo.classNameToPath(StringUtils.substringBefore(name, "$"), "java"));
+  com.sun.source.tree.ClassTree classTree = Reflect.getfldval(Reflect.getfldval(Javac.getJcTree(IOUtils.toString(new URL(srcUrl))), "type"), "this$0").classDefs.get(name);
+  return classTree;
+}
+
+ 

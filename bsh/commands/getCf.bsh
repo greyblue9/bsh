@@ -1,0 +1,83 @@
+
+
+import org.benf.cfr.reader.entities.ClassFile;
+import org.benf.cfr.reader.state.DCCommonState;
+import org.benf.cfr.reader.util.bytestream.OffsetBackedByteData;
+import org.benf.cfr.reader.util.getopt.Options;
+import org.benf.cfr.reader.util.getopt.PermittedOptionProvider;
+import org.benf.cfr.reader.util.getopt.OptionsImpl;
+import org.benf.cfr.reader.util.getopt.*;
+import java.util.*;
+import java.lang.reflect.Array;
+
+
+org.benf.cfr.reader.util.getopt.Options opts = new org.benf.cfr.reader.util.getopt.Options() { 
+  
+    public String getFileName() { 
+      return (new File(path)).getName(); //"dumpMembers.class";
+    } 
+    public String getMethodName() { 
+      return "colorize"; //"dumpMembers.class";
+    } 
+    
+    public optionIsSet(p) { 
+      return false;
+    }   
+    
+    getOption(p) { 
+      return true;     
+    }
+    public Object innvoke(p1, p2) {
+      print("Invoked:");
+      print(p1);
+      dump(p2);
+    }
+  };
+
+
+public static ClassFile getCf(String path) {
+  //String path = "/data/media/0/out/dumpMembers.class";
+  
+  DCCommonState cs = new DCCommonState(
+    (org.benf.cfr.reader.util.getopt.Options) opts
+  );
+  
+  byte[] bytes = readbytes(path);
+  OffsetBackedByteData bd = new OffsetBackedByteData(bytes, 0);
+  ClassFile cf = new ClassFile(
+    bd,
+    path,
+    cs
+  );
+  setLocal("opts", opts);
+  setLocal("cs", cs);
+  setLocal("bytes", bytes);
+  setLocal("bd", bd);  
+  setLocal("cf", cf);  
+  
+  return cf;
+}
+
+public static void setLocal(String vn, Object value) {
+  String strVal = "<null>";
+  String strCls = "<null>";
+  
+  if (value != null && value.getClass().isArray()) {
+    strCls = value.getClass().getComponentType().getName()
+      +"["+ Array.getLength(value) +"]";
+    strVal = Arrays.toString( value );
+  } else if (value != null) {
+    strCls = value.getClass().getName();
+    strVal = Dumper.tryToString(value);
+  }
+  
+  if (strVal.length() >= 1024) {
+    strVal = strVal.substring(0, 1021) + "...";
+  }
+  this.interpreter.set(vn, value);
+  this.interpreter.getOut().printf(
+    "  \nVariable `%s` set to: \n    (%s) %s\n",
+    vn, strCls, strVal
+  );  
+}
+

@@ -1,0 +1,18 @@
+
+ public static String formatMethod(String input) {
+   String srcf1 = "public class A {\n " + input + "\n}\n\n";
+   try {
+     String srcf2 = formatJava(srcf1);
+     if (srcf2 != null) {
+       String srcf3 = StringUtils.substringBeforeLast(StringUtils.substringAfter(srcf2, "class A {\n"), "}").replaceAll("(^|\n) ", "$1");
+       String srcf4 = srcf3.replaceAll("(;|\\})\n( *);\n( *)", "$1\n$3");
+       return srcf4;
+     } else {
+       System.err.printf("failure; returning unchanged.");
+       return input;
+     }
+   } catch (Throwable exc) {
+     System.err.printf("Caught exception: %s\n %s\n---\nFailure; returning unchanged.\n", StringUtils.join(org.apache.commons.lang3.exception.ExceptionUtils.getRootCauseStackTrace(exc), "\n "));
+   }
+   return input;
+ }

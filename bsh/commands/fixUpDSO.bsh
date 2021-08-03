@@ -1,0 +1,19 @@
+public static void fixUpDSO(sun.jvm.hotspot.HotSpotAgent a, sun.jvm.hotspot.debugger.linux.LinuxDebugger dbg) {
+  for (sun.jvm.hotspot.debugger.cdbg.LoadObject dso : dbg.getLoadObjectList()) {
+    if (dso.getBase() == null) {
+      File dsoFile = new File(dso.getName());
+      if (!dsoFile.exists() || !dsoFile.isFile()) {
+        File coreFile = new File(PosixFileInputStream.pexecSync(new String[] { "corename", (String) Reflect.getfldval(a, "coreFileName") }));
+        if (coreFile.getName().equals(dsoFile.getName())) {
+          long baseAddr = Long.parseLong(PosixFileInputStream.pexecSync(new String[] { "get_elf_base_addr", coreFile.getPath() }), 16);
+          sun.jvm.hotspot.debugger.Address base = dbg.newAddress(baseAddr);
+          Reflect.setfldval(dso, "addr", base);
+          Reflect.setfldval(dso, "filename", coreFile.getAbsolutePath());
+          System.err.printf("[INFO] Set base address of DSO \"%s\" to %s\n", dsoFile.getName(), base);
+        }
+      }
+    }
+  }
+}
+
+ 

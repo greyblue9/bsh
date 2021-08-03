@@ -1,0 +1,1 @@
+public static String cat(String filepath) { return FileUtils.readFileToString(new File(filepath)); }

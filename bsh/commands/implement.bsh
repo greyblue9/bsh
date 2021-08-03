@@ -1,0 +1,62 @@
+
+
+
+public static CtClass implement(Class iface)
+  throws Exception
+{
+  CtClass ifaceCt = JavassistUtil.getCtClass(iface);
+  CtClass objectCt = JavassistUtil.getCtClass(Object.class);
+  String name = String.format(
+    "%s_%04x",
+    iface.getName(),
+    ((System.currentTimeMillis() & 0xFFFF
+    ^ (~ System.currentTimeMillis()) >> 24)) & 0xFFFF
+  );
+  CtClass ct = new CtNewClass(
+    name, // String name
+    ifaceCt.getClassPool(), // ClassPool cp
+    false, // boolean isInterface
+    objectCt // javassist.CtClass superclass
+  );
+  ct.setInterfaces(new CtClass[]{ ifaceCt });
+  Set<CtMethod> ctms = new HashSet<CtMethod>();
+
+  Collections.addAll(ctms, ifaceCt.getMethods());
+  CollectionUtils.removeAll(
+    ctms, Arrays.asList(objectCt.getDeclaredMethods())
+  );
+  Collections.addAll(ctms, ifaceCt.getDeclaredMethods());
+
+  for (CtMethod md: ctms) {
+    boolean isRetPrimitive
+      = (md.getReturnType() instanceof CtPrimitiveType);
+    String body = StringUtils.join(
+      (isRetPrimitive)
+        ? Arrays.asList(
+            "{ ",
+            "  System.out.println(\"" + md.getName() + "\"); ",
+            "  return ($r) 0;",
+            "} "
+          )
+        : Arrays.asList(
+            "{ ",
+            "  System.out.println(\"" + md.getName() + "\"); ",
+            "  return ($r) null;",
+            "} "
+          ),
+      "\n"
+    );
+    CtMethod newMd = CtNewMethod.make(
+      md.getReturnType(), // CtClass returnType
+      md.getName(), // String mname
+      md.getParameterTypes(), // CtClass[] parameters
+      md.getExceptionTypes(), // CtClass[] exceptions
+      body, // String body
+      ct // CtClass declaring
+    );
+    ct.addMethod(newMd);
+  }
+  return ct;
+}
+
+

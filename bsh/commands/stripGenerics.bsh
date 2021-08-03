@@ -1,0 +1,2 @@
+public static String stripGenerics(String str) { return Pattern.compile("<(?:[A-Za-z0-9_$, ]*(<(<[A-Za-z0-9_$, ]*>[A-Za-z0-9_$, ]*)*[A-Za-z0-9_$, ]*>[A-Za-z0-9_$, ]*)*)?>", Pattern.DOTALL | Pattern.UNIX_LINES).matcher(str).replaceAll(""); }
+

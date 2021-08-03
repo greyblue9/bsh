@@ -1,0 +1,205 @@
+import bsh.classpath.BshClassPath;
+import bsh.ClassIdentifier;
+import libcore.reflect.ParameterizedTypeImpl;
+import java.util.jar.JarFile;
+import java.util.jar.JarEntry;
+import java.util.zip.ZipFile;
+import java.util.zip.ZipEntry;
+import jadx.api.JavaClass;
+import jadx.api.JadxDecompiler;
+import java.util.regex.*;
+import jadx.core.dex.nodes.ClassNode;
+public static String getCode (Object nonClass) {
+  bsh.Interpreter _in 
+    = org.d6r.CollectionUtil.getInterpreter();
+  java.io.PrintStream _err = _in.getErr();  
+  Class __cls = null;
+  if (nonClass == null) {
+    _err.println("Warning: getCode: returning <null> in response to a call to getCode(someObj) with (someObj == null)");
+    return null;
+  }
+
+
+
+  if (nonClass instanceof ClassIdentifier) {
+    __cls = ((ClassIdentifier) nonClass).getTargetClass();
+  } else if (nonClass instanceof String) {
+    __cls = ClassResolveUtils.findInnerClass(nonClass); 
+  } else if (nonClass instanceof ParameterizedTypeImpl) {
+    __cls 
+      = ((ParameterizedTypeImpl) nonClass).getRawType();
+  } else if (nonClass instanceof Object) {
+    __cls = nonClass.getClass();
+  } 
+  if (__cls != null) return getCode((Class) __cls);
+  
+  _err.println("Warning: getCode: returning <null> because I cannot identify the Class corresponding to the parameter `someObj' of type " + (nonClass.getClass().getName()));
+  return null;
+}
+
+
+
+public static String getCode (Class _cls) {
+  bsh.Interpreter _in 
+    = org.d6r.CollectionUtil.getInterpreter();
+  java.io.PrintStream _out = _in.getOut();  
+  java.io.PrintStream _err = _in.getErr();  
+  String _clsname = _cls.getName();
+  
+  JadxDecompiler jadx_dc = _in.getu("jadx$dc");
+  if (jadx_dc == null) {
+    jadx_dc = new JadxDecompiler(); 
+    _in.setu("jadx$dc", jadx_dc);
+  } 
+  
+  String _ptrn = String.format(
+    "^.{0,3}%s.{0,3}$",
+    _cls.getName().replaceAll(
+      "[^A-Za-z0-9_\\.\\*\\?\\(\\)\\[\\]]", 
+      ".?"
+    )
+  );
+  
+  
+  _err.println(_ptrn); 
+  java.util.Collection<String> _paths 
+    = org.d6r.ClassPathUtil.findClassSource( _ptrn );
+  
+  _err.println(
+    String.format(
+      "Matching classpath entries: %d", _paths.size()
+    )
+  );
+  if (_paths.size() == 0) return null;
+  
+  String _path = _paths.iterator().next(); 
+  _err.println(_path);
+  
+  java.io.File cpFile = new java.io.File(_path);   
+  if (cpFile.exists()) {
+    _err.printf("[%s]: File OK (exists)\n", cpFile);
+  } else {
+    _err.println("File does not exist");
+    return null;
+  }
+
+
+
+  
+  _err.println(jadx_dc.toString());
+  _in.set("dc", jadx_dc);
+  _err.println("^^^ set to variable 'dc'");
+  
+  jadx_dc.loadFile(cpFile);
+  _err.printf("[%s]: File loaded by jadx\n", cpFile);
+  
+  
+  JavaClass[] _classes 
+    = jadx_dc.getClasses().toArray(new JavaClass[0]); 
+  
+  _err.printf("Class definitions: %d\n", _classes.length);
+  _in.set("jcs", _classes);
+  _err.println("^^^ set local 'jcs' = JavaClass[]");
+  
+  /**
+    toString() -->
+      "SQLite.Authorizer[ SQLite.Authorizer ]"
+  */
+  Matcher filterMatcher = Pattern.compile(
+    _cls.getName().replaceAll("\\$.*$", "").replaceAll("^(.*)$", "^$1\\\\[.*\\$"),
+    Pattern.CASE_INSENSITIVE 
+      | Pattern.DOTALL 
+      | Pattern.MULTILINE 
+      | Pattern.UNIX_LINES
+  ).matcher("");
+  
+  
+    
+  _err.printf(
+    "Filtering with matcher:\n  %s\n", filterMatcher
+  );  
+  JavaClass[] _filtered 
+    = StringCollectionUtil.toStringFilter(
+        _classes, filterMatcher 
+      );
+  if (_filtered == null) _filtered = new JavaClass[0];
+ 
+  _err.printf("Class definitions: %d\n", _classes.length);
+  
+  
+  if (_filtered.length == 0) {
+    _err.println("Filter returned 0 results.");
+    if (_classes.length > 0) {
+      _err.println("Using the first (non-filtered) class result.");
+      _filtered = new JavaClass[] { _filtered[0] };
+    } else {
+      return null;
+    }
+
+
+
+  }
+
+
+
+  
+  
+  JavaClass topClass = _filtered[0];
+  JavaClass theClass = null;
+ _err.printf("topClass = %s\n", topClass);
+  ClassNode topNode = topClass.getClassNode();
+  if (topNode.getRawName().equals(_cls.getName())) {
+    theClass = topClass;
+  } else {
+    _err.printf(
+      "Name mismatch -- checking inner classes ...\n"
+    );
+    Collection<JavaClass> nestedClasses 
+      = topClass.getInnerClasses();
+    _err.printf(
+      "%d inner classes: %s\n", 
+      nestedClasses.size(), nestedClasses.toString()
+    );
+    for (JavaClass nClass: nestedClasses) {
+      String rawName = nClass.getClassNode().getRawName();
+      _err.printf("- Checking: %s\n", rawName);
+      if (! rawName.equals(_cls.getName())) continue; 
+      theClass = topClass;
+      break;
+    }
+
+
+
+  }
+
+
+
+  if (theClass == null) {
+    _err.printf(
+      "Sorry, I couldn't find a match for '%s'\n."
+      + "  - namespace saved to `jns` variable\n\n",
+      _cls.getName()
+    );
+    _in.setu("jns", this.namespace);
+    return null;
+  }
+
+
+
+  
+  _err.println(" *** MATCH!! *** ");
+  _err.printf(" *** %s *** \n", theClass);
+  _in.set("jc", theClass);
+  _err.println("^^^ set to variable 'jc'");
+  _err.println("Decompiling ...");
+  
+  theClass.decompile();
+  
+  return theClass.getCode().toString();
+}
+
+
+
+public static com.android.dex.Code getCode(Method mtd) { com.android.dex.Dex dex = mtd.getDeclaringClass().getDex(); com.android.dex.ClassData.Method[] allMethods = dex.open(dex.classDefs()[mtd.getDeclaringClass().getDexClassDefIndex()].getClassDataOffset()).readClassData().allMethods(); int start = allMethods[0].getMethodIndex(); com.android.dex.Code code = dex.open(allMethods[mtd.getDexMethodIndex() - start + 1].getCodeOffset()).readCode(); return code; }
+
+

@@ -1,0 +1,103 @@
+import java.util.Map.Entry;
+
+import org.jf.dexlib2.dexbacked.DexBackedDexFile;
+import org.jf.dexlib2.dexbacked.DexBackedClassDef;
+import org.jf.dexlib2.dexbacked.DexBackedField;
+import org.jf.dexlib2.dexbacked.DexBackedMethod;
+// import org.jf.dexlib2.iface.ClassDef;
+
+
+public static List<Pair> getResIds(File dexOrApkFile) {
+  return getResIds(DexRemix.getDexBackedDexFile(dexOrApkFile.getAbsolutePath()));
+}
+
+public static List<Pair> getResIds(String dexOrApkPath) {
+  return getResIds(DexRemix.getDexBackedDexFile(dexOrApkPath));
+}
+
+public static List<Pair> getResIds(InputStream dexOrApkInputStream) {
+  return getResIds(DexRemix.getDexBackedDexFile(dexOrApkInputStream));
+}
+
+public static List<Pair> getResIds(byte[] dexOrApkBytes) {
+  return getResIds(DexRemix.getDexBackedDexFile(
+    new AutoCloseInputStream(new ByteArrayInputStream(dexOrApkBytes))
+  ));
+}
+
+
+public static List<Pair> getResIds(DexBackedDexFile dbdf) {
+  List<Pair> res = new ArrayList(); 
+  
+  Map<DexBackedClassDef_List_Pair> mp
+    = new HashMap<DexBackedClassDef_List_Pair>(500);
+  
+  FunctionUtil.BoundClosure<DexBackedField_Pair> closure = FunctionUtil.bind(
+    StringUtils.join(new String[] {
+      "return m -> { ",
+      "  if (!(m.getAccessFlags() == 25 && m.getType().equals(\"I\"))) { ",
+      "    return null; ",
+      "  }",
+      "  var encVal = m.getInitialValue(); ",
+      "  if (encVal == null) return null; ",
+      "  var intVal = m.getInitialValue().getValue(); ",
+      "  ",
+      "  return ((intVal & 0xff000000) >= 0x7f000000 && ",
+      "          (intVal & 0x80000000) == 0)",
+      "    ? Pair.of(",
+      "        StringUtils.join(Arrays.asList(",
+      "          m.classDef.getType(), ",
+      "          m.getName()",
+      "        ), \".\"), ",
+      "        intVal",
+      "      )",
+      "    : null;",
+      "}"
+    }, "\n")
+  );
+  
+  List<ClassDef> defs = DexRemix.classDefs(dbdf);
+
+  for (Iterator it = defs.iterator(); it.hasNext();) {
+    DexBackedClassDef classDef = it.next();
+    Iterable<DexBackedField> staticFields = classDef.getStaticFields();
+    List<Pair> fds = closure.select(staticFields); 
+    if (fds.size() == 0) {
+      it.remove();
+      continue;
+    };
+    mp.put(classDef, fds);
+    System.err.printf(
+      "Found %d resource ids in class %s ...\n",
+      fds.size(), ClassInfo.typeToName(classDef.getType())
+    ); 
+  };   
+  
+  for (Entry cmpe: mp.entrySet()) { 
+    DexBackedClassDef classDef = cmpe.getKey();
+    Map cmp = RealArrayMap.toMap(cmpe.getValue());
+    for (Entry e: cmp.entrySet()) { 
+      int iv = e.getValue().intValue(); 
+      int pkg = (iv & 0xFF000000) >> 24; 
+      int type = (iv & 0x00FF0000) >> 16; 
+      int idpart = (iv & 0xFFFF); 
+      String[] keyParts = StringUtils.split(e.getKey(), "."); 
+      System.err.printf("key  = [%s]\n", e.getKey()); 
+      String className = ClassInfo.typeToName(keyParts[0]); 
+      String fieldName = keyParts[1]; 
+      res.add(
+        Pair.of(
+          className, 
+          Pair.of(
+            fieldName, 
+            Pair.of(
+              iv, 
+              Triple.of(pkg, type, idpart)
+            )
+          )
+        )
+      ); 
+    };
+  };
+  return res;
+};

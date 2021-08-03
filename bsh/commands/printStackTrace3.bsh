@@ -1,0 +1,263 @@
+import java.util.Map.Entry;
+
+import org.apache.commons.io.FilenameUtils;
+
+
+public static String[] printStackTrace3(Throwable throwable) {
+  return printStackTrace3(throwable, 10);
+}
+
+
+public static String[] printStackTrace3(Throwable throwable, int ctxSize) {
+  List<String> list = new LinkedList<String>();
+  StackTraceElement[] stackTrace = throwable.getStackTrace();
+  
+  int searchContextSize = ctxSize + 50;
+  
+  Map mmap = new TreeMap();
+  nextste:
+  for (int idx = stackTrace.length - 1; idx >= 0; --idx) {
+    StackTraceElement ste = stackTrace[idx];
+    int lineno = ste.getLineNumber();
+    
+    if (lineno < 0) {
+      list.add(0, dumpMembers.colorize(ste.toString(), "1;31"));
+      list.add(0, "");
+      lineno = 0;
+    }
+    
+    mmap.clear();
+    StackTraceElement nextste = idx > 0? stackTrace[idx - 1]: null;
+    String methodName = ste.getMethodName();
+    String nextMethodName = nextste != null
+      ? nextste.getMethodName()
+      : "<init>";
+    String nextClassName = nextste != null
+      ? nextste.getClassName()
+      : throwable.getClass().getName();
+    String className = ste.getClassName();
+      
+    String sourceClassName = 
+      ( ste.getFileName() != null && 
+       !ste.getFileName().equals(
+          StringUtils.substringAfterLast(
+            ClassInfo.classNameToPath(
+              StringUtils.substringBefore(
+                ste.getClassName(), "$"
+              ),
+              "java"
+            ),
+            "/"
+          )
+        ))
+      ? String.format(
+          "%s.%s", 
+          StringUtils.substringBeforeLast(
+            StringUtils.substringBefore(ste.getClassName(), "$"),
+            "."
+          ),
+          FilenameUtils.removeExtension(ste.getFileName())
+        )
+      : StringUtils.substringBefore(ste.getClassName(), "$");
+
+    Log.d("printStackTrace3", "sourceClassName = %s", sourceClassName);
+    Log.d("printStackTrace3", "className = %s", className);
+    Log.d("printStackTrace3", "methodName = %s", methodName);
+    Log.d("printStackTrace3", "nextClassName = %s", nextClassName);
+    Log.d("printStackTrace3", "nextMethodName = %s", nextMethodName);
+    
+    Collection<URL> srcfs1 = SourceUtil.findSource(sourceClassName, true, 10);
+    Collection<URL> srcfs2 = SourceUtil.findSource(className, true, 10);
+    List<URL> srcfs = Iterables.concat(new Iterable[]{ srcfs1, srcfs2 }).toList();
+    List<Entry> matches = null;
+
+    String methodCallMatchStr = ("<clinit>".equals(nextMethodName))
+      ?  ".?"
+      : ("<init>".equals(nextMethodName))
+          ? String.format("(?:([a-zA-Z0-9_$.]*\\.)?%s|this|super)" ,
+              ClassInfo.getSimpleName(nextClassName.replace("$", ".")))
+          : nextMethodName;
+    
+    Matcher mchr = Pattern.compile(
+          String.format(
+            "(?:^|\n)[0-9]*[^0-9]?((?!public |private |protected |static |void |@Override )[^\n*])*(?<=[^a-zA-Z0-9_#*])(%s)\\(((?!\\*|[a-zA-Z0-9_$]+ [a-zA-Z0-9_$]+[,\\)]|\\{[\n,()]).)* *\\)?(\\)|$|\n)?$",
+           methodCallMatchStr
+          ),
+          Pattern.DOTALL
+        ).matcher("");
+    
+    nextfile:
+    for (Iterator it = srcfs.iterator(); it.hasNext(); ) {
+      try {
+      URL srcf = it.next();
+      
+      NumberedLines nl = new NumberedLines(IOUtils.toString(srcf));
+      
+
+      String[] ctxlines = null;
+      String line = null;
+      
+      try {
+        if (nl.getLines().length >= lineno) {
+          line = nl.getLine(lineno);
+          ctxlines = nl.getContextLines(lineno, ctxSize);
+          
+          if (line != null && (
+             ( nextMethodName.startsWith("<clinit") ) ||
+             ( nextMethodName.startsWith("<init") && 
+               Pattern.compile(String.format(
+                 "^[\t ]*super\\(|new ([a-zA-Z0-9_$.]*\\.)*%s(?:<.*>)?\\(%s",
+                 ClassInfo.getSimpleName(
+                   nextClassName.replace('$', '.')
+                 ).replaceAll("^.*\\.", ""),
+                 idx == 0
+                   ? throwable.getMessage() != null &&
+                     throwable.getMembers().length() != 0
+                       ? "[^)]+\\)"
+                       : ""
+                   : ""
+                    
+               )).matcher(line).find()
+             ) ||
+             ( line.indexOf(nextMethodName) != -1 &&
+               mchr.reset(line).find())))
+          {
+            int ctxlineIdx = ArrayUtils.indexOf(ctxlines, line);
+            String[] hiliteLines = ctxlines.clone();
+            hiliteLines[ctxlineIdx] = String.format(
+              "\u001b[1;31m%s\u001b[0m", line);
+            Log.d("printStackTrace3", 
+              "from <init> or <clinit>: [%s]", hiliteLines[ctxlineIdx]);
+            if (mchr.reset(line).find()) {
+              if (!list.contains(hiliteLines.join("\n").toString())) {
+                list.add(0, dumpMembers.colorize(ste.toString(), "1;33"));
+                list.add(1, hiliteLines.join("\n").toString());
+                list.add(0, "");
+              }
+            } else {
+            }
+          }
+        }
+        
+        matches = CollectionUtil2.filter(
+          indexedLines = (
+            origLines = nl.getLines(
+              lineno - ctxSize,
+              Math.min(nl.getLines().length, lineno + ctxSize)
+            )
+          ).indexed(),
+          mchr
+        );
+        
+      } catch (Throwable neg) {
+        System.err.println(neg);
+        matches = new Entry[0];
+      }
+      
+      
+      int diff = 0;
+      
+      if (matches.length == 0) {
+        String nlstr = nl.toString();
+        mchr.reset(nlstr);
+        int lowest = Integer.MAX_VALUE;
+        int newLineNo = 0;
+        Entry match = null;
+        while (mchr.find()) {
+          int methodNameStart = mchr.start(2);
+          int lineStart = nlstr.lastIndexOf('\n', methodNameStart) + 1;
+          int lineEnd = nlstr.indexOf('\n', lineStart);
+          if (lineEnd == -1) lineEnd = nl.length();
+          String line = nl.subSequence(lineStart, lineEnd).toString();
+          int lineIndex = ArrayUtils.indexOf(
+            nl.getLines(), line
+          );
+          diff = Math.abs(lineno - (lineIndex+1));
+          if (diff > lowest) continue;
+          lowest = diff;
+          newLineNo = lineIndex + 1;
+          match = new java.util.AbstractMap.SimpleEntry(
+            0, line
+          );
+        }
+        if (match != null) {
+          matches = new Entry[] { match };
+          lineno = 0 - newLineNo;
+        } else { 
+          matches = new Entry[0];
+        }
+      }
+      
+      if (matches.length > 0) {
+        mmap.put(diff, Pair.of(nl, matches));
+        // break;
+      }
+      
+      } catch (Throwable e) {
+        Reflector.getRootCause(e).printStackTrace();
+      }
+    }
+    
+    
+    for (Entry diffAndEntry: mmap.entrySet()) {
+
+      int adjustmentDiff = ((Integer) diffAndEntry.getKey()).intValue();
+      Entry e = diffAndEntry.getValue();
+      
+      NumberedLines nl = e.getKey();
+      Entry[] matches = e.getValue();
+      
+      for (Entry match: matches) {
+       try {
+        int subseqOffset = match.getKey();
+        String line = match.getValue();
+        Matcher mchr2 = mchr.reset(match.getValue());
+        if (!mchr2.find()) throw new IllegalArgumentException(String.format(
+          "methodName = %s, ptrn = %s, line = [%s]",
+          methodName, ptrn, line
+        ));
+        //continue;
+        int nameStart = mchr2.start(2), nameEnd = mchr2.end(2);
+        System.err.println(dumpMembers.colorize(line, "1;32"));
+        int realLineno = (lineno >= 0)
+          ? lineno - ctxSize + subseqOffset
+          : (0 - lineno);
+        
+        try {
+          ctxlines = nl.getContextLines(realLineno, ctxSize);
+        } catch (Throwable neg) {
+          Log.d("printStackTrace3", "getContextLines(realLineno: %s, ctxSize: %s)",
+            realLineno, ctxSize);
+          continue;
+        }
+        
+        int ctxlineIdx = ArrayUtils.indexOf(ctxlines, line);
+        hiliteLines = ctxlines.clone();
+        hiliteLines[ctxlineIdx] = String.format(
+          "%4$c[1;33m%1$s%4$c[1;31m%2$s%4$c[0m%4$c[1;37m%3$s%4$c[0m", 
+          ctxlines[ctxlineIdx].subSequence(0, nameStart), 
+          ctxlines[ctxlineIdx].subSequence(nameStart, nameEnd), 
+          ctxlines[ctxlineIdx].subSequence(
+            nameEnd, ctxlines[ctxlineIdx].length()
+          ).toString().replaceFirst(
+            "\\(((?:[^()]*|\\([^()]*\\)|\\([^()]*\\([^()]*\\)[^()]*\\))*)\\)",
+            "\u001b[1;37m(\u001b[1;32m$1\u001b[1;37m)\u001b[1;37m"
+          ),
+          0x1b
+        );
+        if (!list.contains(hiliteLines[ctxlineIdx])) {
+          list.add(0, dumpMembers.colorize(ste.toString(), "1;36"));
+          list.add(1, hiliteLines.join("\n").toString());
+          list.add(0, "");
+        }
+        
+       } catch (Throwable e) {
+         Reflector.getRootCause(e).printStackTrace();
+       }
+      }
+    }
+  }
+  return list.toArray(new String[0]).print();
+}
+
+

@@ -1,0 +1,9 @@
+
+public static Object getSoot() {
+
+  dalvik.system.DexPathList.Element[] dexElements = new dalvik.system.DexPathList.Element[] { appendClassPathFile("/external_sd/_projects/sdk/bsh/trunk/soot_util.jar"), appendClassPathFile("/external_sd/_projects/sdk/soot/soot_huge.jar"), appendClassPathFile("/external_sd/_projects/sdk/soot/soot_recovered.jar"), appendClassPathFile("/external_sd/_projects/sdk/soot/soot_xtra.jar") };
+  CollectionUtil.getInterpreter().getNameSpace().importClass("org.d6r.SootUtil");
+  return dexElements;
+
+}
+

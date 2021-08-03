@@ -1,0 +1,224 @@
+import org.jsoup.nodes.Document;
+import org.jsoup.nodes.Element;
+
+import java.nio.charset.CharsetDecoder;
+import javax.net.ssl.HttpsURLConnection;
+import libcore.icu.NativeConverter;
+import com.itextpdf.text.pdf.codec.PngImage;
+import com.itextpdf.text.Image;
+import com.itextpdf.text.Image;
+import org.json.JSONObject;
+import org.apache.commons.lang3.StringEscapeUtils;
+import org.apache.commons.lang3.time.FastDateFormat;
+import org.jsoup.nodes.TextNode;
+import org.jsoup.parser.Tag;
+import org.jsoup.nodes.Attribute;
+import org.jsoup.nodes.Attributes;
+import org.jsoup.nodes.Document;
+import org.jsoup.nodes.Element;
+import org.jsoup.select.Elements;
+import org.jsoup.parser.Parser;
+import org.jsoup.safety.Cleaner;
+import org.jsoup.safety.Whitelist;
+import org.jsoup.helper.DataUtil;
+import org.jsoup.helper.HttpConnection;
+import org.apache.commons.codec.net.URLCodec;
+
+public static List<Element> embedImages(Document doc) {
+  URLCodec codec = new URLCodec();
+  /*
+  if (!CollectionUtil.dbg.containsKey("verifier")) {
+    Object verifier = new org.d6r.NoSSLv3Factory();
+    CollectionUtil.dbg.put("verifier", verifier);
+    HttpsURLConnection.setDefaultHostnameVerifier(verifier);
+  }
+  */
+  System.err.println("baseUrl = " + doc.baseUri());
+  String TAG = "embedImages";
+  String baseUrl = doc.baseUri();
+  List<Element> imgs = doc.select("img[src], img[data-src]");
+  List<Element> newImgs = new ArrayList<Element>();
+  
+  String DUMMY 
+    = "data:image/gif;base64,"
+    + "R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==";
+  
+  for (Element img: imgs.toArray(new Element[0])) {
+    Object data = null;
+    String imgUri = img.attr("src");
+    
+    String origImgUri = imgUri;
+    
+    if (imgUri == null || imgUri.length() == 0)
+      imgUri = img.attr("data-src");
+    imgUri = (imgUri != null)? imgUri: "";
+    
+    String rawImgUri = imgUri;
+    if (imgUri.startsWith("data:")) {
+      data = imgUri;
+      
+    } else {
+      
+      imgUri = normalizeUri(imgUri, baseUrl);
+      if (imgUri.indexOf("16px") != -1 ||
+          imgUri.indexOf("1x1") != -1 ||
+          imgUri.indexOf("pixel.") != -1 ||
+          0 == 1)
+      {
+        Log.d(TAG, "Skipping useless image: [%s] ...", imgUri);
+        img.remove();
+        continue;
+      }
+      
+      try {
+        Element parent = img.parent();
+        String parentTagName = parent.tag().getName();
+        if (parentTagName.equals("a")) {
+          hrefUri = parent.attr("href");
+        } else {
+          hrefUri = imgUri;
+        }
+        if (imgUri.startsWith("data:")) {
+          int comma = imgUri.indexOf(",");
+          int semi = imgUri.indexOf(";");
+          if (semi > comma) semi = -1;
+          int colon = imgUri.indexOf(":");
+          
+          CharSequence contentType = (semi != -1)
+            ? imgUri.subSequence(colon+1, semi)
+            : imgUri.subSequence(colon+1, comma);
+          CharSequence encoding = (semi != -1)
+            ? imgUri.subSequence(semi+1, comma)
+            : imgUri.subSequence(comma, comma);
+          CharSequence payload = imgUri.subSequence(comma+1, imgUri.length());
+          if (encoding.length() == 0 || 
+              encoding.toString().toLowerCase().equals("base64"))
+          {
+            String dataB64 = CharSequenceUtil.toString(payload);
+            data = imgUri;
+            data = Base64.decode(dataB64);
+          } else {
+            Log.e(TAG, "Unrecognized data: encoding: 'data:%s;%s,...'", 
+              contentType, encoding);
+            String s = String.valueOf(imgUri);
+            Log.e(TAG,
+              "Setting imgData := %s and hoping for the best ...",
+              TextUtil.str(imgUri));
+            data = imgUri;
+          }
+          Log.i(TAG, "data = %s", TextUtil.str(data));
+          
+        } else { // not "data:"
+          try {
+            /*imgUri = normalizeUri(
+              imgUri.replaceAll(":(.*):", ":$1%3A"), baseUrl
+            );*/
+            Log.i(TAG, "imgUri = %s", TextUtil.str(imgUri));
+            URLConnection conn2 = new URL(imgUri).openConnection();
+            
+            InputStream is = conn2.getInputStream();
+            String contentMediaType = conn2.getContentType();
+            /*if (contentMediaType != null &&
+               !contentMediaType.startsWith("image"))
+            {
+              contentMediaType = "image/png";
+            }*/
+            data = getImageData(imgUri, baseUrl, conn2, is);
+            
+          } catch (IOException e) {
+            e.printStackTrace();
+            try {
+              imgUri = imgUri.replace("https:", "http:");
+              URLConnection conn2 = new URL(imgUri).openConnection();
+              
+              is = conn2.getInputStream();
+              String contentMediaType = conn2.getContentType();
+              if (false && !contentMediaType.startsWith("image"))
+              {
+                System.err.printf("skip type: %s\n", contentMediaType);
+                continue;
+              } else {
+                data = getImageData(imgUri, baseUrl, conn2, is);
+              }
+            } catch (Throwable e2) {
+              Log.w(TAG, "Fetching image [%s] from <A>: %s", imgUri, e);
+              new RuntimeException(
+                String.format(
+                  "Failed to download: %s: %s", imgUri, e2
+                ), e2
+              ).printStackTrace();
+            }
+            // img.remove();
+          } catch (Throwable e) {
+            new RuntimeException(
+              String.format(
+                "Failed to download: %s: %s", imgUri, e
+              ), e
+            ).printStackTrace();
+          }
+        }
+        
+        
+        if (data == null || "".equals(data)) {
+          if (imgUri instanceof CharSequence
+          && ((CharSequence) imgUri).length() > 4 
+          && ((CharSequence) imgUri).subSequence(0,5).equals("data:")) {
+            data = (imgUri instanceof String)
+              ? (String) data
+              : ((CharSequence) data).toString();
+          } else {
+            try {
+              data = getImageData(imgUri, baseUrl);
+            } catch (Throwable e) {
+              e.printStackTrace(); 
+            }
+          }
+        }
+        
+        if (data instanceof byte[]) {
+          data = byteArrayToDataUri(data);
+        }
+        
+        if (data != null
+         && data instanceof CharSequence
+         && ((CharSequence) data).toString().startsWith("http"))
+        {
+          Log.d(TAG, "Trying UrlUtils.encodeBase64FromUrl(%s) ...", data);
+          StringBuilder dataSb = org.d6r.UrlUtils.encodeBase64FromUrl(
+            new URL(data)
+          );
+          data = (dataSb != null) ? dataSb.toString() : DUMMY;
+        }
+      } catch (Throwable exc) {
+        Reflector.getRootCause(exc).printStackTrace();
+        exc.printStackTrace();
+      }
+    } // end if [not] imgUri startsWith "data:"
+    
+    if (data instanceof byte[]) {
+      data = byteArrayToDataUri(data);
+    }
+        
+    if (data == null || "".equals(data) || DUMMY.equals(data)) {
+      img.remove();
+      continue;
+    }
+    
+    img.attr("src", data);
+    img.removeAttr("alt");
+    img.removeAttr("srcset");
+    img.removeAttr("data-lazy");
+    img.removeAttr("data-lazy-src");
+    img.removeAttr("data-lazy-");
+    Log.d(
+      TAG, "Adding image (data = \"%s\"%s)",
+      data.subSequence(0, Math.min(48, data.length())),
+      data.length() > 48
+        ? String.format("... (%d more chars)", data.length()-48)
+        : ""
+    );  
+    newImgs.add(img);
+  }
+  return newImgs;
+}
+

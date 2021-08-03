@@ -1,0 +1,26 @@
+
+
+
+public static Map jadxDecompile2(String apkPath, String pattern,
+boolean mergeWithOriginalClassesDex)
+{
+  Object jx = getJadxWithResClasses(apkPath, mergeWithOriginalClassesDex);
+  System.err.println(jx);
+  Map jadxVars = RealArrayMap.toMap(jx.values());
+  JadxDecompiler dc = jadxVars.get("dc");
+  Object c2 = getCode2(dc, pattern);
+  return c2;
+}
+
+public static Map jadxDecompile2(String apkPath, String pattern) {
+  boolean DEFAULT_MERGE_RES_CLASSES = true;
+  return jadxDecompile2(apkPath, pattern, DEFAULT_MERGE_RES_CLASSES);
+}
+
+public static Map jadxDecompile2(String apkPath) {
+  String DEFAULT_PATTERN = "^.?((?!android.suppport|com.google.android.gms" +
+    "|org.apache|org.[jg]son|com.google)[^$])*$";
+  return jadxDecompile2(apkPath, DEFAULT_PATTERN);
+}
+
+

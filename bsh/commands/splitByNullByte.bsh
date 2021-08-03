@@ -1,0 +1,11 @@
+
+
+
+public static String[] splitByNullByte(byte[] data) { Charset CHARSET = java.nio.charset.StandardCharsets.UTF_8; byte[] cmdline = data; int argsIndex = ByteUtil.indexOf(cmdline, new byte[]{ (byte) 0x0 }); if (argsIndex == -1) argsIndex = cmdline.length; else argsIndex += 1; String nullSep = String.valueOf(Character.toChars((char) 0)); String[] args = new String(cmdline, argsIndex, cmdline.length - argsIndex, CHARSET).split(nullSep); String cmdName = new String(cmdline, 0, argsIndex, CHARSET); return (cmdName.length() != 0 && !(cmdName.length() == 1 && cmdName.charAt(0) == (char) 0))? ArrayUtils.addAll(new String[]{ cmdName }, args): args; };
+
+
+public static String[] splitByNullByte(byte[] data, Charset CHARSET) {
+  byte[] cmdline = data; int argsIndex = ByteUtil.indexOf(cmdline, new byte[]{ (byte) 0x0 }); if (argsIndex == -1) argsIndex = cmdline.length; else argsIndex += 1; String nullSep = String.valueOf(Character.toChars((char) 0)); String[] args = new String(cmdline, argsIndex, cmdline.length - argsIndex, CHARSET).split(nullSep); String cmdName = new String(cmdline, 0, argsIndex, CHARSET); return (cmdName.length() != 0 && !(cmdName.length() == 1 && cmdName.charAt(0) == (char) 0))? ArrayUtils.addAll(new String[]{ cmdName }, args): args;
+};
+
+

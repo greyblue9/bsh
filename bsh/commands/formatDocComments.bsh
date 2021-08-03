@@ -1,0 +1,7 @@
+
+
+
+public static String formatDocComments(String src) { return src.replaceAll("(^|\n)(  )?(  )(?: \\* ?(?!/))?", "$1$3").replaceAll("(^|\n)((?:  )*) ?\\*", "$1$2*").replaceAll("(^|\n)((?:  )*)/\\*(?!\\*)(?: *\n)? *", "$1$2/**\n$2"); };
+
+
+

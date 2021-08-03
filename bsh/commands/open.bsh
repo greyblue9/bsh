@@ -1,0 +1,161 @@
+{
+  if (!org.d6r.CollectionUtil.isJRE()) {
+    import android.app.IActivityManager;
+    import android.app.ActivityManagerNative;
+    import android.content.Intent;
+    import android.content.ComponentName;
+    import android.net.Uri;
+    
+    import android.os.IBinder;
+    import android.os.Bundle;
+    import android.os.ParcelFileDescriptor;
+    import android.app.IApplicationThread;
+  }
+
+
+public static Object open(Object pathOrFile, String componentSpec) {
+  String unresolvedPath 
+    = (pathOrFile instanceof File)
+        ? ((File) pathOrFile).getPath()
+        : String.valueOf(pathOrFile); 
+  File resolvedFile
+    = PosixFileInputStream.resolve(new File(unresolvedPath));
+  String path = resolvedFile.getPath().replace("/data/media/0/", "/data/media/0/").replace("/data/media/0/",   "/data/media/0/");
+  
+  Uri dataUri
+    = Uri.parse(String.format("file://%s", path.replace(" ", "%20")));
+  System.err.printf("dataUri = %s\n", dataUri);
+  
+  Intent _i = new Intent("android.intent.action.VIEW");
+  _i.addCategory("android.intent.category.DEFAULT");
+  _i.setData(dataUri);
+  
+  int slashPos = componentSpec.indexOf('/');
+  if (slashPos == -1 || slashPos != componentSpec.lastIndexOf('/')) {
+    throw new IllegalArgumentException(String.format(
+      "open(\"%s\", componentSpec = \"%s\"): " +
+      "The componentSpec is malformed; it must contain exactly 1 '/'.",
+      pathOrFile, componentSpec
+    ));
+  }
+  
+  String pkg = componentSpec.substring(0, slashPos);
+  String compClassName = (componentSpec.charAt(slashPos+1) == '.')
+    ? new StringBuilder(pkg).append(componentSpec.subSequence(
+        slashPos+1, componentSpec.length())).toString()
+    : componentSpec.substring(slashPos+1);
+  ComponentName comp = new ComponentName(pkg, compClassName);
+  
+  _i.setComponent(comp);
+  IActivityManager.WaitResult result
+    = ActivityManagerNative.getDefault().startActivityAndWait(
+        (IApplicationThread) null,
+        "com.myboyfriendisageek.airterm",
+        _i, 
+        "text/plain",
+        (IBinder) null, // IBinder resultTo
+        (String) null, // String resultWho
+        (int) 0, // int requestCode
+        (int) 0x13800000, // int startFlags
+        (String) null, // String profileFile
+        (ParcelFileDescriptor) null, // profileFd
+        (Bundle) null, // Bundle options,
+        (int) 0
+      );
+  System.err.printf("intent = %s\n", _i);
+  return result;     
+}
+
+
+
+public static Object open(Object pathOrFile, char whichQuoda) {
+  return open(
+    (Object) pathOrFile,
+    StringUtils.join(new String[]{ 
+      String.format("com.henrythompson.quod%c", whichQuoda),
+      "com.henrythompson.quoda.SplashScreenActivity"
+    }, "/")
+  );
+}
+
+
+
+/*
+import android.net.Uri;
+import android.os.RemoteException;
+import android.app.ActivityManagerNative;
+import android.app.IActivityManager;
+import android.content.Intent;
+import org.d6r.Reflect;
+import org.apache.commons.lang3.reflect.MethodUtils;
+
+
+
+public static Object open(String path) {
+  Intent i = new Intent("android.intent.action.VIEW");
+  i.addCategory("android.intent.category.DEFAULT");
+  i.setData(Uri.parse("file://" + path));
+  int flags = 0x13800000;
+  int userId = 0;
+  String mimeType = "text/plain";
+  i.addFlags(flags);
+  Reflect.setfldval(i, "mType", mimeType);
+  Object status = null;
+  Method m = IActivityManager.class.getDeclaredMethod(
+    "startActivityAsUser", 
+    android.app.IApplicationThread.class, 
+    String.class, 
+    android.content.Intent.class, 
+    String.class, 
+    android.os.IBinder.class, 
+    String.class, 
+    Integer.TYPE, 
+    Integer.TYPE, 
+    String.class, 
+    android.os.ParcelFileDescriptor.class, 
+    android.os.Bundle.class, 
+    Integer.TYPE
+  );
+  // android.app.IActivityManager$WaitResult startActivityAndWait(android.app.IApplicationThread, String, android.content.Intent, String, android.os.IBinder, String, int, int, String, android.os.ParcelFileDescriptor, android.os.Bundle, int);
+  // int startActivityAsUser(android.app.IApplicationThread, String, android.content.Intent, String, android.os.IBinder, String, int, int, String, android.os.ParcelFileDescriptor, android.os.Bundle, int);
+  try {
+    m.setAccessible(true);
+    status = m.invoke(
+      ActivityManagerNative.getDefault(), 
+        // thread
+        null,
+        // String callingPackage
+        "com.myboyfriendisageek.airterm", 
+        i, // Intent intent
+        mimeType, // java.lang.String resolvedType
+        null, // IBinder resultTo
+        null, // String resultWho
+        0, // int requestCode
+        flags, // int flags
+        null, // String profileFile
+        null, // ParcelFileDescriptor profileFd
+        null, // Bundle options
+        userId // int userId
+    );
+  } catch ( RemoteException e ) {
+    System.err.println(e.getMessage());
+  }
+  return i;
+}
+
+*/
+
+
+
+
+public static Object open(String path, char progSuffix) {
+  String cmdName = String.format("open%c", progSuffix);
+  return pexecSync(new String[] { cmdName, path });
+}
+
+
+}
+
+
+
+

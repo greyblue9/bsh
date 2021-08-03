@@ -1,0 +1,9 @@
+public static Object getClassFileCFR(byte[] classBytes) {
+  String className = ClassInfo.getClassName(classBytes);
+  String classNameAsPath = ClassInfo.classNameToPath(className, ".class");
+  org.benf.cfr.reader.util.bytestream.OffsetBackedByteData cfbd = new org.benf.cfr.reader.util.bytestream.OffsetBackedByteData(classBytes, 0L);
+  org.benf.cfr.reader.util.getopt.OptionsImpl cfopts = new org.benf.cfr.reader.util.getopt.OptionsImpl(classNameAsPath, "<none>", new HashMap());
+  org.benf.cfr.reader.state.ClassFileSourceImpl cfs = new org.benf.cfr.reader.state.ClassFileSourceImpl(cfopts);
+  org.benf.cfr.reader.entities.ClassFile cf = new org.benf.cfr.reader.entities.ClassFile(cfbd, classNameAsPath, new org.benf.cfr.reader.state.DCCommonState(cfopts, cfs));
+  return cf;
+}

@@ -1,0 +1,13 @@
+getflds(p) { 
+  if (p == null) return;
+  clz = p instanceof java.lang.Class? p: p.getClass();
+  flist = clz.getDeclaredFields(); 
+  outlist = new ArrayList();
+  for(i=0; i<flist.length; i++) {
+    ((java.lang.reflect.AccessibleObject) flist[i]).setAccessible(true); 
+    //fval = (p instanceof java.lang.Class)? 
+      //null: flist[i].get(p);
+    outlist.add( flist[i] ); 
+  }
+  return outlist.toArray();
+}

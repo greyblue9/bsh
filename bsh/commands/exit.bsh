@@ -1,0 +1,21 @@
+
+
+public static void exit(int resultSt) {
+  Object vm = dalvik.system.VMRuntime.getRuntime();
+  Object rt = java.lang.Runtime.getRuntime();
+  rt.freeMemory();
+  vm.disableJitCompilation();
+  vm.gcSoftReferences();
+  vm.runFinalizationSync(); rt.runFinalization();
+  rt.freeMemory();
+  vm.runFinalizationSync();
+  Reflector.invokeOrDefault(rt, "nativeExit", Integer.valueOf(resultSt));
+  System.exit(resultSt);
+};
+
+
+public static void exit() {
+  exit(0);
+}
+
+

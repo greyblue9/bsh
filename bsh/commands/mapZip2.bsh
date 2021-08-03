@@ -1,0 +1,3 @@
+
+public static Map mapZip2(String path) { org.at4j.zip.ZipFile zf = new org.at4j.zip.ZipFile(new org.entityfs.util.io.ReadWritableFileAdapter(new File(path))); Collection<Entry> zes = zf.entrySet().filter("\\.class$"); Collection<Entry> zmes = FunctionUtil.select(zes, FunctionUtil.eval("return m -> { var is = m.getValue().openForRead(); var ret = Pair.of(m.getKey().getLocation().substring(1), IOUtils.toByteArray(is)); is.close(); ret; }")); Map retMap = new TreeMap(); retMap.putAll(RealArrayMap.toMap(zmes)); return retMap; }
+

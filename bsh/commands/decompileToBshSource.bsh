@@ -1,0 +1,10 @@
+
+
+public static String decompileToBshSource(com.strobel.decompiler.languages.java.ast.MethodDeclaration ast, boolean addLogging) { MethodDefinition md = getMethodDefinition(ast); TypeDefinition td = md.getDeclaringType(); String tdName = ClassInfo.getSimpleName(ClassInfo.typeToName(td.getErasedSignature())); String bsrc = ast.getText().toString().replaceAll("([A-Za-z$_]+[0-9]*?)<(?:[^>]*|[^>]*(<[^>]*>[^>]*)*)>", "$1").replaceAll("\\bfinal ", "").replaceAll("(?<=\\s)\\b([^.\\s]+)\\(([^\n]*)\\);", new StringBuilder(tdName.replace("$", "\\$")).append(".$1($2);").toString()); if (addLogging) { bsrc = bsrc.replaceAll("( *)([^ \n].* |)([^ \n]+) = ([^\n;]*);", "$1$2$3 = $4;\n$1System.err.printf(\"  - $3 = %s\\\\n\", Debug.ToString($3));\n"); }; return bsrc; };
+
+public static String decompileToBshSource(com.strobel.decompiler.languages.java.ast.MethodDeclaration ast) { return decompileToBshSource(ast, false); };
+
+public static String decompileToBshSource(MethodDefinition md) { return decompileToBshSource(md, false); };
+
+public static String decompileToBshSource(MethodDefinition md, boolean addLogging) { return decompileToBshSource(ProcyonUtil.transform(ProcyonUtil.decompileToAst(md)), addLogging); };
+

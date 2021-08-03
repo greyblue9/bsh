@@ -1,0 +1,247 @@
+import com.googlecode.dex2jar.v3.V3ClassAdapter;
+import com.googlecode.dex2jar.visitors.DexFileVisitor;
+import com.googlecode.dex2jar.visitors.DexClassVisitor;
+import com.googlecode.dex2jar.v3.V3InnerClzGather;
+import com.googlecode.dex2jar.v3.DexExceptionHandler;
+import com.googlecode.dex2jar.v3.DexExceptionHandlerImpl;
+import com.googlecode.dex2jar.reader.DexFileReader;
+import com.googlecode.dex2jar.reader.IDexFileReader;
+import org.objectweb.asm3.ClassWriter;
+import bsh.ClassIdentifier;
+
+
+
+public static byte[] dex2jar(String clsName, boolean logIt) { 
+  return dex2jar(clsName, logIt, null);
+}
+
+public static byte[] dex2jar(String clsName, File outFile) { 
+  return dex2jar(clsName, false, outFile);
+}
+
+public static byte[] dex2jar(String clsName) { 
+  return dex2jar(clsName, false);
+}
+
+public static byte[] dex2jar(Class cls) { 
+  return dex2jar(cls.getName());
+}
+
+public static byte[] dex2jar(ClassIdentifier ci) {
+  Class cls 
+    = (Class) ((ClassIdentifier) ci).getTargetClass();
+  return dex2jar(cls);
+}
+
+public static Map dex2jar(Pattern ptrn) {
+  Matcher mchr = ptrn.matcher("");
+  String[] classNames 
+    = ClassPathUtil.searchClassPath(ptrn);
+  Map outputs = new HashMap();
+  int i = -1;
+  while (++i < classNames.length) {
+    String className = classNames[i];
+    System.err.printf("Processing %s ...\n", className);
+    try {
+      byte[] classBytes = dex2jar(className);
+      outputs.put(className, classBytes);
+    } catch (Throwable ex) { 
+      ex.printStackTrace();
+    }
+  }
+  return outputs;
+}
+
+
+
+
+
+
+
+
+public static byte[] dex2jar(String clsName, boolean logIt, File outFile)
+{
+  V3ClassAdapter v3ca = null;
+  Interpreter in = CollectionUtil.getInterpreter();
+  ClassWriter cw = null;
+  
+  DexFileVisitor dfv = new DexFileVisitor() {
+    public DexClassVisitor visit(int i1, String name, String superName,    String[] ifaceNames)
+    {
+    
+      String className = DexVisitor.typeToName(name);
+      if (!clsName.equals(className)
+      && !Pattern.compile(clsName).matcher(className).matches())
+      {
+        return null;
+      }
+      //System.err.println("Creating adapter ...");
+      V3InnerClzGather.Clz v3cz 
+        = new V3InnerClzGather.Clz(name); 
+      DexExceptionHandler exh 
+        = new DexExceptionHandlerImpl(); 
+      cw = new ClassWriter(5); 
+      //in.setu("cw", cw); 
+      V3ClassAdapter v3ca = new V3ClassAdapter(
+        v3cz, exh, cw, i1, name, superName, ifaceNames
+      ); 
+      System.err.println(v3ca);
+      return v3ca;
+    }
+
+
+    public void visitEnd() {
+      System.err.println("visitEnd");
+    };
+  };
+  byte[] dexBytes
+    = Class.forName(clsName).getDex().getBytes();
+  DexFileReader _dfr = new DexFileReader(dexBytes);
+  _dfr.setApiLevel(18);
+  dfr = _dfr;
+  dfr.accept(dfv);
+  byte[] classBytes = cw.toByteArray();
+  if (outFile != null) {
+    FileUtils.writeByteArrayToFile(outFile, classBytes);
+    System.err.printf(
+      "Wrote .class file: %d bytes\n", classBytes.length
+    );
+  } else {
+    System.err.printf(
+      "Class size: %d bytes\n", classBytes.length
+    );
+  }
+  return classBytes;
+}
+
+
+
+public static Map dex2jar(String[] classNames, Map byteMap)
+{
+  V3ClassAdapter v3ca = null;
+  Interpreter in = CollectionUtil.getInterpreter();
+  ClassWriter cw = null;
+  Set clsNames = new TreeSet(Arrays.asList(classNames));
+  String crntClsName = null;
+  
+  public static void saveClass() {  
+    byte[] classBytes = cw.toByteArray();
+    byteMap.put( 
+      crntClsName.replace('.', '/').concat(".class"),
+      classBytes
+    );    
+    System.err.printf("  - [%d bytes] Added %s\n", 
+      classBytes.length, crntClsName);
+  }
+  
+  DexFileVisitor dfv = new DexFileVisitor() {
+    public DexClassVisitor visit(int i1, String name, 
+    String superName, String[] ifaceNames)
+    {
+      
+      String className = DexVisitor.typeToName(name);
+      if (! clsNames.contains(className)) {
+        return null;
+      }
+      if (crntClsName != null) saveClass();
+      crntClsName = className;
+      System.err.printf("  - Processing %s\n", className);
+      V3InnerClzGather.Clz v3cz 
+        = new V3InnerClzGather.Clz(name); 
+      DexExceptionHandler exh 
+        = new DexExceptionHandlerImpl(); 
+      cw = new ClassWriter(5); 
+      V3ClassAdapter v3ca = new V3ClassAdapter(
+        v3cz, exh, cw, i1, name, superName, ifaceNames
+      );
+      return v3ca;
+    }
+    public void visitEnd() {
+
+    };
+  };
+  
+  Set dexSet = new HashSet();
+  for (String cn: classNames) {
+    Class cls = Class.classForName(
+      cn, false, Thread.currentThread().getContextClassLoader()
+    );
+    if (cls == null) continue; 
+    com.android.dex.Dex dex = org.d6r.ClassInfo.getDex(cls);
+    if (dexSet.contains(dex)) continue; 
+    System.err.printf("Loading dex: %s\n", dex);
+    dexSet.add(dex);
+  
+    byte[] dexBytes = dex.getBytes();
+    DexFileReader dfr = new DexFileReader(dexBytes);
+    dfr.setApiLevel(18);
+    dfr.accept(dfv);
+    if (crntClsName != null) {
+      saveClass();
+      crntClsName = null;
+    }
+    System.err.printf("Finished processing dex: %s\n", dex);
+  }
+    
+  return byteMap;
+}
+
+
+
+public static byte[] dex2jar(String clsName, boolean logIt, File outFile) 
+{
+  V3ClassAdapter v3ca = null;  
+  Interpreter in = CollectionUtil.getInterpreter();
+  DexFileVisitor dfv = new DexFileVisitor() { 
+    public DexClassVisitor visit(int i1, String name, String superName, String[] ifaceNames) { 
+      String className = name.replaceAll("^L(.*);$","$1").replace('/', '.'); 
+      /*System.err.printf(
+        "visit(%d, name = %s, superName = %s, "
+        + "ifaceNames = { %s })\n", 
+        i1, name, superName, 
+        StringUtils.join(ifaceNames, ", ")
+      ); */
+      if (!clsName.equals(className)) return null;
+      System.err.println("Creating adapter ..."); 
+      V3InnerClzGather.Clz v3cz 
+        = new V3InnerClzGather.Clz(name); 
+      DexExceptionHandler exh 
+        = new DexExceptionHandlerImpl(); 
+      ClassWriter cw = new ClassWriter(5); 
+      in.setu("cw", cw); 
+      V3ClassAdapter v3ca = new V3ClassAdapter(
+        v3cz, exh, cw, i1, name, superName, ifaceNames
+      ); 
+      System.err.println(v3ca);
+      in.setu("v3ca", v3ca); 
+      return v3ca;
+    }
+    public void visitEnd() {
+      System.err.println("visitEnd");
+    };
+  };
+  byte[] dexBytes 
+    = Class.forName(clsName).getDex().getBytes();
+  DexFileReader _dfr = new DexFileReader(dexBytes);
+  _dfr.setApiLevel(18);
+  DexFileReader dfr = _dfr;
+  dfr.accept(dfv); 
+  byte[] classBytes = cw.toByteArray(); 
+  if (outFile != null) {
+    FileUtils.writeByteArrayToFile(outFile, classBytes);
+    System.err.printf(    
+      "Wrote .class file: %d bytes\n", classBytes.length
+    );
+  } else {
+    System.err.printf(    
+      "Class size: %d bytes\n", classBytes.length
+    );
+  }
+  return classBytes;
+}
+
+
+public static byte[] dex2jar(byte[] inputBytes) { boolean isZip = inputBytes[0] == (byte)'P' && inputBytes[1] == (byte)'K'; byte[] dexBytes = (isZip)? ZipUtil.toByteArray(inputBytes, "classes.dex"): inputBytes; File tempDir = PosixFileInputStream.createTemporaryDirectory(String.format("tmp_dex2jar__%s", Long.toString(System.currentTimeMillis(), 32))); com.googlecode.dex2jar.tools.Dex2jarCmd cmd = new com.googlecode.dex2jar.tools.Dex2jarCmd(); File inFile = new File(tempDir, "classes.dex"); FileUtils.writeByteArrayToFile(inFile, dexBytes); File outFile = new File(tempDir, "classes.jar"); String[] args = new String[]{ inFile.getPath(), "-o", outFile.getPath() }; System.err.println(StringUtils.join(Arrays.asList(cmd.cmdName, StringUtils.join(args, " ")), " ")); cmd.doMain(args); byte[] outBytes = FileUtils.readFileToByteArray(outFile); System.err.printf("output: %s (%d bytes)\n", outFile.getPath(), outBytes.length); return outBytes; };
+
+public static byte[] dex2jar(byte[] inputBytes) { boolean isZip = inputBytes[0] == (byte)'P' && inputBytes[1] == (byte)'K'; byte[] dexBytes = (isZip)? ZipUtil.toByteArray(inputBytes, "classes.dex"): inputBytes; File tempDir = PosixFileInputStream.createTemporaryDirectory(String.format("tmp_dex2jar__%s", Long.toString(System.currentTimeMillis(), 32))); com.googlecode.dex2jar.tools.Dex2jarCmd cmd = new com.googlecode.dex2jar.tools.Dex2jarCmd(); File inFile = new File(tempDir, "classes.dex"); FileUtils.writeByteArrayToFile(inFile, dexBytes); File outFile = new File(tempDir, "classes.jar"); String[] args = new String[]{ "-d", "-f", "-o", outFile.getPath(), "-os", "-ts", inFile.getPath() }; System.err.println(StringUtils.join(Arrays.asList(cmd.cmdName, StringUtils.join(args, " ")), " ")); cmd.doMain(args); byte[] outBytes = FileUtils.readFileToByteArray(outFile); System.err.printf("output: %s (%d bytes)\n", outFile.getPath(), outBytes.length); return outBytes; };
+

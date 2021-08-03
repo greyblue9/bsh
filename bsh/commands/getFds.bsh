@@ -1,0 +1,7 @@
+
+
+
+public static Map getFds() { Map tm = new TreeMap(); FileDescriptor fd = new FileDescriptor(); PrintWriter pw = new PrintWriter(new BufferedWriter(new OutputStreamWriter(System.err, "UTF-8"))); File procDir = new File(String.format("/proc/%d/fd", org.d6r.PosixFileInputStream.getPid())); for (File fdFile: procDir.listFiles()) { if (FileUtils.isSymlink(fdFile)) { if (! FileUtils.isBrokenSymlink(fdFile)) { String dest = File.readlink(fdFile.getPath()); if (dest.indexOf("/system/framework") == -1 && dest.indexOf("/dev") != 0) { int fdNo = Integer.parseInt(fdFile.getName(), 10); try { PosixFileInputStream.setInt(fd, fdNo); tm.put(fdNo, Pair.of(fd, dest)); fd = new FileDescriptor(); } catch (IOException ioex) { pw.println(ioex.getMessage()); } catch (Throwable e) { pw.println(Reflector.getRootCause(e)); } continue; }; }; }; }; pw.flush(); return tm; }
+
+
+

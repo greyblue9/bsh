@@ -1,0 +1,268 @@
+
+public static java.lang.String[] getClassNames
+(java.lang.String filePath) 
+{
+  if (filePath == null) {
+    System.err.println("Warning: getClassNames(java.lang.String filePath): filePath is null; returning empte array");
+    return new java.lang.String[]{ };
+  }
+  java.lang.reflect.Method gdcn = loadClass("bsh.classpath.BshClassPath").getDeclaredMethod("getDexClassNames",new Class[]{ java.lang.String.class }); 
+  return gdcn.invoke(null, new Object[]{ filePath });
+  return getClassNames(new java.io.File(filePath));
+}
+
+public static java.lang.String[] getClassNames(java.lang.String[] paths) 
+{
+  java.lang.String[] classNames;
+  
+  for (java.lang.String file: paths) {
+    com.android.dx.io.DexIndexPrinter dip = null;
+    java.lang.String xyz = null;
+    
+    try {
+      dip = new com.android.dx.io.DexIndexPrinter(new java.io.File(file));
+    } catch (java.io.IOException e4) {
+      java.lang.System.err.print(e4.toString());
+      return null;
+    }
+    
+    com.android.dx.io.DexBuffer db 
+      = (com.android.dx.io.DexBuffer) 
+        getfldval(dip, "dexBuffer");
+    
+    java.util.List rawClassDefs 
+      = (java.util.List) getfldval(db, "typeNames");
+    
+    //classNames 
+    //  = new java.lang.String[rawClassDefs.size()];
+    
+    java.util.Iterator it = rawClassDefs.iterator();
+    int i = -1;
+    while (it.hasNext()) {
+      
+      i++;
+      java.lang.String entry 
+        = (java.lang.String) it.next(); 
+        
+      if (entry.length() == 0 || entry.charAt(0) == '[') continue; 
+      
+      entry = entry
+        .replace('/', '.');
+        
+      entry = entry.substring(0, entry.length()-1);
+      
+      while (entry.length()>0 
+         && (entry.charAt(0)=='L' || entry.charAt(0)=='[')
+      )
+      {
+        entry = entry.substring(1);
+      }
+      
+      classNames.add(entry);
+      
+    } // while
+
+  }
+  return classNames;
+}
+
+
+
+public static java.lang.String[] getClassNames(java.io.File file) throws java.io.IOException
+{
+  java.lang.String[] classNames = null;
+  java.lang.Object cookie = null;
+  dalvik.system.DexFile df = null;
+  java.lang.reflect.Method m = null;
+  boolean useDexFile = true;
+
+  try {
+    
+    m = dalvik.system.DexFile.class.getDeclaredMethod(
+      "getClassNameList", new java.lang.Class[] 
+      { java.lang.Integer.TYPE }
+    );
+    m.setAccessible(true);
+    
+  } catch (java.lang.NoSuchMethodException e) {
+    java.lang.System.err.print(e.toString());
+    useDexFile = false;
+  } catch (java.lang.Throwable e2) {
+    java.lang.System.err.print(e2.toString());
+    useDexFile = false;
+  }
+  
+  try {
+    if (! useDexFile) {
+      throw new java.lang.RuntimeException("Not using DexFile method");
+    }
+    
+    df = new dalvik.system.DexFile(file.getPath());
+    cookie = getfldval(df, "mCookie");
+    classNames = m.invoke(null, new java.lang.Object[]{ cookie });
+    
+    /** /
+    classNames = new java.lang.String[ classNameList.
+    System.arraycopy( 
+      classNameList, 0, classNameList.length,  
+      classNames, 0 
+    );
+    /**/
+  
+  } catch (java.lang.Throwable e3) {
+    /*
+    import com.android.dx.io.DexIndexPrinter;
+    import com.android.dx.io.DexBuffer;
+    import java.lang.reflect.Method;
+    import dalvik.system.DexFile;
+    */
+    com.android.dx.io.DexIndexPrinter dip = null;
+    java.lang.String xyz = null;
+    
+    try {
+      dip = new com.android.dx.io.DexIndexPrinter(file);
+    } catch (java.io.IOException e4) {
+      java.lang.System.err.print(e4.toString());
+      return null;
+    }
+    
+    com.android.dx.io.DexBuffer db 
+      = (com.android.dx.io.DexBuffer) 
+        getfldval(dip, "dexBuffer");
+    
+    java.util.List rawClassDefs 
+      = (java.util.List) getfldval(db, "typeNames");
+   
+    classNames 
+      = new java.lang.String[rawClassDefs.size()];
+    
+    java.util.Iterator it = rawClassDefs.iterator();
+    int i = -1;
+    while (it.hasNext()) {
+      
+      i++;
+      java.lang.String entry 
+        = (java.lang.String) it.next(); 
+      
+      entry = entry
+        .replace('/', '.').replace(";", "").replace("[", "");
+      
+      while (entry.length()>0 
+         && (entry.charAt(0)=='L' || entry.charAt(0)=='[')
+      )
+      {
+        entry = entry.substring(1);
+      }
+      
+      classNames[i] = entry;
+    } // while
+    
+  }// catch
+   
+  return classNames;
+}
+
+
+
+
+public static java.lang.String[] getClassNames
+(dalvik.system.DexFile df) throws java.io.IOException
+{
+  java.lang.String[] classNames = null;
+  int cookie = -1;
+  //dalvik.system.DexFile df = null;
+  java.lang.reflect.Method m = null;
+  boolean useDexFile = true;
+
+  //try {
+    
+    m = dalvik.system.DexFile.class.getDeclaredMethod(
+      "getClassNameList", new java.lang.Class[] 
+      { java.lang.Integer.TYPE }
+    );
+    m.setAccessible(true);
+    
+  /*} catch (java.lang.NoSuchMethodException e) {
+    java.lang.System.err.print(e.toString());
+    useDexFile = false;
+  } catch (java.lang.Throwable e2) {
+    java.lang.System.err.print(e2.toString());
+    useDexFile = false;
+  }*/
+  
+  //try {
+    /*if (! useDexFile) {
+      throw new java.lang.RuntimeException("Not using DexFile method");
+    }*/
+    
+    
+    cookie = getfldval(df, "mCookie");
+    //print(cookie);
+    classNames = m.invoke(null, new java.lang.Object[]{ cookie });
+    
+        
+    /*for (java.lang.String cn: classNames) {
+      list.add(cn);
+    }*/
+    
+    return classNames;
+    /** /
+    classNames = new java.lang.String[ classNameList.
+    System.arraycopy( 
+      classNameList, 0, classNameList.length,  
+      classNames, 0 
+    );
+    /**/
+  
+  //} catch (java.lang.Throwable e3) {
+    /*
+    import com.android.dx.io.DexIndexPrinter;
+    import com.android.dx.io.DexBuffer;
+    import java.lang.reflect.Method;
+    import dalvik.system.DexFile;
+    */
+  /*  com.android.dx.io.DexIndexPrinter dip = null;
+    java.lang.String xyz = null;
+    
+    try {
+      dip = new com.android.dx.io.DexIndexPrinter(file);
+    } catch (java.io.IOException e4) {
+      java.lang.System.err.print(e4.toString());
+      return null;
+    }
+    
+    com.android.dx.io.DexBuffer db 
+      = (com.android.dx.io.DexBuffer) 
+        getfldval(dip, "dexBuffer");
+    
+    java.util.List rawClassDefs 
+      = (java.util.List) getfldval(db, "typeNames");
+    
+    //return rawClassDefs;
+    
+    java.util.Iterator it = rawClassDefs.iterator();
+    int i = -1;
+    while (it.hasNext()) {
+      
+      i++;
+      java.lang.String entry 
+        = (java.lang.String) it.next(); 
+      
+      entry = entry
+        .replace('/', '.').replace(";", "").replace("[", "");
+      
+      while (entry.length()>0 
+         && (entry.charAt(0)=='L' || entry.charAt(0)=='[')
+      )
+      {
+        entry = entry.substring(1);
+      }
+      
+      classNames[i] = entry;
+    } // while
+    
+  }// catch*/
+   
+  return classNames;
+}
+public static ArrayList<String> getClassNames(int maxClips) { sc = new Scanner(getClip(maxClips)); al = new ArrayList(); while (sc.hasNext()) { String str = sc.next(); if (! bsh.Capabilities.classExists(str)) continue; if (al.contains(str)) continue; al.add(str); System.out.println(str); }; return al; }

@@ -1,0 +1,57 @@
+public static String dumpDexClass1(Object obj) {                         Class _cls = dumpMembers.getClass(obj);                                if (_cls == null) _cls = obj.getClass();                               String clsName = _cls.getName();                                       String dumped = getCachedDexDump(clsName);                             if (dumped != null) return dumped;                                     DexVisitor dv = null;                                                  try {                                                                    dv = DexVisitor.from(_cls).visit();                                    String dumped = "";
+    cacheDexDump(
+      clsName,
+      (dumped = org.d6r.CollectionUtil.toString(
+        dv.getSingleClassMethods()
+      ).replaceAll("\\.([^A-Za-z0-9$_.])", "\\$$1"))
+    );
+    return dumped;
+  } finally {
+    if (dv != null) {
+      dv.close(dv.dfr);
+      dv.dfr = null;
+      dv.clsMap.clear();
+      dv.clsMap = null;
+      dv.dexBytes = null;
+      dv = null;
+      unset("dv");
+      System.gc();
+      this.namespace.clear();
+    }
+  }
+}
+
+public static Map dumpDexClass1(String cn) { 
+  Map dplcMap = new IdentityHashMap(); 
+  Map cachedBefore = dumpDexClass.cachedDexes; 
+  for (String path: ClassPathUtil.findClassSource(cn)) { 
+    path = path.replaceAll(
+      "/system/framework", 
+      "/external_sd/_projects/sdk/framework"
+    ); 
+    dumpDexClass.cachedDexes.clear();
+    Object dpl = newPathList(new File[]{ new File(path) });
+    try { 
+      System.out.println(path);
+      Class dplc = dpl.findClass(cn, errs = new ArrayList()); 
+      if (dplc == null) continue; 
+      dplcMap.put(path, dplc); 
+      System.out.println(
+        dumpDexClass(dplc, false)
+      ); 
+      while ((dplc = dplc.getSuperclass()) != null) { 
+        if (dplc.getName().equals("java.lang.Object")) break;
+        System.out.println(
+          dumpDexClass(dplc, false)
+        );
+      }
+    } catch (Throwable e) { 
+      System.out.println(e); 
+    } finally { 
+      dumpDexClass.cachedDexes = cachedBefore;
+    } 
+  }; 
+  return dplcMap; 
+}
+
+

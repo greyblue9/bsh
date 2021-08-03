@@ -1,0 +1,17 @@
+public static String typeHeader1(Class cls) {
+  String className = cls.getName();
+  com.android.dex.Dex dex = (cls != null) ? ClassInfo.getDex((Class) cls) : ClassInfo.getDex(className);
+  DexVisitor dv = dumpDexClass2.dexVisitorCache.get(dex);
+  if (dv == null) {
+    dv = DexVisitor.from(dex, className).visit();
+    dumpDexClass2.dexVisitorCache.put(dex, dv);
+  } else {
+    dumpDexClass2.ensureClass(dv, className);
+    dv.visit();
+  }
+  ClassVisitor cv = dv.getClass(className);
+  String hdr = dumpDexClass2.typeHeader(cls, className, cv);
+  return hdr;
+}
+
+ 

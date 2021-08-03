@@ -1,0 +1,107 @@
+import javassist.util.proxy.MethodHandler;
+import javassist.util.proxy.ProxyFactory;
+
+public static Object newProxy(Class bcls, Set traces, 
+  Object[] ctorArgs, List calls)
+{
+  Object px = null;
+  
+  int depth = 0;
+  MethodHandler mh = new MethodHandler() {
+    public Object invoke(Object self, Method m, Method proceed,
+    Object[] args) 
+    { Object _self = self;
+
+      depth += 1;
+      if (depth >= 555) {
+        System.err.println("Bombing out");
+        Reflector.Util.sneakyThrow(new Error("Stop"));
+        return null;
+      }
+      List<StackTraceElement> stes = new ArrayList(
+        Arrays.asList(new Error().getStackTrace())
+      );
+      StringCollectionUtil.removeMatching(      
+        stes, "^(?:java.lang.reflect.|bsh\\.|com.android.internal.util.WithFramework|dalvik.system.NativeStart|[^(]*Proxy|[^(]*_jvst)"
+      );
+      String caller = stes.iterator().next();
+      if (!m.getName().equals("hashCode") 
+      &&  !m.getName().equals("secondaryHash") 
+      &&  caller.methodName.toLowerCase().indexOf("hash") == -1) 
+      {
+        Dumper.clearContext();
+        for (int i = 0; i < args.length; i++) {
+          if (args[i] == self) args[i] = -99999;
+        }
+        System.out.printf(
+          "{\n  self = %s,\n  m = %s,\n  "
+          + "proceed = %s,\n  args = %s\n}\n",
+          self.getClass().getName() 
+            + "@" + System.identityHashCode(self),
+          m.getDeclaringClass().getName() 
+            + " # " + dumpMembers.colorize(m), 
+          (proceed != null 
+           ? proceed.getDeclaringClass().getName() 
+           : "?") + " # " + dumpMembers.colorize(m), 
+          Arrays.asList(args)
+        );
+        System.out.printf("Caller: %s\n", caller);
+        for (int j = 0; j < args.length; j++) {
+          if (args[j] == Integer.valueOf(-99999)) args[j] = self;
+        }
+        traces.add(stes);
+        calls.add(Pair.of(dumpMembers.colorize(m), Arrays.asList(args)));
+        Object result = null;
+        //if (args.length == 2 && args[0] == null) args[0] = self;
+        try {
+           System.out.printf("  --> calling: %s\n", proceed);
+           result = proceed.invoke(px, args);
+           System.out.printf("  --> returning: %s\n", result);
+        } catch (Throwable e) { System.err.println(e); };; 
+        try {
+           if (result == null) {
+             if ( 
+               m.getReturnType().isAssignableFrom(
+               self.getClass()) ||  
+               proceed.getReturnType().isAssignableFrom(
+               self.getClass())              
+               )
+             {
+               result = self;                  
+             } else if (m.getReturnType() != Void.TYPE) {
+               try {
+                 result 
+                   = Reflect.allocateInstance(m.getReturnType());
+                System.out.printf("  --> returning: %s\n", result);
+               } catch (Throwable ee) { ;; };
+             }
+           }
+           if (result == null) {
+             try {
+               return proceed.invoke(_self, args);
+             } catch (Throwable e) { ;; };; 
+           }
+           return result;
+        } catch (Throwable e) {
+           e.printStackTrace();
+        }
+        return null;
+      }
+    } // if hashCode() etc.
+  }; // mh = new...
+              
+  pf = new ProxyFactory();
+  pf.setSuperclass(bcls);
+  pf.setHandler(mh);
+  cls = pf.createClass();
+  Object[] instArgs = ctorArgs;
+  Constructor ctor = Factory.findBestMatch(
+    cls.getDeclaredConstructors(), instArgs
+  );
+  ctor.setAccessible(true);
+  mf = ctor.newInstance(instArgs);
+  px = mf;
+  return mf;
+}
+
+

@@ -1,0 +1,7 @@
+
+
+
+public static byte[] toByteArray(RandomAccessFile raf) { libcore.io.StructStat stat = PosixUtil.fstat(raf.getFD()); byte[] data = new byte[Math.max(0, (int) stat.st_size)]; long origPos = raf.getFilePointer(); raf.seek(0L); try { raf.readFully(data); } finally { raf.seek(origPos); }; return data; }
+
+
+

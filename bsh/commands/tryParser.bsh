@@ -1,0 +1,7 @@
+
+
+
+public static List tryParser(org.antlr.runtime.Parser p) { Method[] mtds = Arrays.asList(getMethods.getMethods(new Class[]{ p.getClass() }, String.format("public( ((?!void|static|abstract|native)[a-z])+)* %s[^(]* .+\\(\\)", Pattern.quote(StringUtils.substringBeforeLast(p.getClass().getName(), "."))))).toArray(new Method[0]);   List al = new ArrayList(); for (Method mtd: mtds) { Object result = null; try { result = mtd.invoke(resetParser(p), new Object[0]); al.add(Pair.of(mtd, result)); System.out.println(Debug.ToString(Pair.of(mtd, result)));  } catch (ReflectiveOperationException e) { System.err.println(e instanceof InvocationTargetException? ((InvocationTargetException) e).getTargetException(): e.detailMessage); }; }; return al;  } ;
+
+
+

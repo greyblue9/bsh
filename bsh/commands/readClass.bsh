@@ -1,0 +1,28 @@
+
+
+public static com.strobel.assembler.metadata.TypeDefinition readClass(int options, com.strobel.assembler.metadata.IMetadataResolver resolver, com.strobel.assembler.metadata.Buffer b) {
+  long magic = b.readInt() & 0xFFFFFFFFL;
+  if (magic != 0xCAFEBABEL) {
+    throw new java.lang.IllegalStateException("Wrong magic number: " + magic);
+  }
+  int minorVersion = b.readUnsignedShort();
+  int majorVersion = b.readUnsignedShort();
+  com.strobel.assembler.ir.ConstantPool constantPool = com.strobel.assembler.ir.ConstantPool.read(b);
+  int accessFlags = b.readUnsignedShort();
+  com.strobel.assembler.ir.ConstantPool.TypeInfoEntry thisClass = (com.strobel.assembler.ir.ConstantPool.TypeInfoEntry)constantPool.get(b.readUnsignedShort(), com.strobel.assembler.ir.ConstantPool.Tag.TypeInfo);
+  int baseClassToken = b.readUnsignedShort();
+  com.strobel.assembler.ir.ConstantPool.TypeInfoEntry baseClass;
+  if (baseClassToken == 0) {
+    baseClass = null;
+  }
+  else {
+    baseClass = constantPool.getEntry(baseClassToken);
+  }
+  com.strobel.assembler.ir.ConstantPool.TypeInfoEntry[] interfaces = new com.strobel.assembler.ir.ConstantPool.TypeInfoEntry[b.readUnsignedShort()];
+  for (int i = 0; i < interfaces.length; ++i) {
+    interfaces[i] = (com.strobel.assembler.ir.ConstantPool.TypeInfoEntry)constantPool.get(b.readUnsignedShort(), com.strobel.assembler.ir.ConstantPool.Tag.TypeInfo);
+  }
+  return new com.strobel.assembler.metadata.ClassFileReader(options, resolver, majorVersion, minorVersion, b, constantPool, accessFlags, thisClass, baseClass, interfaces).readClass();
+}
+
+

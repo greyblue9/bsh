@@ -1,0 +1,17 @@
+public static String normalizeUri(String uri, String baseUrl) {
+  uri = (uri.indexOf("\"") != -1)
+    ? StringUtils.substringBefore(uri,"\"")
+    : uri;
+  uri = (uri.indexOf(">") != -1)
+    ? StringUtils.substringBefore(uri,">")
+    : uri;
+
+  try {
+    return new URI(baseUrl).resolve(uri).toString();
+  } catch (Throwable ex) {
+    System.err.println(Reflector.getRootCause(ex));
+    return "#";
+  }
+}
+
+

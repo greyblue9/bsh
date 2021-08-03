@@ -1,0 +1,218 @@
+
+
+public static String dumpEnum(Class<Enum> ecls) { 
+  StringBuilder sb = new StringBuilder(76 * 10); 
+  sb.append(String.format(
+    "\u001b[1;30m"
+    + "%s"            //  public static final 
+    + "\u001b[0m \u001b[0;35m"               // [dark magenta]
+      + "enum"        //  enum
+    + "\u001b[0m\n"
+    + "\u001b[0m \u001b[0;36m"               // [dark cyan]
+      + "%s"          //  com.package
+    + "\u001b[1;30m"                         // [dark green]
+      + "%c"          //  ( '.' | '$' )
+    + "\u001b[1;36m"                         // [bright cyan]
+      + "%s"          //  MyEnumType
+    + "\u001b[0m"                            // [default white]
+    + " {\n\n",
+    Modifier.toString(ecls.getModifiers()),
+    ecls.getName().replaceAll("^(.*)[.$]([^.$]+)$", "$1"),
+    ecls.getName().replaceAll("^.*([.$])[^.$]+$", "$1").charAt(0),
+    ecls.getName().replaceAll("^(.*)[.$]([^.$]+)$", "$2")
+  )); 
+  Enum[] csts = null;
+  try {
+    csts = Enum.getSharedConstants(ecls); 
+  } catch (Throwable e) { 
+    System.err.printf(
+      "Enum.getSharedConstants(%s.class) threw %s\n", 
+      ecls.getName(), e
+    );
+  }
+  if (csts == null) {
+    Field valsField = null;
+    Class curCls = ecls;
+    
+    while (! Enum.class.isAssignableFrom(curCls)
+    &&     curCls.getDeclaringClass() != null) 
+    {
+      System.err.printf(
+        "Moving from %s \n   to enclosing class %s ...\n",
+        curCls.getName(), curCls.getDeclaringClass().getName()
+      );
+      curCls = curCls.getDeclaringClass();
+    }
+    if (! Enum.class.isAssignableFrom(curCls)) {
+      System.err.printf(
+        "*** Not an enum: '%s' ***\n\n", ecls
+      );
+      return "";
+    }
+    
+    outer:
+    do {    
+      inner:
+      for (Field fld: curCls.getDeclaredFields()) {
+        if ((fld.getModifiers() & Modifier.STATIC) == 0) continue;
+        //if (! fld.getType().getComponentType()
+        //                 .isAssignableFrom(ecls))
+        fld.setAccessible(true);        
+        Object val;
+        try {
+          val = fld.get(null);
+        } catch (Throwable e) {
+            System.err.println(e);
+            System.err.println(
+              org.apache.commons.lang3.exception.ExceptionUtils
+                .getRootCause(e)
+            );
+        }; 
+          
+        if (val == null) continue; 
+          Class vcls = val.getClass();
+        if (vcls.getName().indexOf('[') == -1) continue; 
+        try {
+            csts = (Enum[]) val;
+        } catch (Throwable e) {
+            System.err.println(e);
+            System.err.println(
+              org.apache.commons.lang3.exception.ExceptionUtils
+                .getRootCause(e)
+            );
+        }; 
+        
+        if (csts != null) {
+          valsField = fld;
+          break outer;
+        }
+        System.err.printf(
+          "  - failed field candidate: %s\n",
+          dumpMembers.colorize(fld)
+        );
+        continue;
+      } // for fld: fields
+      curCls = curCls.getSuperclass();
+    } while (csts == null 
+    &&       curCls != null 
+    &&       Enum.class.isAssignableFrom(curCls));
+  } // if csts == null
+  if (csts == null) {
+    dumpMembersExp(ecls);
+    System.err.printf(
+      "Unable to find enum values for class:\n    %s\n", 
+      ecls.getName()      
+    );      
+  }
+  
+  int ord = -1;
+  Enum cst = null; 
+  do {
+    if ((ord == -1 && csts == null) || csts.length == ord+1) {
+      break;
+    }
+    cst = csts[++ord]; 
+    sb.append(String.format(
+      " %4s " // (1.)   [number starting at 1]
+      + "\u001b[1;36m"
+        + "%s" 
+          + "\u001b[0m" 
+        + "." 
+          + "\u001b[1;33m"
+        + "%-20s"
+      + "\u001b[0m  \u001b[1;30m"
+        + "ordinal = "
+      + "\u001b[0;33m"
+        + "%d"
+      + "\u001b[0m\n",
+      String.format(
+        // detailed build of (#.) part in red
+        "\u001b[0;31m(\u001b[1;31m%d.\u001b[0;31m)\u001b[0m",
+        ord
+      ), 
+      ecls.getSimpleName(), //  MyEnumType
+      cst.name(),          //  VALUE_1
+      cst.ordinal()       //  0
+    )); 
+    for (Field fld: ecls.getDeclaredFields()) {
+      if (fld.getType().equals(ecls)
+      ||  fld.getName().contains("$VALUES")) // dvm-specific
+      {
+        continue; 
+      }
+      fld.setAccessible(true); 
+      Object xval = fld.get(cst);
+      String strval;
+      try {
+        strval = String.valueOf(xval);
+      } catch (Throwable ex) {
+        strval = ex.getStackTrace()[2].toString()
+          + " threw: " + ex.toString();
+      }
+      sb.append(String.format(
+        "        %s = %s"   // customField = "value"
+        + "\u001b[0;32m"   // ..
+         + " (\u001b[1;32m%s\u001b[0;32m)" // (type)
+        + "\u001b[0m\n", // ..
+        fld.getName(), 
+        (! (xval instanceof Object[]))
+          ? (  ClassUtils.isPrimitiveOrWrapper(fld.getType()) 
+            || CharSequence.class .isAssignableFrom(fld.getType()) 
+              ? strval
+              : Debug.ToString(xval)
+            )
+            
+         : "",
+        (fld.get(cst) instanceof Object[])
+          ? "\u001b[1;32m" 
+              + dumpMembers.colorize(DexVisitor.typeToName(
+                  xval.getClass().getName()
+                ), "1;36")
+              + "\u001b[0m"
+              + " {\n            "
+              + StringUtils.join(
+                  (Object[])xval, 
+                  ",\n            "
+                )
+              + " }"
+          : dumpMembers.colorize(
+              DexVisitor.typeToName(
+                fld.getGenericType().toString()
+                   .replaceAll("^[^<>]*[/.]([^./]+)$", "$1")),
+              "1;32"
+            )
+      ));
+    } // for fld: fields
+  } while (ord < csts.length); // do
+  List<Method> dms = new ArrayList(Arrays.asList(
+    ecls.getDeclaredMethods()
+  ));
+  StringCollectionUtil.removeMatching(
+    dms, "access\\$[0-9]*\\(|values\\(|valueOf\\("
+  );
+  if (dms.size() > 0) {
+    for (String line: 
+         CollectionUtil.selectLines(
+           dumpDexClass.dumpDexClass(ecls, false), 
+           " ((?!valueOf|values|init|access\\$| ).)+\\(.*\\)"
+         ))
+    {
+      sb.append(line);
+      sb.append('\n');
+    }    
+  }
+  return sb.append(String.format(
+    "\u001b[0m}"
+  )).insert(0, "\n").toString();    
+}
+
+
+public static String dumpEnum(bsh.ClassIdentifier ci) { 
+  return dumpEnum(
+    (Class) ((bsh.ClassIdentifier) ci).getTargetClass()
+  );
+}
+
+
+
+

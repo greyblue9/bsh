@@ -1,0 +1,25 @@
+public static Object readVar(String vname) {
+  File vfile = new File(new File("/external_sd/_projects/__variables__"), String.format("%s.xml", vname));
+  if (!vfile.exists()) {
+    vfile = new File(new File("/external_sd/_projects/__variables__"), String.format("%s.txt", vname));
+  }
+  if (!vfile.exists())
+    throw new FileNotFoundException(vfile.getPath());
+  byte[] bytes = FileUtils.readFileToByteArray(vfile);
+  if (bytes[0] == (byte) '<') {
+    try {
+      return SimpleCodec.getXStream().fromXML(new ByteArrayInputStream(bytes));
+    } catch (FormatException fe) {
+      try {
+        return SimpleCodec.decodeObject(new String(bytes, java.nio.charset.StandardCharsets.UTF_8));
+      } catch (Throwable e2) {
+        e2.addSuppressed(e);
+        throw e2;
+      }
+    }
+  } else {
+    return new String(bytes, java.nio.charset.StandardCharsets.UTF_8);
+  }
+}
+
+ 

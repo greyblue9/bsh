@@ -1,0 +1,93 @@
+
+
+public static com.android.dx.dex.file.ClassDefItem translate0(
+  java.lang.String filePath,
+  byte[] bytes,
+  com.android.dx.dex.cf.CfOptions cfOptions,
+  com.android.dx.dex.DexOptions dexOptions,
+  com.android.dx.dex.file.DexFile optional_dxDexFile)
+{
+  com.android.dx.dex.file.DexFile dxDexFile = (optional_dxDexFile != null)
+    ? optional_dxDexFile
+    : bsh.classpath.AndroidClassLoader.createDxDexFile();
+  
+  com.android.dx.cf.direct.DirectClassFile cf = new
+  com.android.dx.cf.direct.DirectClassFile(
+    bytes, filePath, cfOptions.strictNameCheck);
+  cf.setAttributeFactory(com.android.dx.cf.direct.StdAttributeFactory.THE_ONE);
+  cf.getMagic();
+  com.android.dx.dex.cf.OptimizerOptions.loadOptimizeLists(
+    cfOptions.optimizeListFile, cfOptions.dontOptimizeListFile);
+  com.android.dx.rop.cst.CstType thisClass = cf.getThisClass();
+  int classAccessFlags = (
+    cf.getAccessFlags() & ~com.android.dx.rop.code.AccessFlags.ACC_SUPER);
+  com.android.dx.rop.cst.CstString sourceFile = (
+    cfOptions.positionInfo == com.android.dx.dex.code.PositionList.NONE) 
+      ? null
+      : cf.getSourceFile();
+  
+  com.android.dx.dex.file.ClassDefItem out = new
+  com.android.dx.dex.file.ClassDefItem(
+    thisClass, classAccessFlags,
+    cf.getSuperclass(), cf.getInterfaces(), sourceFile
+  );
+  
+  com.android.dx.rop.annotation.Annotations classAnnotations =
+  com.android.dx.dex.cf.AttributeTranslator.getClassAnnotations(cf, cfOptions);
+  if (classAnnotations.size() != 0) {
+    out.setClassAnnotations(classAnnotations, dxDexFile);
+  }
+  
+  com.android.dx.dex.cf.CfTranslator.processFields(
+    cf, out, dxDexFile
+  );
+  com.android.dx.dex.cf.CfTranslator.processMethods(
+    cf, cfOptions, dexOptions, out, dxDexFile
+  );
+  return out;
+}
+
+ 
+
+public static com.android.dx.dex.file.ClassDefItem translate0(
+  byte[] classBytes,
+  com.android.dx.dex.file.DexFile dxDexFile)
+{
+  String className = ClassInfo.getClassName(classBytes);
+  String filePathForDebug = ClassInfo.classNameToPath(className, "java");
+  
+  cfOpts = new com.android.dx.dex.cf.CfOptions();
+  cfOpts.strictNameCheck = false;
+  cfOpts.optimize = true;
+  cfOpts.localInfo = true;
+  cfOpts.statistics = true;
+  
+  dexOpts = new com.android.dx.dex.DexOptions();
+  dexOpts.targetApiLevel = 18;
+  dexOpts.forceJumbo = false;
+  dexOpts.ALIGN_64BIT_REGS_IN_OUTPUT_FINISHER = false;
+  
+  return translate0(filePathForDebug, classBytes, cfOpts, dexOpts, dxDexFile);
+}
+
+
+public static com.android.dx.dex.file.ClassDefItem translate0(byte[] classBytes) {
+  return translate0(classBytes, null);
+}
+
+
+public static com.android.dx.util.ByteArrayAnnotatedOutput translate0(
+  byte[] classBytes, int dumpWidth, boolean verbose)
+{
+  com.android.dx.dex.file.DexFile dxf = AndroidClassLoader.createDxDexFile();
+  com.android.dx.dex.file.ClassDefItem cdi = translate0(classBytes, dxf);
+  dxf.add(cdi);
+  dxf.setDumpWidth(dumpWidth);
+  com.android.dx.util.ByteArrayAnnotatedOutput output = dxf.toDex0(true, verbose);
+  return output;
+}
+
+
+
+ 
+ 

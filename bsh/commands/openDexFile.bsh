@@ -1,0 +1,27 @@
+
+{
+
+  public static Class[] openDexFile(byte[] dexBytes) {
+    if (! bsh.Capabilities.classExists("com.android.quickmultidex.Multidex")) {
+      appendClassPathFile(
+        "/external_sd/_projects/sdk/quick_multidex/quick_multidex.jar"
+      );
+    };
+    
+    int cookie = com.android.quickmultidex.Multidex.openDexFile(dexBytes);
+    LazyMember lm = LazyMember.of(
+      DexFile.class, "defineClassNative",
+      String.class, ClassLoader.class, Integer.TYPE
+    );
+    
+    return DexFile.getClassNameList(cookie).select(FunctionUtil.bind(
+      "return m -> { return lm.invoke(null, m, classLoader, cookie); }",
+      "classLoader", Thread.currentThread().getContextClassLoader(), 
+      "cookie", cookie, "lm", lm
+    ));
+  };
+  
+  void;
+  
+}
+

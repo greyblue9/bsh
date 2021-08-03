@@ -1,0 +1,82 @@
+
+public static ArrayList getImpls(String tgt) {
+  
+  Class tgtClass = Thread.currentThread().getContextClassLoader().loadClass(tgt); 
+    
+  List matches = new ArrayList(); 
+  
+  String[] cns = CollectionUtil.toArray(
+    findRelatedClasses(
+      new bsh.ClassIdentifier(tgtClass), 
+      true
+    )
+  ); 
+
+  print(cns.length); 
+  for (String cn: cns) {
+    System.out.println(" ... "+cn+" ... "); 
+    Class cls = null; 
+    
+    try { 
+      cls = Thread.currentThread().getContextClassLoader().loadClass(cn); 
+      Class ifl = cls; 
+      
+      while (! ifl.equals(Object.class) 
+          && ! ifl.equals(ifl.getSuperclass())) 
+      { 
+        if (ifl.equals(tgtClass)) matches.add(cls); continue; 
+        
+        for (Class ifc: ifl.getInterfaces()) {
+          if (ifc.equals(tgtClass)) matches.add(cls);
+        } 
+        
+        ifl = ifl.getSuperclass();
+      }   // end for
+    } catch (Throwable e) { 
+      System.err.println(e.toString());
+    }
+  } 
+  
+  return matches;
+}
+
+
+public static Class[] findClassImpls
+(String ifaceAbstrClsName) 
+{
+  Interpreter i = this.interpreter; 
+  Map fciMap = i.get("fciMap"); 
+  if (fciMap == null) {
+    i.set("fciMap", (fciMap = new HashMap()));
+  } 
+  
+  Thread t = new Thread () {
+    public void run() {
+     System.err.println("\n[Thread started]\n");
+     
+     Collection result = getImpls( ifaceAbstrClsName );
+     System.err.printf(
+       "\n[Thread completed] Found %d %s",
+       result.size(),
+       "implementing classes or sub-interfaces"
+     );
+     
+     if (result.size() > 0) {
+       System.out.println(result);
+       fciMap.put(ifaceAbstrClsName, result); 
+       System.err.println(
+         "Please see interpreter variable `fciMap`"
+       );
+     } // size > 0
+     
+    }
+  }; // new Thread() {..}
+  this.interpreter.set("t", t);
+  System.err.println("Thread set to variable `t.`");
+  t.start();
+}
+ 
+
+    
+     
+     

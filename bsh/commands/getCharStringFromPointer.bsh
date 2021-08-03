@@ -1,0 +1,166 @@
+public static byte[] getCharStringFromPointer(sun.jvm.hotspot.debugger.Address address, boolean pointsToCharArray) {
+  long addressOfPointer = (long) address.getValue();
+  sun.jvm.hotspot.debugger.Debugger dbg = Reflect.getfldval(address, "debugger");
+  if (dbg == null)
+    dbg = sun.jvm.hotspot.runtime.VM.getVM().getDebugger();
+  long startOfString = (addressIsPointerToCharArray) ? dbg.readAddressValue(addressOfPointer) : address.getValue();
+  int indexOfNullByte = -1;
+  for (long i = -4L; (i += 4L) < 32768L && (bytes == null || indexOfNullByte == -1); baos.write((bytes = dbg.readBytes(startOfString + i, 4L)), 0, Math.max(0, (indexOfNullByte = ByteUtil.indexOf(bytes, new byte[] { 0 }))))) ;
+  return baos.toByteArray();
+}
+
+ 
+
+public static byte[] getCharStringFromPointer(sun.jvm.hotspot.debugger.Address address, boolean addressIsPointerToCharArray) {
+  long addressOfPointer = (long) address.getValue();
+  sun.jvm.hotspot.debugger.Debugger dbg = Reflect.getfldval(address, "debugger");
+  if (dbg == null)
+    dbg = sun.jvm.hotspot.runtime.VM.getVM().getDebugger();
+  long startOfString = (addressIsPointerToCharArray) ? dbg.readAddressValue(addressOfPointer) : address.getValue();
+  int indexOfNullByte = -1;
+  for (long i = -4L; (i += 4L) < 32768L && (bytes == null || indexOfNullByte == -1); baos.write((bytes = dbg.readBytes(startOfString + i, 4L)), 0, Math.max(0, (indexOfNullByte = ByteUtil.indexOf(bytes, new byte[] { 0 }))))) ;
+  return baos.toByteArray();
+}
+
+ 
+
+public static byte[] getCharStringFromPointer(sun.jvm.hotspot.debugger.Address address, boolean addressIsPointerToCharArray) {
+  long addressOfPointer = (long) address.getValue();
+  sun.jvm.hotspot.debugger.Debugger dbg = Reflect.getfldval(address, "debugger");
+  if (dbg == null)
+    dbg = sun.jvm.hotspot.runtime.VM.getVM().getDebugger();
+  long startOfString = (addressIsPointerToCharArray) ? dbg.readAddressValue(addressOfPointer) : address.getValue();
+  int indexOfNullByte = -1;
+  for (long i = -4L; (i += 4L) < 32768L && (bytes == null || indexOfNullByte == -1); baos.write((bytes = dbg.readBytes(startOfString + i, 4L)), 0, Math.max(0, (indexOfNullByte = ByteUtil.indexOf(bytes, new byte[] { 0 }))))) ;
+  return baos.toByteArray();
+}
+
+ 
+
+public static byte[] getCharStringFromPointer(sun.jvm.hotspot.debugger.Address address, boolean addressIsPointerToCharArray) {
+  long addressOfPointer = (long) address.getValue();
+  ByteArrayOutputStream baos = new ByteArrayOutputStream();
+  sun.jvm.hotspot.debugger.Debugger dbg = Reflect.getfldval(address, "debugger");
+  if (dbg == null)
+    dbg = sun.jvm.hotspot.runtime.VM.getVM().getDebugger();
+  long startOfString = (addressIsPointerToCharArray) ? dbg.readAddressValue(addressOfPointer) : address.getValue();
+  int indexOfNullByte = -1;
+  for (long i = -0; i < 32768; i += 4) {
+    byte[] bytes = dbg.readBytes(startOfString + ((long) i), 4L);
+    int indexOfNullByte = ByteUtil.indexOf(bytes, NULL_BYTE);
+    if (indexOfNullByte < 0) {
+      IOUtils.write(baos, bytes);
+    } else {
+      IOUtils.write(baos, bytes, 0, indexOfNullByte);
+      byte[] retBytes = baos.toByteArray();
+      baos.close();
+      return retBytes;
+    }
+  }
+}
+
+ 
+
+public static byte[] getCharStringFromPointer(sun.jvm.hotspot.debugger.Address address, boolean addressIsPointerToCharArray) {
+  byte[] NULL_BYTES = { (byte) 0 };
+  long addressOfPointer = (long) address.getValue();
+  ByteArrayOutputStream baos = new ByteArrayOutputStream();
+  sun.jvm.hotspot.debugger.Debugger dbg = Reflect.getfldval(address, "debugger");
+  if (dbg == null)
+    dbg = sun.jvm.hotspot.runtime.VM.getVM().getDebugger();
+  long startOfString = (addressIsPointerToCharArray) ? dbg.readAddressValue(addressOfPointer) : address.getValue();
+  int indexOfNullByte = -1;
+  for (long i = -0; i < 32768; i += 4) {
+    byte[] bytes = dbg.readBytes(startOfString + ((long) i), 4L);
+    int indexOfNullByte = ByteUtil.indexOf(bytes, NULL_BYTE);
+    if (indexOfNullByte < 0) {
+      IOUtils.write(baos, bytes);
+    } else {
+      IOUtils.write(baos, bytes, 0, indexOfNullByte);
+      byte[] retBytes = baos.toByteArray();
+      baos.close();
+      return retBytes;
+    }
+  }
+}
+
+ 
+
+public static byte[] getCharStringFromPointer(sun.jvm.hotspot.debugger.Address address, boolean addressIsPointerToCharArray) {
+  byte[] NULL_BYTES = { (byte) 0 };
+  long addressOfPointer = (long) address.getValue();
+  ByteArrayOutputStream baos = new ByteArrayOutputStream();
+  sun.jvm.hotspot.debugger.Debugger dbg = Reflect.getfldval(address, "debugger");
+  if (dbg == null)
+    dbg = sun.jvm.hotspot.runtime.VM.getVM().getDebugger();
+  long startOfString = (addressIsPointerToCharArray) ? dbg.readAddressValue(addressOfPointer) : address.getValue();
+  int indexOfNullByte = -1;
+  for (long i = -0; i < 32768; i += 4) {
+    byte[] bytes = dbg.readBytes(startOfString + ((long) i), 4L);
+    int indexOfNullByte = ByteUtil.indexOf(bytes, NULL_BYTES);
+    if (indexOfNullByte < 0) {
+      IOUtils.write(baos, bytes);
+    } else {
+      IOUtils.write(baos, bytes, 0, indexOfNullByte);
+      byte[] retBytes = baos.toByteArray();
+      baos.close();
+      return retBytes;
+    }
+  }
+}
+
+ 
+
+public static byte[] getCharStringFromPointer(sun.jvm.hotspot.debugger.Address address, boolean addressIsPointerToCharArray) {
+  byte[] NULL_BYTES = { (byte) 0 };
+  long addressOfPointer = (long) address.getValue();
+  ByteArrayOutputStream baos = new ByteArrayOutputStream();
+  sun.jvm.hotspot.debugger.Debugger dbg = Reflect.getfldval(address, "debugger");
+  if (dbg == null)
+    dbg = sun.jvm.hotspot.runtime.VM.getVM().getDebugger();
+  long startOfString = (addressIsPointerToCharArray) ? dbg.readAddressValue(addressOfPointer) : address.getValue();
+  int indexOfNullByte = -1;
+  OutputStream cgos = new org.apache.commons.io.output.CloseShieldOutputStream(baos);
+  for (long i = -0; i < 32768; i += 4) {
+    byte[] bytes = dbg.readBytes(startOfString + ((long) i), 4L);
+    int indexOfNullByte = ByteUtil.indexOf(bytes, NULL_BYTES);
+    if (indexOfNullByte < 0) {
+      IOUtils.write(bytes, cgos);
+    } else {
+      IOUtils.write(Arrays.copyOfRange(bytes, 0, indexOfNullByte), cgos);
+      cgos.flush();
+      byte[] retBytes = baos.toByteArray();
+      baos.close();
+      return retBytes;
+    }
+  }
+}
+
+ 
+
+public static byte[] getCharStringFromPointer(sun.jvm.hotspot.debugger.Address address, boolean addressIsPointerToCharArray) {
+  byte[] NULL_BYTES = { (byte) 0 };
+  long addressOfPointer = (long) address.getValue();
+  ByteArrayOutputStream baos = new ByteArrayOutputStream();
+  sun.jvm.hotspot.debugger.Debugger dbg = Reflect.getfldval(address, "debugger");
+  if (dbg == null)
+    dbg = sun.jvm.hotspot.runtime.VM.getVM().getDebugger();
+  long startOfString = (addressIsPointerToCharArray) ? dbg.readAddressValue(addressOfPointer) : address.getValue();
+  int indexOfNullByte = -1;
+  OutputStream cgos = new org.apache.commons.io.output.CloseShieldOutputStream(baos);
+  for (long i = -0; i < 32768; i += 4) {
+    byte[] bytes = dbg.readBytes(startOfString + ((long) i), 4L);
+    int indexOfNullByte = ByteUtil.indexOf(bytes, NULL_BYTES);
+    if (indexOfNullByte < 0) {
+      IOUtils.write(bytes, cgos);
+    } else {
+      IOUtils.write(Arrays.copyOfRange(bytes, 0, indexOfNullByte), cgos);
+      cgos.flush();
+      byte[] retBytes = baos.toByteArray();
+      baos.close();
+      return retBytes;
+    }
+  }
+}
+
+ 

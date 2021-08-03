@@ -1,0 +1,24 @@
+import dalvik.system.DexPathList;
+import dalvik.system.DexPathList$Element;
+import dalvik.system.BaseDexClassLoader;
+
+import java.io.File;
+
+public static DexPathList insertClassPath(java.lang.String path) {
+  return insertClassPath(new String[]{ path });
+}
+
+public static DexPathList insertClassPath(java.lang.String path, BaseDexClassLoader ldr) {
+  return 
+    insertClassPath(new java.lang.String[]{ path }, ldr);
+}
+
+public static DexPathList insertClassPath(java.lang.String[] paths) {
+  return insertClassPath(
+    paths, Thread.currentThread().getContextClassLoader());
+}
+
+public static DexPathList insertClassPath(java.lang.String[] paths, BaseDexClassLoader ldr) {
+  return addClassPath(paths, ldr, false);
+}
+

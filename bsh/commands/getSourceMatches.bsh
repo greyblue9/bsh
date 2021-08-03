@@ -1,0 +1,18 @@
+public static List getSourceMatches() {
+  ArrayList matches = new ArrayList();
+
+  Pattern dirPtrn
+    = Pattern.compile("^.*?([^ ]+[^ ]*/[^ ]+[^ ]*).*?$");
+  LineIterator lit = FileUtils.lineIterator(
+    new File("stkinfo")
+  );
+  while (lit.hasNext()) {
+    String crntLine = lit.next();
+    Matcher lineMatcher = dirPtrn.matcher(crntLine);
+    if (! lineMatcher.find()) continue;
+    MatchResult lineResult = lineMatcher.toMatchResult();
+    String match = lineResult.group(1);
+    matches.add(match);
+  }
+  return matches;
+}

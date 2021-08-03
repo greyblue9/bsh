@@ -1,0 +1,29 @@
+
+
+
+public static Set<String> getAllClassDeps(Object clazz) {
+  Matcher mchr = Pattern.compile("^L?javax?[/.]").matcher("");
+  String rootClassName = dumpMembers.getClass(clazz).getName();
+  Set<String> refs = new TreeSet<String>();
+  Deque<String> lookup = new ArrayDeque<String>();
+  lookup.offer(rootClassName);
+  
+  while (! lookup.isEmpty()) {
+    String className = lookup.poll();
+    if (mchr.reset(className).find()) continue;
+    Collection<String> className_refs = ClassInfo.getReferencedClassNames(
+      DexVisitor.classForName(className)
+    );
+    className_refs.removeAll(refs);
+    if (className_refs.isEmpty()) continue;
+    refs.addAll(className_refs);
+    lookup.addAll(className_refs);
+    System.err.printf(
+      "size: %5d\tAdded: %s\n", lookup.size(), className_refs
+    );
+  };
+  return refs;
+};
+
+
+

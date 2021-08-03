@@ -1,0 +1,7 @@
+
+
+
+public static Object invokeNative(Object obj, Object[] args, Class declaringClass, Class[] parameterTypes, Class returnType, int slot, boolean noAccessCheck) { Method mtd = Method.class.getDeclaredMethod("invokeNative", Object.class, Object[].class, Class.class, Class[].class, Class.class, Integer.TYPE, Boolean.TYPE); mtd.setAccessible(true); return mtd.invoke(mtd, new Object[]{ obj, args, declaringClass, parameterTypes, returnType, slot, noAccessCheck }); };
+
+
+

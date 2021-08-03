@@ -1,0 +1,18 @@
+import java.util.Map.Entry;
+
+public static Object showAllVars() {
+
+  Object _vs = getAllVariables(); for (Entry ve: _vs.entrySet()) { CollectionUtil.getInterpreter().getNameSpace().getVariables().putAll(ve.getValue()); }; Object x = captureEval("""RealArrayMap.toMap(this.namespace.getVariables().values()).entrySet().select(FunctionUtil.bind("return m -> { Pair.of(String.format(\"%c%s %s; %c     == \",0x0a, new(ClassIdentifier,m.getValue().getClass()), m.getKey(), 0x0a), Pair.of(m.getKey(), Arrays.asList(m.getValue()).toArray())); }", bsh.ClassIdentifier.class)).print();;""");  String allStr = StringUtils.join(x.getLeft().toString().replaceAll("; *\n[^\n]*\n\\(? *\n", ";\n").selectLines(" ((?!\\$nodes?|\\$unwound|\\$_?_?p?ex?|xs\\$|_in|in|\\$__|\\$_|_err|_out|TAG)[a-zA-Z0-9_$])+;").sort().uniq(), "\n"); Reflect.setfldval(x, "middle", allStr);
+
+  CollectionUtil.getInterpreter().setShowResults(false);
+  Thread __t = new Thread(new Runnable() {
+    public void run() { Thread.sleep(15); CollectionUtil.getInterpreter().setShowResults(true); }
+  });
+
+  __t.start();
+  return x;
+
+}
+
+
+

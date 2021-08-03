@@ -1,0 +1,19 @@
+public static dalvik.system.VMRuntime getVmRuntime() {
+  java.lang.Class clazz = java.lang.Class.forName(
+    "dalvik.system.VMRuntime"
+  );
+  java.lang.reflect.Field field = null;
+  try {
+    field = clazz.getDeclaredField("THE_ONE");
+  } catch (java.lang.reflect.NoSuchFieldException e) {
+    try {
+      field = clazz.getDeclaredField("theVmRuntime");
+    } catch (java.lang.reflect.NoSuchFieldException e){
+      return null;
+    }
+  }
+  ((java.lang.reflect.AccessibleObject) field).setAccessible(true);
+  dalvik.system.VMRuntime runtime = field.get(null);
+  return field.get(null);
+}
+

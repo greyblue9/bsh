@@ -1,0 +1,3 @@
+
+public static String getPackage(Object obj) { try { return StringUtils.substringBefore(StringUtils.substringAfter(CollectionUtil.selectLines(obj, "^package ")[0], "package "), ";").trim(); } catch (Throwable e) { return parseJava(obj).getPackageDeclaration().get().getName().toString(); } };
+

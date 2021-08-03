@@ -1,0 +1,3 @@
+
+public static String logcat() { String[] lines = StringUtils.split(PosixFileInputStream.pexecSync("logcat", "-d", "*:s", "dalvikvm:*", "VFY:*", "dexopt:*", "DEXOPT:*"), "\n"); StringCollectionUtil.removeMatching(al = new ArrayList(Arrays.asList(lines)), "\\bGC_|_GC\\b|libjavacore.so|JNI_OnLoad|libnativehelper.so|Trying to load lib|Added shared lib|JIT code"); lines = al.toArray(new String[0]); return StringUtils.join(StringUtils.join(lines.uniq(), "\n").matchAll("dalvikvm\\([0-9 ]+\\): ([^\n]*)"), "\n"); }
+

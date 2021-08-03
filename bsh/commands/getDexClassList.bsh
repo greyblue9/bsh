@@ -1,0 +1,8 @@
+public static String[] getDexClassList(String path) {
+  Iterator it = new com.android.dx.io.DexIndexPrinter(new File(path)).iterator();
+  StringBuilder sb = new StringBuilder();
+  while (it.hasNext()) {
+    it.next().appendClassDefs(sb);
+  }
+  return sb.toString().split("\n");
+}

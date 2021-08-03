@@ -1,0 +1,138 @@
+{
+  import org.apache.commons.lang3.time.FastDateFormat;
+  import java.io.FileNotFoundException;
+  import pxb.android.arsc.ArscParser;
+  import pxb.android.arsc.ArscWriter;
+
+  
+  public static String TAG = "arscmerger";
+  
+  
+  public static byte[] arscmerger() {
+    List<String> inpaths = Arrays.asList(
+      StringUtils.split(System.getProperty("input.files", ""), " ;:")
+    );
+    String outpath = System.getProperty("output.file");
+    if (outpath == null) {
+      return arscmerger(inpaths);
+    } else {
+      return arscmerger(inpaths, new File(outpath));
+    }
+  }
+  
+  public static byte[] arscmerger(List<Object> inputs) {
+    File outdir = new File(".").getAbsoluteFile().getCanonicalFile();
+    Log.d(TAG, "outdir = '%s'", outdir);
+    
+    String outputFileName = "resources_combined";
+    String outputFileExt =  "arsc";
+    File outputFile = new File(
+      outdir, String.format("%s.%s", outputFileName, outputFileExt)
+    );
+    Log.d(TAG, "outputFile = '%s'", outputFile);
+    if (outputFile.exists()) {
+      long fileTime = outputFile.lastModified();
+      String backupFileName = String.format(
+        "%s.%s.bak.%s",
+        outputFileName, 
+        FastDateFormat.getInstance("yyyy-MM-dd_HHmmss").format(fileTime),
+        outputFileExt
+      );
+      File backupfile = new File(outdir, backupFileName);
+      Log.d(TAG, "Output file '%s' exists; renaming to %s", outputFile, backupfile);
+      FileUtils.moveFile(outputFile, backupfile);
+      if (outputFile.exists()) {
+        throw new IOException(String.format(
+          "backup of '%s' to '%s' failed", outputFile, backupfile
+        ));
+      }
+    } 
+    return arscmerger(inputs, outputFile);
+  }
+  
+  
+  public static byte[][] getArscByteArrayInputs(List<Object> inputs) {
+    return getByteArrayInputs(inputs, 0x02000C00, "resources.arsc");
+  }
+  
+  public static byte[] arscmerger(List<Object> inputs, File outputFile) {
+    String TAG = "arscmerger";
+    byte[][] arscByteArrayInputs = getArscByteArrayInputs(inputs);
+    
+    List<Pkg> allPkgs = new ArrayList();
+    int inputIndex = -1;
+    for (byte[] arscBytes: arscByteArrayInputs) {
+      ++inputIndex;
+      Log.i(
+        "arscmerger", "reading resource table #%d/%d ...", 
+        inputIndex+1, arscByteArrayInputs.length
+      );
+      ArscParser parser = new ArscParser(arscBytes);
+      List<Pkg> arscPkgs = parser.parse();
+      allPkgs.addAll(arscPkgs);
+      Log.i(
+        "arscmerger", "  - found %d packages: \n        * %s",  //;
+        arscPkgs.size(), StringUtils.join(
+          arscPkgs.select(FunctionUtil.bind("return m -> { m.name; }")),
+          "\n    - "
+        )
+      );
+    }
+    ArscWriter writer = new ArscWriter(allPkgs);
+    Log.d(TAG, "writer = %s", writer);
+    List<PkgCtx> ctxts = writer.prepare();
+    Log.d(TAG,  "ctxts = %s", ctxts.toArray());
+    Log.d(TAG, ctxts.toArray());
+    
+    int size = writer.count();
+    Log.d(TAG, "size = %s", size);
+    
+    ByteBuffer out = ByteBuffer.allocate(size).order(ByteOrder.LITTLE_ENDIAN);
+    writer.write(out, size);
+    byte[] arscMergedBytes = out.array();
+    writeFile(
+      (outputFile != null)
+        ? outputFile.getPath()
+        : (outputFile = String.format(
+            "%s/resources_combined.arsc", PosixFileInputStream.cwd()
+          )),
+      arscMergedBytes
+    );
+    Log.i(
+      "arscmerger",
+      "Wrote merged ARSC to \"%s\" (%d bytes)",
+      outputFile.getPath(), outputFile.length()
+    );
+    return arscMergedBytes;
+  }
+  
+  
+  
+
+  public static void script_main() {
+    arscmerger();
+  }
+
+
+
+  Object invtype = getBshInvocationTypeId();
+  Log.d(TAG, "invtype_id = [%s]\n", invtype.getValue());
+    // if inside "main" script, like ` if __NAME__ == "main": ` in python
+  if (invtype == INVTYPE_SCRIPT) {
+    Log.INSTANCE.enabledLevels = Integer.parseInt(
+      System.getProperty("log.level", "254")
+    );
+    try {
+    script_main(); 
+    } catch (Throwable e) {
+      while (e != null) {
+        e.printStackTrace();
+        e = e.getCause();
+      }
+    }
+  }
+
+  void;
+}
+
+

@@ -1,0 +1,30 @@
+
+
+
+{
+    public static List<BshMethod> getBshMethods(String name) {
+    Interpreter in = CollectionUtil.getInterpreter();
+    NameSpace ns = in.getNameSpace();
+    Map cmdsByName = ns.getMethodsByName();
+    if (cmdsByName.containsKey(name)) {
+      Object val = cmdsByName.get(name);
+      if (val != null && !val.isEmpty())
+        return val;
+    }
+    Object oldOut = Reflect.getfldval(in, "out");
+    PrintStream dummyOut = new PrintStream(new ByteArrayOutputStream());
+    Object cmds = null;
+    try {
+      Reflect.setfldval(in, "out", dummyOut);
+      ns.getCommand(name, new Class[0], in);
+      cmds = ns.getMethodsByName().get(name);
+      Reflect.setfldval(in, "out", oldOut);
+    } catch (Throwable e) {
+      Reflect.setfldval(in, "out", oldOut);
+      Log.e(String.format("cmd(\"%s\")", name), "error getting command", Reflector.getRootCause(e));
+    }
+    return cmds;
+  }
+  void;
+}
+

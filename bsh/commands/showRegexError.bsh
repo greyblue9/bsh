@@ -1,0 +1,6 @@
+
+
+
+public static String showRegexError(java.util.regex.PatternSyntaxException ex) { return String.format("\n  \n  Error in pattern\n      at index = %d:\n      %s\n  \n  %s\u001b[1;41;37m%s\u001b[0m%s\n  \n  \n", ex.getIndex(), ex.getDescription(), ex.getPattern().subSequence(0,ex.getIndex()), ex.getPattern().subSequence(ex.getIndex(), ex.getIndex()+1), ex.getPattern().subSequence(ex.getIndex()+1, ex.getPattern().length())); };
+
+

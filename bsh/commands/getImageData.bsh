@@ -1,0 +1,97 @@
+import org.jsoup.nodes.Document;
+import org.jsoup.nodes.Element;
+
+import java.nio.charset.CharsetDecoder;
+import libcore.icu.NativeConverter;
+import com.itextpdf.text.pdf.codec.PngImage;
+import com.itextpdf.text.Image;
+import com.itextpdf.text.Image;
+import org.json.JSONObject;
+import org.apache.commons.lang3.StringEscapeUtils;
+import org.apache.commons.lang3.time.FastDateFormat;
+import org.jsoup.nodes.TextNode;
+import org.jsoup.parser.Tag;
+import org.jsoup.nodes.Attribute;
+import org.jsoup.nodes.Attributes;
+import org.jsoup.nodes.Document;
+import org.jsoup.nodes.Element;
+import org.jsoup.select.Elements;
+import org.jsoup.parser.Parser;
+import org.jsoup.safety.Cleaner;
+import org.jsoup.safety.Whitelist;
+import org.jsoup.helper.DataUtil;
+import org.jsoup.helper.HttpConnection;
+
+
+
+
+
+public static String getImageData(String imgUri, String baseUrl) {
+  String TAG = "getImageData";
+  return getImageData(imgUri, baseUrl, null);
+}
+
+
+public static String getImageData(String imgUri, String baseUrl,
+URLConnection optionalExistingConnection)
+{
+  String TAG = "getImageData";
+  return getImageData(imgUri, baseUrl, null, null);
+}
+
+
+public static String getImageData(String imgUri, String baseUrl,
+URLConnection optionalExistingConnection, InputStream optIs)
+{
+  URL url = new URL(normalizeUri(imgUri, baseUrl));
+  byte[] imgBytes = IOUtils.toByteArray(url);
+  Image image = Image.getInstance(imgBytes);
+  Map constMap = ConstUtil.constantMap(com.itextpdf.text.Element.class, -1);
+  String imageObjectType = (constMap.containsKey(image.type()))
+    ? constMap.get(image.type())
+    : "IMGRAW";
+  String imageType = imageObjectType.toLowerCase();
+  
+  String ext = StringUtils.substringAfterLast(
+        StringUtils.substringBeforeLast(
+          StringUtils.substringBeforeLast(imgUri, "#"), "?"
+        ),
+        "."
+      ).toLowerCase();
+  
+  String mimeType = String.format(
+    "image/%s",
+    (! ("IMGRAW".equals(imageObjectType)))
+      ? imageType
+      : (Pattern.compile("^[a-z]+[a-z0-9]*$").matcher(ext).matches())
+          ? ext
+          : "png"
+  );
+  int width =  (int) image.getWidth();
+  int height = (int) image.getHeight();
+  System.err.printf(
+    ("Processing %s " +
+    "<dimen: %s x %s, mime: %s, type: %s, ext: %s, len: %s, uri: \"%s\">\n"),
+    image.getClass().getSimpleName(),
+    width,
+    height,
+    mimeType,
+    imageObjectType,
+    ext,
+    image.getRawData().length,
+    url
+  );
+  String imgDataUri = String.format(
+    "data:%s;base64,%s", mimeType, Base64.encode(imgBytes)
+  );
+  System.err.printf(" getImageData() uri length: %d\n", imgDataUri.length());
+  FileUtils.writeStringToFile(
+    new File("/data/media/0/David/www/imagetest.html"),
+    String.format("<img src=\"%s\" />", imgDataUri)
+  );
+  return imgDataUri;
+}
+
+
+
+

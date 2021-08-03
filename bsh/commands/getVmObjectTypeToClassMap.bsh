@@ -1,0 +1,38 @@
+public static Map getVmObjectTypeToClassMap() {
+  List errors = new ArrayList();
+  Map ctorMap = new TreeMap();
+  List<Class> vmObjImpls = ClassPathUtil.getImpls("^sun.jvm.hotspot|vmObject", "sun.jvm.hotspot.runtime.VMObject");
+  int size = vmObjImpls.size();
+  Class vmObjImpl = null;
+  for (int i = 0; i < size; ++i) {
+    vmObjImpl = vmObjImpls[i];
+    System.err.println(String.valueOf(new bsh.ClassIdentifier(vmObjImpl)));
+    String strTypeName = null;
+    try {
+      TypeDefinition td = ProcyonUtil.getTypeDefinition(vmObjImpl);
+      MethodDefinition md = CollectionUtil.firstOrDefault(td.getDeclaredMethods().filter("void initialize\\("));
+      if (md != null) {
+        insns = md.getBody().getInstructions();
+        Matcher mchr = Pattern.compile("^#[0-9]+: INVOKE.*\\.lookupType:\\(Ljava/lang/String;\\)Lsun/jvm/hotspot/types/Type;$", Pattern.DOTALL).matcher("");
+        invokeInsn = CollectionUtil.firstOrDefault(CollectionUtil2.filter(insns, mchr));
+        prevInsns = insns.subList(0, insns.indexOf(invokeInsn));
+        for (com.strobel.assembler.ir.Instruction insn : IterableUtils.reversedIterable(prevInsns)) {
+          if (insn.getOpCode().getOperandType() == com.strobel.assembler.ir.OperandType.Constant && insn.getOperand(0) instanceof String) {
+            strTypeName = (String) insn.getOperand(0);
+            break;
+          }
+        }
+      }
+      if (strTypeName != null) {
+        System.err.printf("type \"%s\" -> %s.class\n", strTypeName, vmObjImpl.getName());
+        ctorMap.put(strTypeName, vmObjImpl);
+      }
+    } catch (Throwable e) {
+      errors.add(e);
+      System.err.println(Reflector.getRootCause(e));
+    }
+  }
+  return ctorMap;
+}
+
+ 

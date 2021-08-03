@@ -1,0 +1,71 @@
+
+import com.android.dex.Dex;
+import com.strobel.assembler.metadata.ITypeLoader;
+import com.strobel.assembler.metadata.JarLoader;
+import org.apache.commons.io.FilenameUtils;
+import org.jf.dexlib2.writer.pool.ClassPool;
+import org.jf.dexlib2.writer.pool.DexPool;
+import org.jf.dexlib2.writer.io.DexDataStore;
+import org.jf.dexlib2.writer.io.MemoryDataStore;
+
+
+
+ 
+
+
+public static void enjarify(File apkOrDex, String filter) {
+  byte[] dexBytes = (filter != null) ? getDexSubset(apkOrDex, new DexUtil(apkOrDex.getPath()).getClassNames().filter(filter)) : Reflect.getfldval(DexRemix.getDexBackedDexFile(apkOrDex.getPath()), "buf");
+  File tempDex = File.createTempFile("classes", ".dex");
+  File outputJar = new File(tempDex.getParentFile(), String.format("%s-enjarify.jar", FilenameUtils.removeExtension(tempDex.getName())));
+  FileUtils.writeByteArrayToFile(tempDex, dexBytes);
+  String output = PosixFileInputStream.pexecSync("enjarify", "-f", "-o", outputJar.getPath(), tempDex.getPath());
+  System.err.println(output);
+  if (!outputJar.exists()) {
+    throw new RuntimeException(String.format("enjarify task failed for %s: %s", apkOrDex.getPath().getPath(), output));
+  }
+  FileUtils.writeByteArrayToFile(outputJar, ZipUtil.writeZip(addGenericSignatures(outputJar.getPath(), dbdf)));
+  JarFile jarFile = new JarFile(outputJar);
+  ITypeLoader jarLoader = new JarTypeLoader(jarFile);
+  MetadataSystem mds = new MetadataSystem(new CompositeTypeLoader(new ITypeLoader[] { jarLoader, ProcyonUtil.getTypeLoader() }));
+  for (String className : ClassInfo.getClassNamesFromEntries(jarFile)) {
+    typeDefinition = mds.lookupType(ClassInfo.classNameToPath(className, null)).resolve();
+    System.err.printf("Loaded typeDefinition: %s\n", typeDefinition.getDescription());
+    ProcyonUtil.removeType(ProcyonUtil.getMetadataResolver(), className);
+    ProcyonUtil.addTypeDefinition(typeDefinition);
+  }
+  JarDecompiler.decompile(outputJar.getPath(), null, false);
+  jarFile.close();
+}
+
+
+public static byte[] getDexSubset(final File apkOrDex, 
+  final String[] classNamesToInclude)
+{
+  final List<String> classNames
+      = Arrays.asList(ClassInfo.typeToName(classNamesToInclude));
+  final DexBackedDexFile dbdf = DexRemix.getDexBackedDexFile(apkOrDex.getPath());
+  final DexPool dexPool = DexRemix.newDexPool();
+  final ClassPool classPool = Reflect.getfldval(dexPool, "classSection");
+  
+  final byte[] dexBuf = Reflect.getfldval(dbdf, "buf");
+  final Dex dex = new Dex(buf);
+  for (final String className : classNames) {
+    final int classDefIndex = ClassInfo.getDexClassDefIndex(dex, className);
+    final int classDefOffset = dbdf.getClassDefItemOffset(classDefIndex);
+    final DexBackedClassDef dbcd = new DexBackedClassDef(dbdf, classDefOffset);
+    System.err.printf("Adding %s ...\n", classDef.getType());
+    classPool.intern(classDef);
+  }
+  final int capacity
+    = dexBuf.length * classNamesToInclude.length * 300000
+    / dbdf.getClassCount()
+    / 200000;
+  final DexDataStore store = new MemoryDataStore(capacity);
+  dexPool.writeTo(store);
+  store.close();
+  final byte[] dexBytes = IOUtils.toByteArray(store.readAt(0));
+  return dexBytes;
+}
+
+
+ 

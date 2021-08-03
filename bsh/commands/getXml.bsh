@@ -1,0 +1,7 @@
+
+
+
+public static String getXml(brut.androlib.res.data.ResValuesFile vf) { File tmpDir = PosixFileInputStream.createTemporaryDirectory("tmp_androlib_res"); try { brut.directory.Directory outDir = new brut.directory.FileDirectory(tmpDir);   brut.androlib.res.AndrolibResources ar = new brut.androlib.res.AndrolibResources(); brut.androlib.res.util.ExtMXSerializer xmlSer; ar.generateValuesFile(vf, outDir, xmlSer = new brut.androlib.res.util.ExtMXSerializer()); String relPath = outDir.getFiles(true).iterator().next(); byte[] bytes = IOUtils.toByteArray(new org.apache.commons.io.input.AutoCloseInputStream(outDir.getFileInput(relPath))); String xml = java.nio.charset.StandardCharsets.UTF_8.newDecoder().decode(ByteBuffer.wrap(bytes)); String rawXml = xml.toString(); File tmpFile = File.createTempFile("tmpxml", ".xml"); try { FileUtils.writeStringToFile(tmpFile, rawXml, java.nio.charset.StandardCharsets.UTF_8); return PosixFileInputStream.pexecSync("xmllint", "--pretty", "1", "--recover", tmpFile.getPath()); } finally { tmpFile.delete(); } } finally { if (tmoDir.exists() && tmpDir.isDirectory()) FileUtils.deleteDirectory(tmpDir); };
+
+
+

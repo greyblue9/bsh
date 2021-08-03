@@ -1,0 +1,5 @@
+public static Map mapClassPath() { 
+
+  dalvik.system.DexPathList.Element[] elems = getfldval(getfldval(Thread.currentThread().getContextClassLoader(), "pathList"), "dexElements"); Map mm = new HashMap(); dalvik.system.DexFile df; java.lang.reflect.Method m = findMethod(dalvik.system.DexFile.class, "getClassNameList"); for (elem: elems) { try { df = getfldval(elem, "dexFile"); int cookie = getfldval(df, "mCookie"); String[] classNames = m.invoke(null, new Object[]{ cookie }); String filePath = getfldval(df, "mFileName"); String fName = filePath.substring(filePath.lastIndexOf('/')+1); print(String.format("%35s: %d classes", String.format("%s (cookie=%d)", fName, cookie), classNames.length)); mm.put(fName, java.util.Arrays.asList(classNames)); } catch (Throwable e) { if (df != null) { print(df); print(e.getMessage()); } }; }; return mm; 
+
+}

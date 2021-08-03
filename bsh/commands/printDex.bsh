@@ -1,0 +1,9 @@
+
+public static String methodIdToString(com.android.dex.Dex dex, methodId) { proto = dex.protoIds()[methodId.getProtoIndex()]; declClassName = dex.strings()[dex.typeIds()[methodId.getDeclaringClassIndex()]];  methodName = dex.strings()[methodId.getNameIndex()]; typeList = proto.getParametersOffset() != 0? dex.open(proto.getParametersOffset()).readTypeList(): null; String[] ptypes = typeList != null? ArrayUtils.toObject(typeList.getTypes()).select(FunctionUtil.eval("""return m -> { ClassInfo.typeToName(dex.typeNames()[m.intValue()]); }""")): new String[0]; return String.format("\u001b[1;36m%s\u001b[0m.\u001b[1;33m%s\u001b[0m(\u001b[1;32m%s\u001b[0m)", ClassInfo.typeToName(declClassName), methodName, StringUtils.join(ptypes, ", \u001b[1;32m").replace("[]", "\u001b[1;37m[]\u001b[0m"));  };
+
+public static void printDex(com.android.dex.Dex dex) {
+
+  com.android.dex.ClassDef[] classDefs = CollectionUtil.toArray(dex.classDefs());
+  for (com.android.dex.ClassDef classDef: classDefs) { com.android.dex.Dex.Section s = dex.open(classDef.getClassDataOffset()); com.android.dex.ClassData cd = s.readClassData(); for (methodInfo: cd.allMethods()) { methodId = dex.methodIds()[methodInfo.getMethodIndex()]; String str = methodIdToString(dex, methodId); System.out.println("  " + str); } };
+}
+

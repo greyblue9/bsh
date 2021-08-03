@@ -1,0 +1,26 @@
+
+public static String lldte(String path) {
+  
+  String strll = captureEval(
+    "ll(\"" + path + "\");", false
+  ).getLeft(); 
+  String[] ss; 
+  Arrays.sort(
+    ss = StringUtils.split(strll, "\n"), 
+    new Comparator() { 
+      // @Override
+      public int compare(Object o1, Object o2) { 
+        return 
+          ((String) o1).substring(10).compareTo(
+              ((String) o2).substring(10)
+            );
+      }
+      
+      public boolean equals(Object other) {
+        return this == other;
+      }
+    }
+  );
+  return StringUtils.join(ss, "\n");
+}
+

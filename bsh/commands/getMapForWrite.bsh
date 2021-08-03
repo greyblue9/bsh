@@ -1,0 +1,136 @@
+import java.util.Map.Entry;
+
+
+public static Map getMapForWrite(org.d6r.DecompilationResult dcrs) {
+  Map[] stringVals = new Map[] { RealArrayMap.toMap(dcrs.values()) };
+  bsh.NameSpace.BindingMap toStringSafeMap = new bsh.NameSpace.BindingMap();
+  toStringSafeMap.putAll((Map) stringVals[0]);
+  return toStringSafeMap;
+}
+
+
+public static Map getMapForWrite(Map origMap) {
+  Map prev = new TreeMap();
+  prev.putAll(RealArrayMap.toMap(
+    origMap.entrySet().select(FunctionUtil.bind(
+      "return m -> { " +
+      "  String.isInstance(m.getKey()) " +
+      "    ? m " +
+      "    : Pair.of(String.valueOf(m.getKey()), m.getValue()); " +
+      "}"
+    ))
+  ));
+  
+  Map map = new TreeMap();
+  
+  Deque<Entry> q = new ArrayDeque<Entry>();
+  Collections.addAll(q, prev.entrySet().toArray(new Entry[0]));
+  
+  int unhandled = 0;
+  while (!q.isEmpty()) {
+    Entry e = q.pollLast();
+    
+    String curKey = e .getKey();
+    Object curValue = e .getValue();
+    
+    if (curValue instanceof ZipFile) {
+      Map zm = ZipUtil.mapZip(
+        FileUtils.readFileToByteArray(new File(((ZipFile) curValue).getName()))
+      );
+      for (Entry ze: zm.entrySet()) {
+        map.put(String.format("%s/%s", curKey, ze.getKey()), ze.getValue());
+      }
+      continue;
+    } else if (curValue instanceof String || curValue instanceof byte[]) {
+      map.put(curKey, curValue);
+      continue;
+    } else if (curValue instanceof CharSequence) {
+      map.put(curKey, curValue.toString());
+      continue;
+    } else if (curValue instanceof File) {
+      map.put(curKey, FileUtils.readFileToByteArray((File) curValue));
+      continue;
+    } else if (curValue instanceof Map) {
+      String curKey = curKey;
+      for (Entry e2 : ((Map) curValue).entrySet().toArray(new Entry[0])) {
+        map.put(String.format("%s/%s", curKey, e2.getKey()), e2.getValue());
+      }
+      continue;
+    } else if (curValue instanceof Iterable) {
+      String curKey = curKey;
+      int index = 0;
+      for (Object v : ((Iterable) curValue)) {
+        if (v instanceof Entry) {
+          String key = String.format("%s/%s", curKey, ((Entry) v).getKey());
+          map.put(key, ((Entry) v).getValue());
+        } else {
+          q.offerFirst(Pair.of(String.format("%s.%05d", curKey, index++), v));
+        }
+      }
+      continue;
+    } else if (curValue instanceof Entry) {
+      String key = String.format("%s/%s", curKey, ((Entry) curValue).getKey());
+      map.put(key, ((Entry) curValue).getValue());
+      continue;
+    } else {
+      System.err.printf(
+        "[%d] No rule for pair: %s -> %s\n",
+        unhandled, curKey,bsh.Factory.typeof(curValue).getName()
+      );
+      map.put(curKey, Dumper.dumpStr(curValue, 9, 15));
+    }
+    ++unhandled;
+    if (unhandled > 60) break;
+  }
+  return map;
+}
+
+
+
+/*
+import java.nio.charset.StandardCharsets;
+
+public static Map getMapForWrite(org.d6r.DecompilationResult dcResult) {
+
+  Map dcrsMap = dcResult.toMap();
+  Map mfw2 = new TreeMap();
+  
+  for (Entry entry : dcrsMap.entrySet()) {
+    String pkg = null, sn = null, className = null;
+    String src = entry.getValue().getSource();
+    
+    List mparts = src.matchLines(
+    "(class|interface|enum) ([a-zA-Z0-9_$]+)|(package) ([a-zA-Z0-9_$.]+);"
+    );
+    
+    for (List mlist: mparts) {
+      if (!"null".equals(String.format("%s", mlist.iterator().next()))) {
+        if (sn == null) {
+          String sn = mlist[1];
+          // System.out.printf("simpleName  = %s\n", sn);
+        }
+      } else {
+        if (pkg == null) {
+          pkg = mlist[mlist.size() - 1];
+          // System.out.printf("packageName = %s\n", pkg);
+        }
+      }
+    }
+    
+    if (pkg != null && sn != null) {
+      className = String.format("%s.%s", pkg, sn).replaceAll("^\\.", "");
+      System.err.println(className);
+      mfw2.put(
+        ClassInfo.classNameToPath(className, "java"),
+        entry.getValue().getSource().getBytes(StandardCharsets.UTF_8)
+      );
+    } else {
+      System.err.printf("skipping %s\n", entry.getKey());
+    }
+  }
+  return mfw2;
+}
+*/
+
+
+

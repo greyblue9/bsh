@@ -1,0 +1,336 @@
+import com.strobel.annotations.NotNull;                                           import com.strobel.assembler.flowanalysis.ControlFlowGraph;
+import com.strobel.assembler.flowanalysis.ControlFlowGraphBuilder;
+import com.strobel.assembler.ir.ExceptionHandler;
+import com.strobel.assembler.ir.Instruction;
+import com.strobel.assembler.ir.InstructionCollection;
+import com.strobel.assembler.ir.attributes.AnnotationDefaultAttribute;
+import com.strobel.assembler.ir.attributes.SourceAttribute;
+import com.strobel.assembler.metadata.Flags;
+import com.strobel.assembler.metadata.MemberReference;
+import com.strobel.assembler.metadata.MethodBody;
+import com.strobel.assembler.metadata.MethodDefinition;
+import com.strobel.assembler.metadata.MethodReference;
+import com.strobel.assembler.metadata.ParameterDefinition;
+import com.strobel.assembler.metadata.ParameterReference;
+import com.strobel.assembler.metadata.TypeDefinition;
+import com.strobel.assembler.metadata.TypeReference;
+import com.strobel.assembler.metadata.annotations.AnnotationElement;
+import com.strobel.assembler.metadata.annotations.CustomAnnotation;
+import com.strobel.componentmodel.Key;
+import com.strobel.componentmodel.UserDataStoreBase;
+import com.strobel.core.CollectionUtilities;
+import com.strobel.core.Freezable;
+import com.strobel.core.MutableInteger;
+import com.strobel.core.Predicate;
+import com.strobel.core.VerifyArgument;
+import com.strobel.decompiler.DecompilerContext;
+import com.strobel.decompiler.ast.AstBuilder.ByteCode;
+import com.strobel.decompiler.ast.AstBuilder.FinallyInlining;
+import com.strobel.decompiler.ast.AstBuilder;
+import com.strobel.decompiler.ast.AstOptimizer;
+import com.strobel.decompiler.ast.Block;
+import com.strobel.decompiler.ast.CatchBlock;
+import com.strobel.decompiler.ast.Expression;
+import com.strobel.decompiler.ast.Node;
+import com.strobel.decompiler.ast.Variable;
+import com.strobel.decompiler.languages.java.ast.Annotation;
+import com.strobel.decompiler.languages.java.ast.AstBuilder;
+import com.strobel.decompiler.languages.java.ast.AstMethodBodyBuilder;
+import com.strobel.decompiler.languages.java.ast.AstNode;
+import com.strobel.decompiler.languages.java.ast.AstNodeCollection;
+import com.strobel.decompiler.languages.java.ast.AstType;
+import com.strobel.decompiler.languages.java.ast.BlockStatement;
+import com.strobel.decompiler.languages.java.ast.CommentStatement;
+import com.strobel.decompiler.languages.java.ast.EntityDeclaration;
+import com.strobel.decompiler.languages.java.ast.Expression;
+import com.strobel.decompiler.languages.java.ast.Keys;
+import com.strobel.decompiler.languages.java.ast.MethodDeclaration;
+import com.strobel.decompiler.languages.java.ast.NameVariables;
+import com.strobel.decompiler.languages.java.ast.ParameterDeclaration;
+import com.strobel.decompiler.languages.java.ast.Roles;
+import com.strobel.decompiler.languages.java.ast.Statement;
+import com.strobel.decompiler.languages.java.ast.TypeDeclaration;
+import com.strobel.decompiler.languages.java.ast.VariableDeclarationStatement;
+import com.strobel.decompiler.patterns.Role;
+import javax.lang.model.element.Modifier;
+
+
+public static List<Node> buildAst(MethodBody body, boolean optimize,
+  DecompilerContext context)
+{
+  return buildAst(body, optimize, context, null);
+}
+
+public static List<Node> buildAst(MethodBody body, boolean optimize,
+  DecompilerContext context,
+  com.strobel.decompiler.ast.AstBuilder astBuilder)
+{
+  TypeDefinition oldType = context.getCurrentType();
+  MethodDefinition oldMethod = context.getCurrentMethod();
+  context.setCurrentMethod(body.getMethod());
+  context.setCurrentType(body.getMethod().getDeclaringType());
+  
+  com.strobel.decompiler.ast.AstBuilder.Builder bldr = 
+    (astBuilder != null)
+      ? new com.strobel.decompiler.ast.AstBuilder.Builder(astBuilder)
+      : com.strobel.decompiler.ast.AstBuilder.builder(context);
+    
+  bldr.setBody(body).setOptimize(optimize);
+  
+  if (body.getInstructions().isEmpty()) return Collections.emptyList();
+
+  bldr.setInstructions(
+    com.strobel.decompiler.ast.AstBuilder.copyInstructions(
+      body.getInstructions()
+    )
+  );
+  
+  InstructionCollection oldInstructions = body.getInstructions();
+  InstructionCollection newInstructions = bldr.getInstructions();
+  
+  Map instructionMap = new IdentityHashMap();
+  for (int i = 0; i < newInstructions.size(); i++) {
+    instructionMap.put(
+      newInstructions.get(i), oldInstructions.get(i)
+    );
+  }
+  bldr.setOriginalInstructionMap(instructionMap);
+  
+  List<ExceptionHandler> origExceptionHandlers = body.getExceptionHandlers();
+  List<ExceptionHandler> newExceptionHandlers
+    = com.strobel.decompiler.ast.AstBuilder.remapHandlers(
+        origExceptionHandlers, newInstructions
+      );
+  
+  bldr.setExceptionHandlers(newExceptionHandlers);
+  
+  Collections.sort(newExceptionHandlers);
+
+  com.strobel.decompiler.ast.AstBuilder builder = bldr.build();
+  
+  builder.removeGetClassCallsForInvokeDynamic();
+  builder.pruneExceptionHandlers();
+  builder.inlineSubroutines();
+  
+  try {
+    com.strobel.decompiler.ast.AstBuilder.FinallyInlining.run(
+      bldr.getBody(), newInstructions, newExceptionHandlers,
+      bldr.getRemoved()
+    );
+  } catch (Throwable e) {
+    e.printStackTrace();
+  }
+  
+  ControlFlowGraph cfg = ControlFlowGraphBuilder.build(
+    newInstructions, newExceptionHandlers
+  );
+  
+  bldr.setCfg(cfg);
+  cfg.computeDominance();
+  cfg.computeDominanceFrontier();
+
+  List<ByteCode> byteCode = null;
+  try {
+    byteCode = builder.performStackAnalysis();
+  } catch (Throwable e) {
+    e.printStackTrace();
+    newExceptionHandlers.clear();
+    byteCode = builder.performStackAnalysis();
+  }
+  
+  List<Node> ast = builder.convertToAst(
+    byteCode,
+    new LinkedHashSet(newExceptionHandlers),
+    0,
+    new MutableInteger(byteCode.size())
+  );
+  
+  context.setCurrentMethod(oldMethod);
+  context.setCurrentType(oldType);
+  
+  return ast;
+}
+
+
+//Iterable<ParameterDeclaration> parameters
+//  = astBuilder.createParameters(method.getParameters());
+
+public static MethodDeclaration buildAst(AstBuilder astBuilder,
+  MethodDefinition method, DecompilerContext context, List<Node> astNodes)
+{
+  MethodDefinition oldCurrentMethod = context.getCurrentMethod();
+  context.setCurrentMethod(method);
+  
+  Iterable<ParameterDeclaration> parameters
+    = astBuilder.createParameters(method.getParameters());
+  
+  BlockStatement astBlock = null;
+  
+  if (!method.getDeclaringType().isInterface() ||
+       method.isTypeInitializer() ||
+       method.isDefault())
+  {
+    AstMethodBodyBuilder mbb = new AstMethodBodyBuilder(
+      astBuilder, method, context //, astNodes
+    );
+    
+    // createMethodBody(Iterable<ParameterDeclaration> parameters):
+    MethodBody body = method.getBody();
+    if (body == null) return null;
+    
+    Block methodBlock = new Block();
+    methodBlock.getBody().addAll(astNodes);
+    AstOptimizer.optimize(context, methodBlock);
+    
+    Set<ParameterDefinition> unmatchedParameters
+      = new LinkedHashSet<ParameterDefinition>(method.getParameters());
+    Set<Variable> methodParameters = new LinkedHashSet<Variable>();
+    Set<Variable> localVariables = new LinkedHashSet<Variable>();
+    List<Expression> expressions
+      = methodBlock.getSelfAndChildrenRecursive(Expression.class);
+    for (Expression e : expressions) {
+      Object operand = e.getOperand();
+      if (!operand instanceof Variable) {
+        continue;
+      }
+      Variable variable = operand;
+      if (variable.isParameter()) {
+        methodParameters.add(variable);
+        unmatchedParameters.remove(variable.getOriginalParameter());
+      } else {
+        localVariables.add(variable);
+      }
+    }
+    
+    List<Variable> orderedParameters = new ArrayList<Variable>();
+    for (ParameterDefinition p : unmatchedParameters) {
+      Variable v = new Variable();
+      v.setName(p.getName());
+      v.setOriginalParameter(p);
+      v.setType(p.getParameterType());
+      orderedParameters.add(v);
+    }
+    
+    for (Variable parameter : methodParameters) {
+      orderedParameters.add(parameter);
+    }
+    
+    Collections.sort(orderedParameters, new Comparator<Variable>() {
+      public int compare(Variable p1, Variable p2) {
+        return Integer.compare(
+          p1.getOriginalParameter().getSlot(),
+          p2.getOriginalParameter().getSlot()
+        );
+      }
+    });
+    
+    List<CatchBlock> catchBlocks
+      = methodBlock.getSelfAndChildrenRecursive(CatchBlock.class);
+    for (CatchBlock catchBlock : catchBlocks) {
+      Variable exceptionVariable = catchBlock.getExceptionVariable();
+      if (exceptionVariable == null) {
+        continue;
+      }
+      localVariables.add(exceptionVariable);
+    }
+    
+    NameVariables.assignNamesToVariables(
+      context, orderedParameters, localVariables, methodBlock
+    );
+    
+    for (Variable v: orderedParameters) {
+      ParameterDeclaration foundDeclaration = null;
+      for (ParameterDeclaration pd: parameters) {
+        if (pd.getUserData(Keys.PARAMETER_DEFINITION) == v.getOriginalParameter()) {
+          foundDeclaration = pd;
+          break;
+        }
+      }
+      if (foundDeclaration == null) continue;
+      foundDeclaration.setName(v.getName());
+    }
+    
+    astBlock = mbb.transformBlock(methodBlock);
+    CommentStatement.replaceAll(astBlock);
+    
+    AstNodeCollection<Statement> statements = astBlock.getStatements();
+    Statement insertionPoint = CollectionUtilities.firstOrDefault(statements);
+    for (Variable v2 : mbb._localVariablesToDefine) {
+      TypeReference variableType = v2.getType();
+      TypeDefinition resolvedType = variableType.resolve();
+      if (resolvedType != null && resolvedType.isAnonymous()) {
+        if (resolvedType.getExplicitInterfaces().isEmpty()) {
+          variableType = resolvedType.getBaseType();
+        } else {
+          variableType = resolvedType.getExplicitInterfaces().get(0);
+        }
+      }
+      AstType type = mbb._astBuilder.convertType(variableType);
+      VariableDeclarationStatement declaration2 = new VariableDeclarationStatement(
+        type, v2.getName(), -34
+      );
+      declaration2.putUserData(Keys.VARIABLE, v2);
+      statements.insertBefore(insertionPoint, declaration2);
+    }
+  }
+  
+  MethodDeclaration astMethod = new MethodDeclaration();
+  astMethod.setBody(astBlock);
+  
+  Set<Modifier> modifiers = (method.isTypeInitializer())
+    ? Collections.singleton(javax.lang.model.element.Modifier.STATIC)
+    : (method.getDeclaringType().isInterface())
+        ? Collections.emptySet()
+        : Flags.asModifierSet(astBuilder.scrubAccessModifiers(
+            method.getFlags() & Flags.MethodFlags
+          ));
+
+  EntityDeclaration.setModifiers(astMethod, modifiers);
+  Iterable<TypeParameter> typeParameters
+    = astBuilder.createTypeParameters(method.getGenericParameters());
+  
+  astMethod.setName(method.getName());
+  astMethod.getParameters().addAll(parameters);
+  astMethod.getTypeParameters().addAll(typeParameters);
+  astMethod.setReturnType(astBuilder.convertType(method.getReturnType()));
+  astMethod.putUserData(Keys.METHOD_DEFINITION, method);
+  astMethod.putUserData(Keys.MEMBER_REFERENCE, method);
+
+  for (TypeDefinition declaredType : method.getDeclaredTypes()) {
+    if (!declaredType.isAnonymous()) {
+      astMethod.getDeclaredTypes().add(atBuilder.createType(declaredType));
+    }
+  }
+  
+  // ===
+  
+  for (TypeReference thrownType: method.getThrownTypes()) {
+    astMethod.addChild(astBuilder.convertType(thrownType), Roles.THROWN_TYPE);
+  }
+
+  for (CustomAnnotation annotation : method.getAnnotations()) {
+    astMethod.getAnnotations().add(astBuilder.createAnnotation(annotation));
+  }
+
+  AnnotationDefaultAttribute defaultAttribute = SourceAttribute.find(
+    com.strobel.assembler.ir.attributes.AttributeNames.AnnotationDefault,
+    method.getSourceAttributes()
+  );
+
+  if (defaultAttribute != null) {
+    com.strobel.decompiler.languages.java.ast.Expression defaultValue
+      = createAnnotationElement(defaultAttribute.getDefaultValue());
+    if (defaultValue != null && !defaultValue.isNull()) {
+      astMethod.setDefaultValue(defaultValue);
+    }
+  }
+  
+  // createMethodBody(Iterable<ParameterDeclaration>) finally block:
+  context.setCurrentMethod(oldCurrentMethod);
+  // ===============================================================
+  // return astBlock;
+  // end of createMethod(..):
+  return astMethod;
+  // ========================
+}
+

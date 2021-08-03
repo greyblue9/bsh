@@ -1,0 +1,108 @@
+
+
+
+
+import dalvik.system.DexPathList;
+import dalvik.system.DexPathList$Element;
+import dalvik.system.BaseDexClassLoader;
+import java.io.File;
+import java.lang.reflect.Field;
+
+{
+
+public static List<String> appendLibraryPathRT(String[] pathsToAdd, 
+boolean append)
+{
+  Runtime rt = Runtime.getRuntime();
+  String[] curLibPaths = Reflect.getfldval(rt, "mLibPaths");
+  String[] newLibPaths = (append)
+    ? ArrayUtils.addAll(curLibPaths, pathsToAdd)
+    : ArrayUtils.addAll(pathsToAdd, curLibPaths);
+  Reflect.setfldval(rt, "mLibPaths", newLibPaths);
+  
+  return Arrays.asList(newLibPaths);
+}
+
+
+public static List<String> appendLibraryPath(String[] pathsToAdd, BaseDexClassLoader ldr, boolean append)
+{
+  List<String> newLibPathsRT = appendLibraryPathRT(pathsToAdd, append);
+  
+  File[] origFiles = ldr.pathList.nativeLibraryDirectories;
+  if (origFiles == null) origFiles = new File[0];
+  
+  // Create a new File[] (array of File) with additional room 
+  // to hold the additional File entries
+  // (to replace the value of 
+  // the pathList.nativeLibraryDirectories field in loader)
+  File[] newFiles = (append)
+    ? ArrayUtils.addAll(origFiles, pathsToAdd.to(File))
+    : ArrayUtils.addAll(pathsToAdd.to(File), origFiles);
+  
+  // Replace original DexlibArr with the new (modified) one
+  ldr.pathList.nativeLibraryDirectories = newFiles;
+  ldr.originalLibraryPath = StringUtils.join(
+    (append)
+      ? ArrayUtils.addAll(
+          StringUtils.split(ldr.originalLibraryPath, ":"),
+          newLibPathsRT.toArray(new String[0])
+        )
+      : ArrayUtils.addAll(
+          newLibPathsRT.toArray(new String[0]),
+          StringUtils.split(ldr.originalLibraryPath, ":")
+        ),
+    ":"
+  );
+  
+  return newLibPathsRT;
+}
+
+public static List<String> appendLibraryPath(String[] pathsToAdd, BaseDexClassLoader ldr)
+{
+  return appendLibraryPath(pathsToAdd, ldr, true);
+}
+
+public static List<String> appendLibraryPath(String[] pathsToAdd,
+boolean append)
+{
+  return appendLibraryPath(
+    pathsToAdd, Thread.currentThread().getContextClassLoader(), append
+  );
+}
+
+
+public static List<String> appendLibraryPath(BaseDexClassLoader ldr, String[] paths) {
+  return appendLibraryPath(paths, ldr);
+}
+
+public static List<String> appendLibraryPath(String path, BaseDexClassLoader ldr) {  
+  return appendLibraryPath(new String[]{ path }, ldr);
+}
+
+public static List<String> appendLibraryPath(File[] paths, BaseDexClassLoader ldr) {  
+  return appendLibraryPath(new String[]{ paths }, ldr);
+}
+
+public static List<String> appendLibraryPath(BaseDexClassLoader ldr, File[] paths) {
+  return appendLibraryPath(paths, ldr);
+}
+
+public static List<String> appendLibraryPath(String[] paths) {
+  return appendLibraryPath(
+    paths, Thread.currentThread().getContextClassLoader()
+  );
+}
+
+public static List<String> appendLibraryPath(String path) {
+  return appendLibraryPath(
+    new String[]{ path },
+    Thread.currentThread().getContextClassLoader()
+  );
+}
+
+void;
+
+};
+
+
+

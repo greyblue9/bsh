@@ -1,0 +1,42 @@
+
+import javafile.api.CompilationUnit;
+import javafile.api.LineComment;
+import javafile.api.visitor.DumpVisitor; 
+import javafile.api.visitor.CommentFormatter; 
+import org.d6r.CommentFixer;       
+import java.nio.charset.StandardCharsets;
+
+{
+  
+  public static String formatJava(CharSequence src) {
+    
+    if (src instanceof String && 
+       (src.startsWith("/") || src.endsWith(".java")) &&
+        src.indexOf('\n') == -1 &&
+       (src.length() < 255 && new File(src).exists()))
+    {
+      return formatJava(
+        (CharSequence) FileUtils.readFileToString(new File(src),
+        StandardCharsets.UTF_8)
+      );
+    };
+    
+    ByteBuffer bb = StandardCharsets.UTF_8.newEncoder().encode(CharBuffer.wrap(src));
+    byte[] bytes = new byte[bb.limit()];
+    bb.get(bytes).rewind();
+    
+    InputStream is = new ByteArrayInputStream(bytes);
+    JavaFile jf = new JavaFile(is);
+    CommentFormatter commentFixer = new CommentFixer(); 
+    Reflect.setfldval(DumpVisitor.class, "commentFormatter", commentFixer); 
+    
+    /*List<LineComment> lineComments = ObjectUtil.searchObject(jf.cu, javafile.api.LineComment.class, false, 0, 30);  for (LineComment lineComment: lineComments) { lineComment.content = TextUtil.catv(lineComment.content).trim().replaceFirst("^//([^\\n\\t\\r ])", "// $1"); };*/ 
+    
+    DumpVisitor dv = new DumpVisitor();
+    jf.cu.accept(dv, dv);
+    return dv.getSource();
+    
+  };
+  
+  void;
+};

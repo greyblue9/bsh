@@ -1,0 +1,13 @@
+
+public static boolean isTerminal() {
+  PrintStream out = this.interpreter.getOut(); 
+  java.lang.reflect.Field f_out 
+    = FilterOutputStream.class.getDeclaredField("out");
+  f_out.setAccessible(true); 
+  OutputStream realOut = f_out.get(out);
+  FileDescriptor fd = realOut.getFD();
+  int fdNo = PosixFileInputStream.getInt(fd);
+  return fdNo == 1;
+}
+
+

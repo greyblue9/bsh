@@ -1,0 +1,2 @@
+public static org.benf.cfr.reader.bytecode.analysis.types.JavaRefTypeInstance getType(String clsName) { dccs = this.interpreter.get("dccs"); if (dccs == null || dccs == void) { dccs = getDCCS(); loadJarsIntoDCCS(dccs); this.interpreter.set("dccs", dccs); } ; import org.benf.cfr.reader.bytecode.analysis.types.*; JavaRefTypeInstance t = JavaRefTypeInstance.create(clsName, dccs); return t; }
+

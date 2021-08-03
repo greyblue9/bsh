@@ -1,0 +1,89 @@
+import java.util.Map.Entry;
+
+import java.util.*;
+import java.util.regex.Pattern;
+import java.io.File;
+
+/**
+Actual signature:
+=================
+
+public static Map<String, List<BshMethod>> importAllCommands()
+
+*/ //;
+
+public static Map importAllCommands() {
+
+  Pattern ptrn = Pattern.compile(
+    ".*/[a-z][A-Za-z]*[0-9]*\\.bsh"
+  );  
+  Interpreter env = this.interpreter;
+  PrintStream out = env.getOut();
+  PrintStream err = env.getErr();
+  
+  Map/*<File, String>*/ funcFiles 
+    = new HashMap/*<File, String>*/(); 
+  
+  File d = new File("/data/media/0/bsh/commands"); 
+  for (File f: d.listFiles()) { 
+  
+    // "/data/media/0/bsh/commands/getfldval.bsh"
+    String filePath = f.getPath();
+    if (! ptrn.matcher(filePath).matches()) continue; 
+    
+    // "getfldval.bsh"
+    String fileName = f.getName();
+    if (fileName.length() < 5) continue; 
+    
+    // "getfldval"
+    String name = fileName.substring(0,fileName.length() - 4);
+    String text = readstring(filePath); 
+    
+    // heuristics to weed out non-"pure function" scripts
+    //   (scripts with immediate side-sffects / no invocation
+    //   function w/ same name as file)
+    int idx1 = text.indexOf(name); 
+    if (idx == -1) continue; 
+    int idx2 = text.indexOf("(", idx1); 
+    if (idx2 == -1) continue; 
+    if (idx2 - idx1 > name.length() + 2) continue;
+    
+    funcFiles.put(f, text);
+  } 
+  
+  Set<File> keySet = funcFiles.keySet();
+  Set<Entry/*<File,String>*/> ents = funcFiles.entrySet();
+  if (env.DEBUG) {
+    env.println(keySet.toString()); 
+  }
+  
+  for (Entry/*<File,String>*/ entry: ents) {
+    File file = entry.getKey();
+    String scriptText = entry.getValue();
+    
+    if (env.DEBUG) env.debug(file); 
+    try {
+      env.eval(scriptText);
+    } catch (Throwable ex) {
+      err.println(String.format(
+        "[WARN] <%s> caused %s while parsing: [%s]",
+        file.getName(), 
+        ex.getClass().getSimpleName(), 
+        ex.getMessage()
+      ));      
+    }  // catch
+    
+  } // for entry: ents 
+  
+  NameSpace ns = env.getNameSpace();
+  Map/*<String, List<BshMethod>>*/ methodMap = null;
+  java.lang.reflect.Field nsf = NameSpace.class
+    .getDeclaredField("methods");
+  nsf.setAccessible(true);
+  methodMap = nsf.get(ns);
+  return methodMap;
+}
+
+
+
+

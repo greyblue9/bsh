@@ -1,0 +1,42 @@
+public static Map addGenericSignatures(String jarPath, DexBackedDexFile dbdf) {
+  if (dbdf == null && System.getProperty("input.dex.file") != null) {
+    dbdf = DexRemix.getDexBackedDexFile(System.getProperty("input.dex.file"));
+  }
+  if (jarPath == null && System.getProperty("input.file") != null) {
+    jarPath = System.getProperty("input.file");
+  }
+  Map annsByClass = new TreeMap();
+  for (DexBackedClassDef dbcd : dbdf.getClasses()) {
+    Iterable<DexBackedAnnotation> anns = dbcd.getAnnotations();
+    Map<String__Object> annMap = RealArrayMap.toMap(anns.select(FunctionUtil.bind("return m -> { Pair.of(m.getType(), RealArrayMap.toMap(FunctionUtil.select(m.getElements(), FunctionUtil.eval(\"return n -> { Iterable.isInstance(n.getValue().getValue())? Pair.of(n.getName(), StringUtils.join(CollectionUtil2.invokeAll(n.getValue().getValue(), 'getValue'), '')): Pair.of(n.getName(), n.getValue().getValue()); }\")))); }")));
+    annsByClass.put(dbcd.getType(), annMap);
+    if (annMap.size() > 0) {
+      System.err.printf("Read %d annotations from %s: [%s]\n", annMap.size(), ClassInfo.typeToName(dbcd.getType()), ClassInfo.typeToName(annMap.keySet().toArray(new String[0])));
+    }
+  }
+  Map sigMap = RealArrayMap.toMap(annsByClass.entrySet().filter("Ldalvik/annotation/Signature;").select(FunctionUtil.bind("return m -> { Pair.of(m.getKey(), m.getValue().get(\"Ldalvik/annotation/Signature;\").get(\"value\")); }")));
+  javassist.ClassPool cp2 = new javassist.ClassPool(CollectionUtil.getClassPool());
+  cp2.insertClassPath(new javassist.JarClassPath(jarPath));
+  ZipFile zf = new ZipFile(jarPath);
+  Map zm = ZipUtil.mapBytes(zf);
+  for (java.util.Map$Entry sigEntry : sigMap.entrySet()) {
+    String className = ClassInfo.typeToName(sigEntry.getKey());
+    String signature = sigEntry.getValue();
+    System.err.printf("Adding signature to %s: %s\n", className, signature);
+    try {
+      CtClass ct = cp2.get(className);
+      if (((Boolean) Reflect.getfldval(ct, "wasPruned")).booleanValue())
+        ct.stopPruning();
+      if (((Boolean) Reflect.getfldval(ct, "wasFrozen")).booleanValue())
+        ct.defrost();
+      ct.setGenericSignature(signature);
+      byte[] classBytes = ct.toBytecode();
+      zm.put(ClassInfo.classNameToPath(className, "class"), classBytes);
+    } catch (javassist.NotFoundException nfe) {
+    }
+  }
+  IOUtils.closeQuietly(zf);
+  return zm;
+}
+
+ 

@@ -1,0 +1,10 @@
+public static Triple fixProblem(String rawTsv) { 
+
+  Matcher mchr = Pattern.compile("The (method|constructor) ([^\\(]+)\\(([^\\)]*)\\) .* is not applicable for the arguments \\(([^\\)]*)\\)[^\t]*\t(.*\\2\\(((?:[^()]*|(?:[^()]*\\([^()]*\\))*|(?:\\([^()]*\\([^()]*\\)[^()]*\\)[^()]*)*|\\((?:[^()]*\\([^()*]\\)[^()]*)+)*)\\).*)$").matcher("");   
+
+  List parts = getProblemPieces(rawTsv);  
+  String tsv2To5 = StringUtils.substringAfter(rawTsv, "\t"), 
+    ln = tsv2To5;  if (mchr.reset(ln).find()) { MatchResult  mr = mchr.toMatchResult();    String[] reqTypes = StringUtils.split(mr.group(3), ", "); String[] exprs = StringUtils.split(mr.group(6), ", "); String[] newexprs = new String[exprs.length]; for (int i=0; i<exprs.length; i+=1) { newexprs[i] = String.format("((%s) %s)", reqTypes[i], exprs[i]); }   String line = parts.get(parts.size() - 1); int start = mr.start(6) - mr.start(5); int end = mr.end(6) - mr.start(5); String newline = line.substring(0, start).concat(StringUtils.join(newexprs, ", ")).concat(line.substring(end)); int lineno = Integer.valueOf(StringUtils.substringBefore(ln.substring(ln.indexOf("\t")+1), "\t"), 10).intValue(); return Triple.of(parts.get(1), Integer.valueOf(lineno), Pair.of(parts.get(parts.size()-1), newline)); }; System.err.printf("Failed to match:\n   \"\"\"" + rawTsv + "\"\"\""); t = new Thread(new Runnable() { public void run() { Thread.sleep(500); CollectionUtil.getInterpreter().setShowResults(true); } }); t.start(); CollectionUtil.getInterpreter().setShowResults(false); System.err.printf("\n"); return null; 
+
+}
+

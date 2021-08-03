@@ -1,0 +1,95 @@
+public static void procyonDecompileJar_enjarify(String apkOrDexPath, String filter) {
+  byte[] dexBytes = (filter != null) ? getDexSubset(apkOrDexPath, new DexUtil(apkOrDexPath).getClassNames().filter(filter)) : Reflect.getfldval(DexRemix.getDexBackedDexFile(apkOrDexPath), "buf");
+  File tempDex = File.createTempFile("classes", ".dex");
+  File outputJar = new File(tempDex.getParentFile(), String.format("%s-enjarify.jar", org.apache.commons.io.FilenameUtils.removeExtension(tempDex.getName())));
+  FileUtils.writeByteArrayToFile(tempDex, dexBytes);
+  String output = PosixFileInputStream.pexecSync("enjarify", "-f", "-o", outputJar.getPath(), tempDex.getPath());
+  System.err.println(output);
+  if (!outputJar.exists()) {
+    throw new RuntimeException(String.format("enjarify task failed for %s: %s", apkOrDexPath.getPath(), output));
+  }
+  FileUtils.writeByteArrayToFile(outputJar, ZipUtil.writeZip(addGenericSignatures(outputJar.getPath(), DexRemix.getDexBackedDexFile(path))));
+  JarFile jarFile = new JarFile(outputJar);
+  com.strobel.assembler.metadata.ITypeLoader jarLoader = new com.strobel.assembler.metadata.JarTypeLoader(jarFile);
+  com.strobel.assembler.metadata.MetadataSystem mds = new com.strobel.assembler.metadata.MetadataSystem(new com.strobel.assembler.metadata.CompositeTypeLoader(new com.strobel.assembler.metadata.ITypeLoader[] { jarLoader, ProcyonUtil.getTypeLoader() }));
+  for (String className : ClassInfo.getClassNamesFromEntries(jarFile)) {
+    typeDefinition = mds.lookupType(ClassInfo.classNameToPath(className, null)).resolve();
+    System.err.printf("Loaded typeDefinition: %s\n", typeDefinition.getDescription());
+    ProcyonUtil.removeType(ProcyonUtil.getMetadataResolver(), className);
+    ProcyonUtil.addTypeDefinition(typeDefinition);
+  }
+  JarDecompiler.decompile(outputJar.getPath(), null, false);
+}
+
+ 
+
+public static void procyonDecompileJar_enjarify(String apkOrDexPath, String filter) {
+  byte[] dexBytes = (filter != null) ? getDexSubset(apkOrDexPath, new DexUtil(apkOrDexPath).getClassNames().filter(filter)) : Reflect.getfldval(DexRemix.getDexBackedDexFile(apkOrDexPath), "buf");
+  File tempDex = File.createTempFile("classes", ".dex");
+  File outputJar = new File(tempDex.getParentFile(), String.format("%s-enjarify.jar", org.apache.commons.io.FilenameUtils.removeExtension(tempDex.getName())));
+  FileUtils.writeByteArrayToFile(tempDex, dexBytes);
+  String output = PosixFileInputStream.pexecSync("enjarify", "-f", "-o", outputJar.getPath(), tempDex.getPath());
+  System.err.println(output);
+  if (!outputJar.exists()) {
+    throw new RuntimeException(String.format("enjarify task failed for %s: %s", apkOrDexPath.getPath(), output));
+  }
+  FileUtils.writeByteArrayToFile(outputJar, ZipUtil.writeZip(addGenericSignatures(outputJar.getPath(), dbdf)));
+  JarFile jarFile = new JarFile(outputJar);
+  com.strobel.assembler.metadata.ITypeLoader jarLoader = new com.strobel.assembler.metadata.JarTypeLoader(jarFile);
+  com.strobel.assembler.metadata.MetadataSystem mds = new com.strobel.assembler.metadata.MetadataSystem(new com.strobel.assembler.metadata.CompositeTypeLoader(new com.strobel.assembler.metadata.ITypeLoader[] { jarLoader, ProcyonUtil.getTypeLoader() }));
+  for (String className : ClassInfo.getClassNamesFromEntries(jarFile)) {
+    typeDefinition = mds.lookupType(ClassInfo.classNameToPath(className, null)).resolve();
+    System.err.printf("Loaded typeDefinition: %s\n", typeDefinition.getDescription());
+    ProcyonUtil.removeType(ProcyonUtil.getMetadataResolver(), className);
+    ProcyonUtil.addTypeDefinition(typeDefinition);
+  }
+  JarDecompiler.decompile(outputJar.getPath(), null, false);
+  jarFile.close();
+}
+
+ 
+
+public static void procyonDecompileJar_enjarify(String apkOrDexPath, String filter) {
+  byte[] dexBytes = (filter != null) ? getDexSubset(apkOrDexPath, new DexUtil(apkOrDexPath).getClassNames().filter(filter)) : Reflect.getfldval(DexRemix.getDexBackedDexFile(apkOrDexPath), "buf");
+  DexBackedDexFile dbdf = DexRemix.getDexBackedDexFile(apkOrDexPath);
+  File tempDex = File.createTempFile("classes", ".dex");
+  File outputJar = new File(tempDex.getParentFile(), String.format("%s-enjarify.jar", org.apache.commons.io.FilenameUtils.removeExtension(tempDex.getName())));
+  FileUtils.writeByteArrayToFile(tempDex, dexBytes);
+  x = Runtime.getRuntime().exec(new String[] { "enjarify", "-f", "-o", outputJar.getPath(), tempDex.getPath() });
+  BufferedReader br = new BufferedReader(new InputStreamReader(x.stdout, java.nio.charset.StandardCharsets.ISO_8859_1));
+  t = new Thread(new Runnable() {
+    public void run() {
+      try {
+        while (!x.hasExited) {
+          while (br.ready()) {
+            System.err.println(br.readLine());
+          }
+          Thread.sleep(60);
+        }
+      } catch (Exception e) {
+        Thread.currentThread().interrupt();
+        x.destroy();
+        return;
+      }
+    }
+  });
+  t.start();
+  t.join();
+  if (!outputJar.exists()) {
+    throw new RuntimeException(String.format("enjarify task failed for %s: %s", apkOrDexPath, outputJar.getPath()));
+  }
+  FileUtils.writeByteArrayToFile(outputJar, ZipUtil.writeZip(addGenericSignatures(outputJar.getPath(), dbdf)));
+  JarFile jarFile = new JarFile(outputJar);
+  com.strobel.assembler.metadata.ITypeLoader jarLoader = new com.strobel.assembler.metadata.JarTypeLoader(jarFile);
+  com.strobel.assembler.metadata.MetadataSystem mds = new com.strobel.assembler.metadata.MetadataSystem(new com.strobel.assembler.metadata.CompositeTypeLoader(new com.strobel.assembler.metadata.ITypeLoader[] { jarLoader, ProcyonUtil.getTypeLoader() }));
+  for (String className : ClassInfo.getClassNamesFromEntries(jarFile)) {
+    typeDefinition = mds.lookupType(ClassInfo.classNameToPath(className, null)).resolve();
+    System.err.printf("Loaded typeDefinition: %s\n", typeDefinition.getDescription());
+    ProcyonUtil.removeType(ProcyonUtil.getMetadataResolver(), className);
+    ProcyonUtil.addTypeDefinition(typeDefinition);
+  }
+  JarDecompiler.decompile(outputJar.getPath(), null, false);
+  jarFile.close();
+}
+
+ 

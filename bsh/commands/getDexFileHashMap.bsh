@@ -1,0 +1,3 @@
+
+public static Map getDexFileHashMap() { BaseDexClassLoader cl = (BaseDexClassLoader) Thread.currentThread().getContextClassLoader(); Object pathList = Reflect.getfldval(cl, "pathList"); Object[] dexElements = Reflect.getfldval(pathList, "dexElements"); Map hcMap = new TreeMap(); for (Object dexElement: dexElements) { File file = Reflect.getfldval(dexElement, "file"); int hashCode = dexElement.hashCode(); DexFile df = Reflect.getfldval(dexElement, "dexFile"); int dfHashCode = df != null? df.hashCode(): 0; String toString = dexElement.toString(); String sn = toString.substring(0, toString.indexOf(' ')); String dfsn = df != null? df.getClass().getSimpleName(): ""; hcMap.put(Integer.valueOf(dfHashCode), file.getAbsolutePath()); } return hcMap; }
+

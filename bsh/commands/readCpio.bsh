@@ -1,0 +1,26 @@
+
+public static List readCpio(String path) { 
+
+  Object[] newlayout  = new Object[48]; System.arraycopy(CpioFile.layout, 0, newlayout, 0, 45); newlayout[45] = "content"; newlayout[46] = -1; newlayout[47] = "size";
+
+  ArrayList entries = new ArrayList(); 
+  InputStream is = MarkableFileInputStream.from(path); 
+  while (is.available() > 100) { 
+    TarEntry entry = new TarEntry(); 
+      try {
+      int len = -1; 
+      int i = -3; 
+      while (i + 3 < CpioFile.layout.length) { 
+        i += 3; tp = Triple.of(CpioFile.layout[i], CpioFile.layout[i+1], CpioFile.layout[i+2]); System.out.println(tp); key = tp.getLeft(); offs = tp.getMiddle(); if (tp.getRight() instanceof Integer) { len = Integer.valueOf(tp.getRight().toString()); } else { System.out.printf("Trying to retrieve indirect length for key: %s\n", key); Object rawval = entry.get(tp.getRight()); if (rawval == null) { System.out.println("map.get() returned null! aborting."); } len = (Integer) rawval; System.err.printf("  --> len := %d\n", len); } bytes = new byte[len]; read = is.read(bytes, 0, len); System.out.printf("  read %d bytes: %s\n", read, Arrays.toString(bytes)); if (! "name".equals(key) && ! "content".equals(key)) { value = Integer.valueOf(CpioFile.stringFromBytes(bytes), 16); System.out.printf("  parsed numeric value: %d\t0%o\t0x%x\n", value, value, value); entry.put(key, value); } else { value = len > 0? CpioFile.stringFromBytes(bytes): ""; System.out.printf("Parsed string value: \"%s\"\n", value.replaceAll("[^\\x09-\\x9f]", "?")); entry.put(key, value); if (len > 0) { System.out.println(hexDump(bytes)); } } if ("name".equals(key) || "content".equals(key)) { is.mark(16); int numzeros = 0; byte[] la = new byte[16]; System.out.printf("read lookahead(16) -> %d\n", is.read(la, 0, 16)); int zpos = 0; while (la[zpos] == 0 && zpos < 16) { numzeros += 1; zpos += 1; System.out.println("Skipping zero"); } is.reset(); is.skip(numzeros);  } 
+      }
+    } catch (Throwable e) { 
+      e.printStackTrace();
+      this.interpreter.set("_entry", entry);
+      return entries;
+    }
+    entries.add(entry);
+  }
+  
+  return entries;
+
+}

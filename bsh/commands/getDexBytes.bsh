@@ -1,0 +1,20 @@
+public static byte[] getDexBytes(org.jf.dexlib2.writer.pool.DexPool pool) {
+  File tmpdexFile = File.createTempFile("tmpdex_DexFileStore", ".dex");
+  org.jf.dexlib2.writer.io.DexDataStore ddat = new org.jf.dexlib2.writer.io.FileDataStore(tmpdexFile);
+  System.err.printf("Writing %s to %s (temporary file: [%s]) ...\n", pool.getClass().getSimpleName(), ddat.getClass().getSimpleName(), tmpdexFile.getPath());
+  try {
+    pool.writeTo(ddat);
+  } finally {
+    ddat.close();
+  }
+  System.err.printf("Reading dex class bytes from [%s] ...\n", tmpdexFile.getPath());
+  byte[] data = null;
+  try {
+    data = FileUtils.readFileToByteArray(tmpdexFile);
+  } finally {
+    tmpdexFile.delete();
+  }
+  return data;
+}
+
+ 

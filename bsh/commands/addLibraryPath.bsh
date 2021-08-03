@@ -1,0 +1,46 @@
+
+
+
+
+import dalvik.system.DexPathList;
+import dalvik.system.DexPathList$Element;
+import dalvik.system.BaseDexClassLoader;
+
+import java.io.File;
+
+
+public static string[] appendLibraryPath(java.lang.String[] paths, BaseDexClassLoader ldr) {
+  // Get DexPathList object from BaseDexClassLoader
+  java.lang.reflect.Field pathListField
+    = BaseDexClassLoader.class.getDeclaredField("originalLibraryPath");
+  pathListField.setAccessible(true);
+  
+  
+  java.lang.String[] elems = pathListField.get(ldr) ;
+  if (elems == null) 
+    elems = new java.lang.String[0];
+  // Create a new array with additional room to hold the
+  // additional DexPathList$Element item 
+  // (to replace the pathList.dexElements field in loader)
+  java.lang.Object[] newarr 
+    = new java.lang.String[ elems.length + paths.length ];
+  
+  // Clone the existing elements into the new array 
+  System.arraycopy(elems, 0, newarr, 0, elems.length);
+  
+  for (int i=0; i<paths.length; i++) {
+    // Prepare new (to be appended) DexPathList$Element entry 
+    // Not sure if all this is necessary
+    
+    // Add the new elements after the existing ones in new array
+    newarr[ elems.length + i ] = paths[i];
+  }
+  
+  // Replace original DexPathList with the new (modified) one
+  pathListField.set(pathList, newarr);
+  return pathList; 
+}
+
+
+
+

@@ -1,0 +1,183 @@
+Class __cls = null;
+try {
+  __cls = Class.forName(
+    "com.strobel.assembler.metadata.MetadataSystem"
+  );
+} catch (Throwable e) {  }
+if (__cls == null) {
+  System.err.println("Adding procyon to classpath ...");
+  addClassPath(new File[] {
+      new File(
+        "/external_sd/_projects/sdk/procyon/procyon.jar")
+    }, 
+    Thread.currentThread().getContextClassLoader(),
+    true
+  );
+  if (!CollectionUtil.isJRE()) { Thread.currentThread().getContextClassLoader().badClasses.clear(); };
+  import com.strobel.assembler.metadata.MetadataSystem;
+  import com.strobel.assembler.metadata.JarTypeLoader;
+  import com.strobel.assembler.metadata.ITypeLoader;
+  import com.strobel.assembler.metadata.ArrayTypeLoader;
+  import com.strobel.decompiler.DecompilerSettings;
+  import com.strobel.decompiler.DecompilationOptions;
+  import com.strobel.decompiler.languages.java.JavaFormattingOptions;
+  import com.strobel.assembler.metadata.TypeDefinition;
+  import com.strobel.assembler.metadata.DeobfuscationUtilities;
+  import com.strobel.decompiler.PlainTextOutput;
+  import com.strobel.decompiler.languages.Language;
+  
+} 
+
+
+import com.strobel.assembler.metadata.MetadataSystem;
+import com.strobel.assembler.metadata.JarTypeLoader;
+import com.strobel.assembler.metadata.ITypeLoader;
+import com.strobel.assembler.metadata.ArrayTypeLoader;
+import com.strobel.decompiler.DecompilerSettings;
+import com.strobel.decompiler.DecompilationOptions;
+import com.strobel.decompiler.languages.java.JavaFormattingOptions;
+import com.strobel.assembler.metadata.TypeDefinition;
+import com.strobel.assembler.metadata.DeobfuscationUtilities;
+import com.strobel.decompiler.PlainTextOutput;
+import com.strobel.decompiler.languages.Language;
+
+
+public Map decompile(String[] classNames, Object mds) 
+{
+   if (mds == null) mds = new MetadataSystem(); 
+   
+   DecompilerSettings dcs = this.interpreter.get("dc$s");
+   if (dcs == null) {
+     dcs = new DecompilerSettings();
+     JavaFormattingOptions fmtopts 
+       = JavaFormattingOptions.createDefault();
+     dcs.setJavaFormattingOptions(fmtopts);
+     this.interpreter.set("dc$s", dcs);
+   }
+   
+   Language lang = dcs.getLanguage();
+   
+   DecompilationOptions options 
+     = this.interpreter.get("dc$opts");
+   if (options == null) { 
+     options = new DecompilationOptions(); 
+     options.setSettings(dcs); 
+     options.setFullDecompilation(true);
+     this.interpreter.set("dc$opts", options);
+   }
+   
+   Map srcs = new HashMap();
+   
+   StringBuilder sepB = new StringBuilder(76 * 10);
+   while (sepB.length() < 67) sepB.append("__________");
+   String sep = sepB.append('\n').toString();
+   
+   for (String className: classNames) {
+     try {
+         
+       String internalName = className.replace('.', '/');
+       TypeDefinition type 
+         = mds.lookupType(internalName);
+       System.err.printf(
+         "Looked up type definition: %s\n", type
+       ); 
+       TypeDefinition resolvedType = type.resolve();
+       System.err.printf(
+         "Resolved type definition: %s\n", resolvedType
+       ); 
+       if (resolvedType == null) {
+         System.err.printf(
+           "Skipping failed class: %s\n", className
+         );
+         continue;
+       }
+       System.err.printf(
+         "Deobfuscating: %s\n", resolvedType
+       );
+       DeobfuscationUtilities.processType(resolvedType); 
+       StringWriter sw = new StringWriter(8192);
+       PlainTextOutput output = new PlainTextOutput(sw); 
+       Reflect.setfldval(output, "indentToken", "  ");
+       System.err.printf(
+         "Decompiling to %s: %s\n", 
+         lang.getName(), resolvedType
+       );
+       lang.decompileType(resolvedType, output, options);
+       sw.flush(); 
+       System.err.printf(
+         "Collecting decompiler %s output: %s\n",
+         lang.getName(), resolvedType
+       );
+       String src = sw.getBuffer().toString();
+       src = src.replace("    ", "  ");
+       srcs.put(className, src); 
+       System.err.printf(
+         "Decompiler output length: %d characters\n",
+         src.length()
+       );
+       //System.out.println(src);
+       System.err.printf(
+         "Finished decompiling %s\n", className
+       );
+     } catch (Throwable ex) {
+       System.err.printf(
+         "*** Failed to decompile class: %s ***\n", 
+         className
+       );
+       ex.printStackTrace();
+     } finally {
+       System.err.println(sep);
+     }
+   }
+   return srcs;
+}
+
+public Map decompile(String[] classNames) {
+   MetadataSystem mds = this.interpreter.get("dc$mds");
+   if (mds == null) {
+     mds = new MetadataSystem(); 
+     this.interpreter.set("dc$mds", mds);
+   }
+   return decompile(classNames, mds);
+}
+
+public static String decompile(String className) {
+  Map srcs = decompile(new String[]{ className });
+  return srcs.values().iterator().next();
+}
+
+public static String decompile(byte[] classBytes) {
+  ITypeLoader loader = new ArrayTypeLoader(classBytes);
+  MetadataSystem mds = new MetadataSystem(loader);
+  String className = getClassName(classBytes);
+  System.err.printf("Class name: %s\n", className);
+  Map srcs = decompile(new String[]{ className }, mds);
+  return srcs.values().iterator().next();
+}
+
+public static String decompile(Class cls) {
+  byte[] classBytes = dex2jar(cls);
+  return decompile(classBytes);
+}
+
+public static String decompile(ClassIdentifier ci) {
+  Class cls 
+    = (Class) ((ClassIdentifier) ci).getTargetClass();
+  return decompile(cls);
+}
+
+public static String decompile(Pattern ptrn) {
+  Matcher mchr = ptrn.matcher("");
+  String[] classNames 
+    = ClassPathUtil.searchClassPath(mchr);
+  return decompile(classNames);
+}
+
+
+
+
+
+
+
+
+

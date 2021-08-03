@@ -1,0 +1,132 @@
+class UrlUtils {
+
+
+  private java.lang.String encodeBase64(File paramFile)
+    throws IOException
+  {
+    Base64 localBase64 = new Base64();
+    setBase64Table(localBase64);
+    int i = getEncodedBase64LineLength();
+    java.lang.StringBuilder localStringBuilder1 = new java.lang.StringBuilder((int)(1.0D + 1.4D * paramFile.length()));
+    int j = 0;
+    byte[] arrayOfByte1 = new byte[3];
+    FileInputStream localFileInputStream = new FileInputStream(paramFile);
+    for (;;)
+    {
+      int k = localFileInputStream.read(arrayOfByte1);
+      if (k <= 0)
+      {
+        localFileInputStream.close();
+        return localStringBuilder1.toString();
+      }
+      byte[] arrayOfByte2 = new byte[k];
+      System.arraycopy(arrayOfByte1, 0, arrayOfByte2, 0, k);
+      java.lang.StringBuilder localStringBuilder2 = localBase64.encode(arrayOfByte2);
+      if (i <= 0) {
+        localStringBuilder1.append(localStringBuilder2);
+      } else {
+        for (int m = 0; m < localStringBuilder2.length(); m++)
+        {
+          j++;
+          localStringBuilder1.append(localStringBuilder2.charAt(m));
+          if (j >= i)
+          {
+            j = 0;
+            localStringBuilder1.append("\r\n");
+          }
+        }
+      }
+    }
+  }
+  
+  private java.lang.String encodeBase64(byte[] paramArrayOfByte)
+  {
+    Base64 localBase64 = new Base64();
+    setBase64Table(localBase64);
+    java.lang.StringBuilder localStringBuilder1 = localBase64.encode(paramArrayOfByte);
+    int i = getEncodedBase64LineLength();
+    if (i <= 0) {
+      return localStringBuilder1.toString();
+    }
+    java.lang.StringBuilder localStringBuilder2 = new java.lang.StringBuilder(localStringBuilder1.length() + 2 * (localStringBuilder1.length() / i));
+    int j = localStringBuilder1.length();
+    int k = 0;
+    for (;;)
+    {
+      if (k >= j) {}
+      for (;;)
+      {
+        return localStringBuilder2.toString();
+        if (k + i < j) {
+          break;
+        }
+        localStringBuilder2.append(localStringBuilder1.substring(k));
+      }
+      localStringBuilder2.append(localStringBuilder1.substring(k, k + i));
+      localStringBuilder2.append("\r\n");
+      k += i;
+    }
+  }
+  
+  private java.lang.StringBuilder encodeBase64FromUrl(Base64 paramBase64, URL paramURL)
+  {
+    try
+    {
+      java.lang.StringBuilder localStringBuilder = paramBase64.encode(FileUtils.readBytes(paramURL.openStream()));
+      return localStringBuilder;
+    }
+    catch (IOException localIOException)
+    {
+      localIOException.printStackTrace();
+    }
+    return null;
+  }
+  
+  private java.lang.String encodeToSingleHtml(java.lang.String paramString1, java.lang.String paramString2)
+  {
+    showDelayProgressDialog();
+    Pattern localPattern = Pattern.compile("<(img [^>]*?src=[\"']?)([^\\s\"'>]+)([\"']? ?[^>]*?)>", 2);
+    Matcher localMatcher = localPattern.matcher(paramString2);
+    Base64 localBase64 = new Base64(getString(2131231141));
+    for (;;)
+    {
+      if (!localMatcher.find())
+      {
+        java.lang.String str2 = Pattern.compile("(<meta [^>]*?charset=[\"']?)([^>\\s\"']+)([^>]*?[\"']?.*?>)", 2).matcher(paramString2).replaceFirst("$1UTF-8$3").replaceAll("<clipintent", "<");
+        closeDelayProgressDialog();
+        return str2;
+      }
+      if (localMatcher.group(2).startsWith("data:")) {
+        continue;
+      }
+      java.lang.String str1 = getImageMimeType(localMatcher.group(2));
+      if (str1 == null) {
+        continue;
+      }
+      try
+      {
+        localURL = new URL(new URL(paramString1), localMatcher.group(2));
+        if (localURL == null) {
+          continue;
+        }
+        java.lang.StringBuilder localStringBuilder = encodeBase64FromUrl(localBase64, localURL);
+        if (localStringBuilder == null) {
+          continue;
+        }
+        paramString2 = localMatcher.replaceFirst("<clipintent" + localMatcher.group(1) + "data:" + str1 + ";base64," + localStringBuilder + localMatcher.group(3) + ">");
+        localMatcher = localPattern.matcher(paramString2);
+      }
+      catch (MalformedURLException localMalformedURLException)
+      {
+        for (;;)
+        {
+          localMalformedURLException.printStackTrace();
+          URL localURL = null;
+        }
+      }
+    }
+  }
+  
+  
+}  
+  

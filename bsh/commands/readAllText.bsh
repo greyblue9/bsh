@@ -1,0 +1,10 @@
+
+
+public static String readAllText(java.net.URLConnection conn) { try { java.io.InputStream is = conn.getInputStream(); int length = conn.getContentLength(); int numLinesGuess = (int) (length / 45.0); return readAllText(is, length); } finally { IOUtils.closeQuietly(is); } };
+
+
+
+public static String readAllText(java.io.InputStream is, int length) { int numLinesGuess = (int) (length / 45.0); java.io.InputStream noCloseIs = new org.apache.commons.io.input.CloseShieldInputStream(is); java.io.BufferedInputStream bis = new java.io.BufferedInputStream(noCloseIs, length); com.ibm.icu.text.CharsetDetector detector = new com.ibm.icu.text.CharsetDetector(); detector.setText(bis); com.ibm.icu.text.CharsetMatch[] matches = detector.detectAll(); com.google.common.collect.Ordering bestMatchFirst = com.google.common.collect.Ordering.from(org.apache.commons.collections4.comparators.ComparableComparator.comparableComparator()).reverse(); SortedSet orderedMatches = new TreeSet(bestMatchFirst); Collections.addAll(orderedMatches, matches); com.ibm.icu.text.CharsetMatch bestMatch = orderedMatches.iterator().next(); java.io.Reader reader = bestMatch.getReader(); return IOUtils.toString(new java.io.BufferedReader(reader)); };
+
+
+

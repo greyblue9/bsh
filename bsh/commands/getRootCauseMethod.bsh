@@ -1,0 +1,36 @@
+
+
+
+public static Member getRootCauseMethod(Throwable exc) {
+  Throwable rcExc = Reflector.getRootCause(exc);
+  StackTraceElement ste = rcExc.getStackTrace().filter("^((?!java\\.|libcore\\.|android|bsh\\.|dalvik\\.).)+\\.((?!asList|toArray|concat|equals|hashCode|\\.).)+\\(.*")[0];
+  Object mds = CollectionUtil.getInterpreter().eval(ste.getClassName().concat(".").concat(ste.getMethodName().equals("<init>") ? "class.getDeclaredConstructors()" : ste.getMethodName()));
+  if (mds instanceof Object[])
+    mds = Arrays.asList(mds);
+  Member mtd = getMethodWithLine(mds, ste.getLineNumber());
+  if (mtd == null) {
+    mtd = Reflect.findMethod(Class.forName(ste.getClassName()), ste.getMethodName());
+    System.err.println("Fallback to non-line-aware method ...");
+  }
+  return mtd;
+}
+
+
+
+public static Member getRootCauseMethod(StackTraceElement ste) {
+  String mstr = String.format("CollectionUtil.getInterpreter().setu(\"_mtds\", %s);\n", ste.getClassName().concat(".").concat(ste.getMethodName().equals("<init>") ? "class.getDeclaredConstructors()" : ste.getMethodName()));
+  System.err.printf("\n  %s\n\n", mstr);
+  NameSpace ns = this.namespace;
+  Interpreter in = CollectionUtil.getInterpreter();
+  Object mtds = in.eval(new StringReader(mstr), this.namespace, mstr, this.callstack);
+  Object resp = CollectionUtil.getInterpreter().getu("_mtds");
+  CollectionUtil.getInterpreter().getNameSpace().getVariables().remove("_mtds");
+  Iterable mtds = bsh.Factory.typeof(resp).isArray() ? Arrays.asList(resp) : resp;
+  Member _mtd = getMethodWithLine(mtds, ste.getLineNumber());
+  if (_mtd == null) {
+    return ProcyonUtil.getMethod(ProcyonUtil.getMethodDefinition(mtds[0]));
+  }
+  return _mtd;
+}
+
+ 

@@ -1,0 +1,62 @@
+import org.jsoup.nodes.Document;
+import org.jsoup.nodes.Element;
+
+import java.nio.charset.CharsetDecoder;
+import libcore.icu.NativeConverter;
+import com.itextpdf.text.pdf.codec.PngImage;
+import com.itextpdf.text.Image;
+import com.itextpdf.text.Image;
+import org.json.JSONObject;
+import org.apache.commons.lang3.StringEscapeUtils;
+import org.apache.commons.lang3.time.FastDateFormat;
+import org.jsoup.nodes.TextNode;
+import org.jsoup.parser.Tag;
+import org.jsoup.nodes.Attribute;
+import org.jsoup.nodes.Attributes;
+import org.jsoup.nodes.Document;
+import org.jsoup.nodes.Element;
+import org.jsoup.select.Elements;
+import org.jsoup.parser.Parser;
+import org.jsoup.safety.Cleaner;
+import org.jsoup.safety.Whitelist;
+import org.jsoup.helper.DataUtil;
+import org.jsoup.helper.HttpConnection;
+
+
+
+
+public static Document getC2WikiDoc(String url) {
+  String TAG = "getC2WikiDoc";
+  String title = null; 
+  Matcher mchr
+    = Pattern.compile("^https?://(?:wiki.|[^/]*|)?c2.com/(?:wiki|)\\?([^&# ]*)$").matcher(url);
+    Log.d(TAG, "url: [%s]", url);
+  if (mchr.find() && (mchr.group(1) != null)) {
+    Log.d(TAG, "found");
+    title = mchr.group(1); 
+    System.err.printf("title: %s\n", title);
+  } else {
+    title = StringUtils.substringAfterLast(url, "?");
+       System.err.printf("title: %s\n", title);
+         Log.d(TAG, "not found");
+   }
+  String dburl = String.format("http://c2.com/wiki/remodel/pages/%s", title);
+  String json = IOUtils.toString(new URL(dburl), Charset.forName("UTF-8")); 
+  JSONObject jsonObj = new JSONObject(json);
+  String markdown = jsonObj.get("text");
+  if (Thread.currentThread().getContextClassLoader().pathList.dexElements.filter("mdreader").length == 0)
+  {
+    appendClassPathFile("/external_sd/_projects/sdk/mdreader/mdreader.jar");
+  }
+  String html = new org.markdownj.MarkdownProcessor().markdown(markdown);
+  Document doc = Document.createShell(url);
+  Map headerMap = new LinkedHashMap();
+  headerMap.put("Content-Type", "text/html; utf-8"); 
+  doc.attributes.dataset().putAll(headerMap);
+  doc.select("head").html("<title></title>");
+  doc.select("title")[0].text(title);
+  doc.select("body").html(html);
+  return doc;
+}
+
+

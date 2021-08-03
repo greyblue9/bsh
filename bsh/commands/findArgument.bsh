@@ -1,0 +1,27 @@
+public static Object findArgument(Throwable t, Class argType) {
+  Object[] args = null;
+  Object arg = null;
+  while (arg == null && t != null) {
+    if (!(t instanceof EvalError)) {
+      if (t.cause == t)
+        break;
+      t = t.cause;
+      continue;
+    }
+    Map exData = ((EvalError) t).getData();
+    if (!exData.containsKey("args")) {
+      if (t.cause == t)
+        break;
+      t = t.cause;
+      continue;
+    }
+    args = exData.get("args");
+    if (args == null || !(args instanceof Object[]) || args.length == 0 || CollectionUtil2.typeFilter(args, argType).length == 0) {
+      if (t.cause == t)
+        break;
+      t = t.cause;
+      continue;
+    }
+    return Arrays.asList(args).typeFilter(argType).iterator().next();
+  }
+}

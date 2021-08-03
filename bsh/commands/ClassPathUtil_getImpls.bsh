@@ -1,0 +1,14 @@
+
+
+
+public static org.d6r.ClassPathUtil.ClassList ClassPathUtil_getImpls(java.lang.String className) { Map icache = CollectionUtil.dbg.get("impl_cache"); if (icache == null) { icache = new SoftHashMap(); CollectionUtil.dbg.put("impl_cache", icache); }; String[] parts = StringUtils.split(className, "."); String regex; switch (parts.length) { case 1: case 2: regex = String.format( "^%s[.\\$]?", parts[0].replaceAll("\\$.*$", ".*?")); break; case 3: regex = String.format( "^%s[.\\$]", parts[0].replaceAll("[\\$.]", ".?") ); break; default: regex = String.format( "^%s[.\\$]?%s", parts[0].replaceAll("[\\$.]", ".?"), parts[1].replaceAll("\\$.*$", "") ); break; }; Object clist = icache.get(regex); if (clist == null) { System.err.printf("%s (%s)\n", regex, className); clist = ClassPathUtil.getImpls(regex, className); System.err.printf("  - %d matches\n", clist.size()); icache.put(regex, clist); }; return clist; };
+
+
+
+
+
+
+public static org.d6r.ClassPathUtil.ClassList ClassPathUtil_getImpls (Class[] clzs, String tgt) { Class tgtClass = null; org.d6r.ClassPathUtil.ClassList matches = new org.d6r.ClassPathUtil.ClassList( (int) Math.ceil(clzs.length / 7.5) + 1 );  tgtClass = DexVisitor.classForName(tgt); if (tgt==null) { System.err.printf( "loading %s failed\n", tgt); return matches; }; Collections.addAll(matches, clzs.select(FunctionUtil.bind("return m -> { tgtClass.isAssignableFrom(m)? m: null; }", "tgtClass", tgtClass))); return matches; };
+
+
+

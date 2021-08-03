@@ -1,0 +1,267 @@
+
+import dalvik.system.VMRuntime;
+import com.android.dex.Dex;
+
+
+  
+Map dexVisitorCache = new HashMap();
+Map sCache = new HashMap();
+Comparator clsDepthComparator = new Comparator() {
+    public int compare(Object clsName1, Object clsName2) {
+      Class cls1 = DexVisitor.classForName((String)clsName1);
+      Class cls2 = DexVisitor.classForName((String)clsName2);
+      int depth1 = 0, depth2 = 0;
+      do {
+        cls1 = cls1.getSuperclass();
+        depth1 += 1;
+      } while (cls1 != null);
+      do {
+        cls2 = cls2.getSuperclass();
+        depth2 += 1;
+      } while (cls2 != null);
+      
+      int rslt = Integer.valueOf(depth2).compareTo(depth1);
+      /*if (rslt == 0) {
+        rslt = Integer.valueOf(
+          cls2.getInterfaces().length
+        ).compareTo(
+          cls1.getInterfaces().length
+        );
+      }*/
+      if (((String) clsName1).indexOf("java.") == 0) {
+        rslt += 2;
+      }
+      if (((String) clsName2).indexOf("java.") == 0) {
+        rslt -= 2;
+      }
+      return rslt != 0
+        ? rslt
+        : Integer.valueOf( ((String)clsName2).length() ).compareTo(
+              Integer.valueOf( ((String)clsName1).length() )
+            );
+    }
+  };
+
+public static void ensureClass(DexVisitor dv, String clsName) {
+  boolean keep = false;
+  for (Object o: dv.getClasses()) {
+    if (o.toString().equals(clsName)) {
+      return;
+    }
+  }
+  Reflect.setfldval(dv, "visited", Boolean.FALSE);
+  Reflect.setfldval(
+    dv, "clsNames", CollectionFactory.newSet(clsName)
+  );
+  dv.visit();
+}
+
+public static void orderByClassDepth(String[] clsNames) {
+  Arrays.sort(clsNames, clsDepthComparator);
+}
+
+
+public static String dumpDexClass2(DexVisitor dv, String clsName)
+{
+  String[] clsNames;
+  Class c = DexVisitor.classForName(clsName);  
+  if (c.isInterface()) {
+    Class impl = DexVisitor.findInterfaceImpl(c);
+    clsNames = new String[]{ impl.getName(), clsName };
+    // clsName = clsName;
+  } else {
+    // clsNames = new String[]{ clsName };
+  }
+  
+  if (dv != null) {
+    dv.visit();
+    clsNames = dv.clsNames.toArray(new String[0]);  
+    orderByClassDepth(clsNames);
+  } else {
+    ArrayList x = new ArrayList(Arrays.asList(clsNames));    
+    do {
+      if (! x.contains(c.getName())) x.add(c.getName());
+      c = c.getSuperclass();
+    } while (c != null && c != Object.class);
+    clsNames = x.toArray(new String[0]);
+  }
+  
+  
+  Set<DexVisitor> visitors = dv != null
+    ? CollectionFactory.newSet(dv)
+    : Collections.emptySet();
+  StringBuilder sb = new StringBuilder();
+  
+  int i = -1, len = clsNames.length, size = visitors.size();
+  int accInterface = Modifier.INTERFACE;
+  String clsName;
+  int sbStart = 0;
+  outer:
+  while (++i < len) {
+    clsName = clsNames[i];
+    CharSequence cached = sCache.get(clsName);
+    if (cached == null) {
+      ClassVisitor cv = null;
+      int tried = 0;
+      sbStart = sb.length();
+      dexLoop:
+      for (dv: visitors) {
+        if ((cv = dv.getClass(clsName)) == null) {
+          if (++tried < size) {
+            System.err.printf(
+              "[%s]: Tried %s\n", clsName, dv
+            );
+            continue;        
+          }
+          Class cls = DexVisitor.classForName(clsName);
+          Dex dex = org.d6r.ClassInfo.getDex(cls);
+          dv = dexVisitorCache.get(dex);
+          if (dv == null) {
+            dexVisitorCache.put(
+              dex,
+              (dv = new DexVisitor(
+                dex.getBytes(), clsName).visit()
+              )
+            );
+            visitors.add(dv);
+          } else {
+            // ensureClass(dv, clsName);
+          }
+          
+          cv = dv.getClass(clsName);
+          break dexLoop;
+        }
+        break;
+      }
+      if (cv == null) continue;
+      String modStr = Modifier.toString(
+        cv.index & ~accInterface        
+      );
+      
+      Class cs = null;
+      try {
+        cs = DexVisitor.classForName(clsName);
+        sb.append('\n').append(typeHeader(cs)).append("\u001b[0m\n{");
+      } catch (Throwable e) { 
+        sb.append(String.format(
+          "\n\u001b[0;36m%s%s%s\u001b[0m %s {\n",
+          modStr, 
+          modStr.length() != 0? " ": "",
+          (cv.index & accInterface) != 0? "interface": "class", 
+          dumpMembers.colorize(
+            clsName + StringUtils.join(
+              dv.classForName(clsName).getTypeParameters(), ", "
+            ).replaceAll("^(.+)$", "<$1>"), 
+            "1;36"
+          )
+        ));
+      }
+      sb.append('\n').append(StringUtils.join(cv.getMethods(), "\n")).append("\n}\n");
+      sCache.put(clsName, sb.subSequence(sbStart, sb.length()));
+    } // end if (cached == null) 
+    else // cached != null
+    {
+      sb.append(cached);
+    }
+    System.err.printf("\u001b[1;44m...\u001b[0m");
+  };
+  //System.err.printf("\u001b[U\u001b[L \n"); 
+  System.err.printf("\n");
+  try {
+    return sb.toString();
+  } finally {
+    this.namespace.variables.clear();
+    System.gc();
+  // System.err.printf("\n");
+  }
+}
+
+
+public static String dumpDexClass2(byte[] bytes, String clsName) {
+  DexVisitor dv = DexVisitor.from(bytes, clsName);
+  return dumpDexClass2(dv, clsName);
+}
+
+
+public static String dumpDexClass2(Dex dex, String clsName) { 
+  if (sCache.containsKey(clsName)) {
+    
+  }
+  ByteBuffer buf = Reflect.getfldval(dex, "data");
+  byte[] dexBytes = VMRuntime.getRuntime().newNonMovableArray(
+    Byte.TYPE, buf.capacity()
+  );
+  buf.position(0);
+  buf.get(dexBytes);
+  return dumpDexClass2(dexBytes, clsName);
+}
+
+
+public static String dumpDexClass2(Class cls) {
+  if (sCache.containsKey(cls.getName())) {
+    return dumpDexClass2((DexVisitor) null, cls.getName());
+  }
+  Dex dex = org.d6r.ClassInfo.getDex(cls);
+  String clsName = cls.getName();
+  return dumpDexClass2(dex, clsName);
+}
+
+
+public static String dumpDexClass2(bsh.ClassIdentifier ci) { 
+  Class cls 
+    = (Class) ((bsh.ClassIdentifier) ci).getTargetClass();
+  return dumpDexClass2(cls);
+}
+
+
+/**
+  (A)
+*/
+/*
+public static String dumpDexClass2(Object obj) {
+  if (obj instanceof bsh.ClassIdentifier) {
+    return dumpDexClass2(
+       (bsh.ClassIdentifier) obj,
+      ((bsh.ClassIdentifier) obj).getTargetClass().getName()
+    );
+  } else if (obj instanceof String) {
+    InputStream is = null;
+    String clsName = (String) obj;
+    try {
+      is = new FileInputStream(new File(
+        ClassPathUtil.findClassSource((String) obj).iterator().next().toString()
+      ));      
+      DexVisitor dv = DexVisitor.from(is, clsName);      
+      return dumpDexClass2((bsh.ClassIdentifier) obj);
+    } finally {
+      if (is != null) DexVisitor.close(is);
+    }
+  };
+  Class clsObj = (obj instanceof Class)
+    ? (Class) obj
+    : (Class) obj.getClass();
+  String clsName = clsObj.getName();
+  return dumpDexClass2((Class) clsObj); // , (String) clsName;
+}
+*/
+
+/**
+  (B)
+*/
+/*public static String dumpDexClass2(Object obj, String clsName) {
+  if (obj instanceof Dex) {
+    return dumpDexClass2((Dex) obj, clsName);
+  } else if (obj instanceof byte[]) {
+    return dumpDexClass2((byte[]) obj, clsName);
+  }
+  
+  return dumpDexClass2((Object) obj);
+
+}
+*/
+
+
+
+
+
+public static String dumpDexClass2(Object obj) { if (obj instanceof Class) return dumpDexClass2((Class) obj); if (obj instanceof bsh.ClassIdentifier) return dumpDexClass2((Class) ((bsh.ClassIdentifier) obj).getTargetClass()); return dumpDexClass2((Class) obj.getClass()); }

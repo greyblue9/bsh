@@ -1,0 +1,7 @@
+
+
+
+public static List<Object> addJarsFromCommandLine() { List<Object> added = new ArrayList<Object>(); List<File> cliJarFiles = CollectionUtil2.filter(getFilesFromString(StringUtils.join(PosixFileInputStream.pexecSync("ppid_info", "--mi").matchLines("^(\\d+)\t(\\d+)\t([^\t]*)\t([^\t]*)").filter("^((?!, (dalvikvm_armv7a|rlwrap|[^ ]+ [^ ]+/ppid_info)).)*$").select(FunctionUtil.bind("return m -> { m.get(2); }")), "\n")), Pattern.compile("\\.(?:jar|zip|apk|aar|apl)", Pattern.DOTALL | Pattern.CASE_INSENSITIVE).matcher("")); for (File file: cliJarFiles) { if (! DexRemix.isZip(file.getAbsolutePath())) continue; Object dexElement = appendClassPathFile(file.getPath()); ZipFile jar = null; if (dexElement == null) { jar = new ZipFile(file); added.add(jar); } else { dexElement.maybeInit(); if (dexElement.zipFile == null) { jar = new ZipFile(file); added.add(jar); } else { jar = dexElement.zipFile; added.add(dexElement); }; }; if (jar != null) ProcyonUtil.addJar(jar); }; return added; };
+
+
+

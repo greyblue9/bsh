@@ -1,0 +1,19 @@
+public static void showLibFuncs(Iterable libs) {
+  appendClassPathFile("/external_sd/_projects/sdk/elf/elf.jar");
+  String prefix = "STT";
+  Map cm = ConstUtil.mapConsts(one.elf.ElfSymbol.class).get(prefix).inverse();
+  for (File libFile : libs) {
+    System.out.printf("\n===  Library: [%s]  ===\n\n", libFile.getPath());
+    one.elf.ElfReader elf = new one.elf.ElfReader(libFile);
+    one.elf.ElfSymbolTable sec = IterableUtils.toList(com.strobel.core.CollectionUtilities.ofType(Arrays.asList(elf.sections()), one.elf.ElfSymbolTable.class))[0];
+    Set set = CollectionFactory.newSet(CollectionUtil.toArray(sec));
+    TreeSet ts = new TreeSet(new ToStringComparator());
+    ts.addAll(set);
+    for (one.elf.ElfSymbol sym : ts.filter("Java")) {
+      String type = cm.get(Integer.valueOf(sym.type())).substring(prefix.length() + 1).toLowerCase();
+      System.out.printf("   %-7s   %s\n", type, sym.name());
+    }
+  }
+}
+
+ 

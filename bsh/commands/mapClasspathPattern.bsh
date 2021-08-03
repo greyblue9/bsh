@@ -1,0 +1,3 @@
+
+public static List<Pair> mapClasspathPattern(Pattern pattern) { List<Pair> al = new ArrayList<Pattern>(); for (Object dexElement: Thread.currentThread().getContextClassLoader().pathList.dexElements) { if (dexElement.zipFile == null) dexElement.maybeInit(); if (dexElement.zipFile == null) { System.err.printf("<Broken DexElement: [%s]>\n", dexElement); continue; }; ZipFile zipFile = dexElement.zipFile; List<Pair> ents = IteratorUtils.asIterable(zipFile.entries()).filter(pattern).select(FunctionUtil.bind("return e -> { Pair.of(e.getName(), Pair.of(zipFile, e)); }", "zipFile", zipFile)); al.addAll(ents); System.err.printf("[ %6d entries ] %s\n", ents.size(), zipFile.getName()); }; return al; }
+

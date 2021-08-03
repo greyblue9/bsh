@@ -1,0 +1,90 @@
+
+
+public static java.lang.String getIndent(int iIndent) {
+  java.lang.String singleIndent = "  ";
+  java.lang.StringBuilder sbIndent 
+    = new java.lang.StringBuilder(iIndent * singleIndent.length());
+  for (int i=0; i<iIndent; i++) {
+    sbIndent.append(singleIndent);
+  }
+  return sbIndent.toString();
+}
+
+public static java.lang.String dumpArrayStr(java.lang.Object oArr) {
+  return dumpArrayStr(oArr, 1);
+}
+
+public static java.lang.String dumpArrayStr(java.lang.Object oArr, int iIndent){
+  
+  java.lang.String sIndent = getIndent(iIndent);
+  java.lang.String sItemSep 
+    = java.lang.String.format(",%c%s", (char)0x0a, sIndent);
+  
+  java.lang.String sNull = "<null>";
+  
+  int len = java.lang.reflect.Array.getLength(oArr);
+  java.lang.Class itemCls = oArr.getClass().getComponentType();
+  
+  java.lang.Object item = null;
+  java.lang.String sItem = "";
+  java.lang.StringBuilder result = new java.lang.StringBuilder(len * 72);
+  
+  
+  for (int idx = 0; idx < len; idx++) {
+    
+    item = java.lang.reflect.Array.get(oArr, idx);
+    
+    if (item == null) {
+      sItem = sNull;
+    } else if (itemCls.isArray()) {
+      sItem = dumpArrayStr(item, iIndent+1);
+    } else {
+      try { 
+        sItem = item.toString();
+      } catch (java.lang.Throwable e) {
+        sItem = java.lang.String.format(
+          "%s@%s (toString() threw %s)",
+          item.getClass().getName(),
+          item.hashCode(),
+          e.getClass().getSimpleName()
+        );
+      }
+    }
+    
+    if (item instanceof java.lang.String) {
+      result.append('"');
+      result.append(sItem);
+      result.append('"');
+    } else {
+      result.append(sItem);
+    }
+    if (idx < len-1) result.append(sItemSep);
+    
+  }
+  
+  // get proper array type to display
+  int dimens = oArr.getClass().getName().lastIndexOf('[')+1;
+  java.lang.String itemTypeStr 
+    = oArr.getClass().getComponentType().getName(); 
+  java.lang.String itemTypeStr2 
+    = itemTypeStr.substring(itemTypeStr.lastIndexOf('[')+1); 
+  int semiIdx = itemTypeStr2.lastIndexOf(';'); 
+  itemTypeStr = (semiIdx != -1)? 
+      itemTypeStr2.substring(1, semiIdx)
+    : itemTypeStr2;
+  java.lang.StringBuilder sbtn = new java.lang.StringBuilder(itemTypeStr); 
+  for (int d=0; d<dimens; d++) { 
+    sbtn.append("[]"); 
+  } 
+  java.lang.String arrTypeStr = sbtn.toString(); 
+  
+  return java.lang.String.format(
+    "%s size=%d {%c%s%s%c%s}", 
+    arrTypeStr, len, (char)0x0A, 
+    sIndent, result.toString(), (char)0x0a,
+    getIndent(iIndent - 1 < 0? 0: iIndent - 1)
+  );
+}
+
+
+

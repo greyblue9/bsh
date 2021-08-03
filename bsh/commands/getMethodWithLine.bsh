@@ -1,0 +1,4 @@
+import java.util.Map.Entry;
+
+public static Member getMethodWithLine(Iterable<Member> mtds, int exlineNo) { Map  rngs = new TreeMap(new ToStringComparator()); for (Member mtd: mtds) { com.strobel.assembler.metadata.MethodDefinition md = ProcyonUtil.getMethodDefinition(mtd); com.google.common.collect.Range rng = ProcyonUtil.getLineNumberRange(md); rngs.put(rng, mtd); }; for (Entry rnge: rngs.entrySet()) { if (! rnge.getKey().contains(Integer.valueOf(exlineNo))) continue; return rnge.getValue(); }; return null; }
+

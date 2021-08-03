@@ -1,0 +1,90 @@
+import dalvik.system.BaseDexClassLoader;
+import dalvik.system.DexPathList;
+import dalvik.system.VMRuntime;
+import dalvik.system.DexFile;
+
+
+
+public static DexPathList newPathList(File[] paths, ClassLoader defLoader) {
+  
+  List al = new ArrayList(paths.length);
+  int pathsIdx = -1;
+  while (++pathsIdx < paths.length) { 
+    DexPathList.Element elem
+      = Reflect.allocateInstance(DexPathList.Element.class);
+    File file = paths[pathsIdx];
+    Reflect.setfldval(elem, "file", file);
+    Reflect.setfldval(elem, "zip", file);
+    try {
+      Reflect.setfldval(elem, "dexFile", new DexFile(file));
+    } catch (Throwable e) {
+      e.printStackTrace();
+      continue;
+    };
+    Reflect.setfldval(elem, "zipFile", new java.util.zip.ZipFile(file));
+    Reflect.setfldval(elem, "initialized", Boolean.valueOf(true));
+    al.add(elem);
+  }
+  
+  DexPathList pathList = Reflect.allocateInstance(
+    dalvik.system.DexPathList.class
+  );
+  /**
+  private final java.lang.ClassLoader definingContext;
+  private final dalvik.system.DexPathList$Element[] dexElements;
+  private final java.io.IOException[] dexElementsSuppressedExceptions;
+  private final java.io.File[] nativeLibraryDirectories;
+  */
+  pathList.definingContext = new AndroidClassLoader();
+  pathList.definingContext.parent = null;
+  pathList.dexElementsSuppressedExceptions = new IOException[0];
+  pathList.nativeLibraryDirectories 
+    = Thread.currentThread().getContextClassLoader().pathList
+        .nativeLibraryDirectories.clone();
+  
+  System.err.printf("Keeping %d dex entries\n", al.size());
+  pathList.dexElements = al.toArray(new DexPathList.Element[al.size()]);
+  Reflect.setfldval(
+    pathList, "nativeLibraryDirectories",
+    DexPathList.splitLibraryPath(
+      VMRuntime.getRuntime().vmLibrary()
+    )
+  );
+  ClassLoader cl = new BaseDexClassLoader(
+    "", null, System.getProperty("java.library.path"),
+    Thread.currentThread().getContextClassLoader()
+  );
+  Reflect.setfldval(cl, "pathList", pathList);
+  Reflect.setfldval(
+    cl, "parent", defLoader
+  );
+  Reflect.setfldval(pathList, "definingContext", cl);
+  return pathList;
+}
+
+
+public static DexPathList newPathList(File[] paths) {
+  return newPathList(
+    paths, Thread.currentThread().getContextClassLoader().getParent()
+  );
+}
+
+
+public static DexPathList newPathList(File path) {
+  return newPathList(new File[] { path });
+}
+
+
+public static DexPathList newPathList(String[] filenames) {
+  return newPathList((File[]) CollectionUtil2.to(filenames, File.class));
+}
+
+
+public static DexPathList newPathList(String path) {
+  return newPathList(new String[] { path });
+}
+
+
+
+
+

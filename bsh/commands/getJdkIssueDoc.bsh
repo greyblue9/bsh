@@ -1,0 +1,105 @@
+import org.jsoup.nodes.Document;
+import org.jsoup.nodes.Element;
+
+import java.nio.charset.CharsetDecoder;
+import libcore.icu.NativeConverter;
+import com.itextpdf.text.pdf.codec.PngImage;
+import com.itextpdf.text.Image;
+import com.itextpdf.text.Image;
+import org.json.JSONObject;
+import org.apache.commons.lang3.StringEscapeUtils;
+import org.apache.commons.lang3.time.FastDateFormat;
+import org.jsoup.nodes.TextNode;
+import org.jsoup.parser.Tag;
+import org.jsoup.nodes.Attribute;
+import org.jsoup.nodes.Attributes;
+import org.jsoup.nodes.Document;
+import org.jsoup.nodes.Element;
+import org.jsoup.select.Elements;
+import org.jsoup.parser.Parser;
+import org.jsoup.safety.Cleaner;
+import org.jsoup.safety.Whitelist;
+import org.jsoup.helper.DataUtil;
+import org.jsoup.helper.HttpConnection;
+
+
+
+
+public static Document getJdkIssueDoc(String url) {
+  String TAG = "getJdkIssueDoc";
+  Document doc = getDocWithBaseUrl(url);
+  
+  Elements contentEls = doc.select("div.user-content-block");
+  Element content = contentEls.iterator().hasNext()
+    ? contentEls.iterator().next()
+    : ((doc.body() != null)
+        ? doc.body()
+        : doc);
+  int numBRs = content.select("br").size();
+  
+  String mainHtml;
+  
+  if (numBRs > 0 || doc.select("pre").size() > 0) {
+    String text = StringEscapeUtils.unescapeHtml4(
+      content.toString().replaceAll("<br> ", "").replaceAll("&nbsp;", " ").replaceAll("</?[a-z]+[0-9]*([^>]*/>|[^>]*>)", "").replaceAll("\n ", "\n")
+    );    
+    mainHtml = textToHtml(text);
+  } else {
+    // already proper HTML
+    mainHtml = content.html();
+  }
+  
+  Document sdoc = Document.createShell(doc.baseUri());
+  
+  Element head = sdoc.select("head")[0];
+  head.append("<title />");
+  
+  Element body = sdoc.select("body")[0];
+  body.html("<h1 /><main /><section id='comments' />");
+  
+  Element main = body.select("main")[0];
+  main.html(mainHtml);
+  
+  Element commentsElem = body.select("#comments")[0];
+  
+  
+  List<Map> comments = Collections.emptyList();
+  try {
+    commente = getComments(doc);
+  } catch (Throwable ex) {
+    Log.d(TAG, Reflector.getRootCause(ex));
+  }
+  
+  for (Map comment: comments) {
+    String text = comment.get("text");
+    String name = comment.get("name");
+    String user = comment.get("user");
+    String date = comment.get("date");
+    String commentHtml = textToHtml(text);
+    
+    Element commentElem = new Element(Tag.valueOf("p"), sdoc.baseUri());
+    commentElem.attr("class", "comment");
+    commentHtml = new StringBuilder(commentHtml).insert(0, "<hr />\n<h4 />\n").toString();
+    
+    commentElem.html(commentHtml);
+    commentElem.select("h4")[0].text(String.format(
+      "On %s, %s (%s) wrote:",
+      date, name, user
+    ));
+    commentsElem.addChildren(commentElem);
+  }
+  Elements titleEls = doc.select(".issue-container h1#summary-val");
+  
+  String title = titleEls.size() > 0
+    ? titleEls.iterator().next().text()
+    : ((doc.select("title").iterator().hasNext())
+        ? doc.select("title").iterator().next().text()
+        : "");
+  
+  head.select("title")[0].text(title);
+  body.select("h1")[0].text(title);
+  return sdoc;
+}
+
+
+

@@ -1,0 +1,156 @@
+import brut.androlib.res.decoder.ARSCDecoder;
+import brut.androlib.res.decoder.ARSCDecoder.ARSCData;
+import brut.androlib.res.data.ResValuesFile;
+import brut.androlib.res.data.ResPackage;
+import org.apache.commons.lang3.tuple.MutablePair;
+
+public static Map apkToResMap(String path, StringBuilder sb) {
+  
+  ARSCData data = ARSCDecoder.decode(
+    new ByteArrayInputStream(ZipUtil.toByteArray(
+      path, "resources.arsc"
+    )), 
+    findFlagsOffsets = true, 
+    keepBroken = true
+  );
+  
+  Map bigMap = new TreeMap(new org.apache.commons.collections4.comparators.ComparatorChain(Arrays.asList(Comparators.comparingInt("package_"), Comparators.comparingInt("type"), Comparators.comparingInt("id"))));
+  
+  ResPackage[] packages = data.getPackages(); 
+  for (int pkgidx=0,pkglen=packages.length; pkgidx<pkglen; ++pkgidx) {
+    ResPackage pk = packages[pkgidx];
+    Collection<ResValuesFile> vfs = pk.listValuesFiles();
+    Iterator<ResValuesFile> it = vfs.iterator();
+    while (it.hasNext()) {
+      ResValuesFile vf = it.next();
+      if (Reflect.getfldval(vf, "mConfig").toString().indexOf("-en") != -1)
+      {
+        it.remove();
+      }
+    }
+    
+    for (ResValuesFile vf: vfs) {
+      Collection<MutablePair> pairs = vf.listResources().select(
+       FunctionUtil.bind(
+        """return m -> {
+        MutablePair.of(
+          Reflector.invokeOrDefault(
+            Reflector.invokeOrDefault(m, "getResSpec", 
+              Arrays.asList().toArray()
+            ),
+            "getId", 
+            Arrays.asList().toArray()
+          ), 
+          Reflect.getfldval(
+            Reflect.getfldval(m, "mValue"),
+            "mRawValue"
+          )
+        );
+        }""".trim()
+       )
+      );
+      Map mp = RealArrayMap.toMap(pairs);
+      String str = StringUtils.join(
+        mp.entrySet().select(FunctionUtil.bind("""return m -> {
+          String.format(
+            "%d\t%s\n", 
+            Reflect.getfldval(m.getKey(), "id"), 
+            m.getValue()
+          );
+        }""".trim())), 
+        ""
+      );
+      
+      if (sb.length() > 0) sb.append("\n");
+      sb.append(str);
+      bigMap.putAll(mp);
+    }
+  }
+  return bigMap;
+}
+
+
+
+public static Map apkToResMap(String path) {
+  ZipFile zf = new ZipFile(path);
+  ZipEntry ze = zf.getEntry("resources.arsc");
+  System.err.printf("Found ZipEntry: '%s'\n", ze.getName());
+  InputStream is = zf.getInputStream(ze);
+  System.err.printf("Parsing ARSC data...\n");
+  ARSCData data = ARSCDecoder.decode(
+    is, findFlagsOffsets = true, keepBroken = true
+  );
+  System.err.printf("Data read successfully: %s\n", data);
+  pk = data.getOnePackage();
+  System.err.printf("Processing package: %s\n", pk);
+  vfs = pk.listValuesFiles().where("""
+    m => Reflect.getfldval(m, "mConfig").toString().indexOf("-en") != -1
+  """.trim());
+  
+  Map bigMap = new TreeMap();
+  
+  for (ResValuesFile vf: vfs) {
+    System.err.printf("Processing res-values file: %s\n", vf);
+    Collection<MutablePair> pairs = vf.listResources().select(
+      "m => org.apache.commons.lang3.tuple.MutablePair#of( "
+    + "  Reflector.invokeOrDefault( "
+    + "    Reflector.invokeOrDefault( "
+    + "      m, \"getResSpec\", new Object[0] "
+    + "    ), "
+    + "    \"getId\", "
+    + "    new java.lang.Object[0]"
+    + "  ), "
+    + "  Reflect.getfldval( "
+    + "    Reflect.getfldval(m, \"mValue\"), "
+    + "    \"mRawValue\" "
+    + "  )"
+    + ")"
+    );
+    
+    Map map = RealArrayMap.toMap(pairs.select(
+        "m => MutablePair.of( "
+      + "  Reflect.getfldval(m.getKey(), \"id\"), "
+      + "  MutablePair.of(m.getKey(), m.getValue())"
+      + ");"
+    ));
+    bigMap.putAll(map);
+  }
+  
+  return bigMap;
+}
+
+public static Map apkToResMap(Collection<ResValuesFile> vfs) {
+  Map bigMap = new TreeMap();
+  
+  for (ResValuesFile vf: vfs) {
+    System.err.printf("Processing res-values file: %s\n", vf);
+    
+    Collection<MutablePair> pairs = vf.listResources().select(
+      "m => org.apache.commons.lang3.tuple.MutablePair#of( "
+    + "  Reflector.invokeOrDefault( "
+    + "    Reflector.invokeOrDefault( "
+    + "      m, \"getResSpec\", new Object[0] "
+    + "    ), "
+    + "    \"getId\", "
+    + "    new java.lang.Object[0]"
+    + "  ), "
+    + "  Reflect.getfldval( "
+    + "    Reflect.getfldval(m, \"mValue\"), "
+    + "    \"mRawValue\" "
+    + "  )"
+    + ")"
+    );
+    
+    Map map = RealArrayMap.toMap(pairs.select(
+        "m => org.apache.commons.lang3.tuple.MutablePair#of( "
+      + "  Reflect.getfldval(m.getKey(), \"id\"), "
+      + "  org.apache.commons.lang3.tuple.MutablePair#of(m.getKey(), m.getValue())"
+      + ");"
+    ));
+    
+    bigMap.putAll(map);
+  }
+  
+  return bigMap;
+}
+  

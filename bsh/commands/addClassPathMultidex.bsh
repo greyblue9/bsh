@@ -1,0 +1,68 @@
+import org.apache.commons.io.input.AutoCloseInputStream;
+import java.util.zip.ZipInputStream;
+
+
+public static Triple addClassPathMultidex(String apk) {
+  return addClassPathMultidex(
+    new BufferedInputStream(new AutoCloseInputStream(
+      new FileInputStream(new File(apk))
+    ))
+  );
+}
+
+
+public static Triple addClassPathMultidex(byte[] zipBytes) {
+  return addClassPathMultidex(new ByteArrayInputStream(zipBytes));
+}
+
+
+public static Triple addClassPathMultidex(InputStream zipFileInputStream) {
+  Set files = new TreeSet(new ToStringComparator()),
+      dexFiles = new TreeSet(new ToStringComparator());
+  Map dexByteMap = new TreeMap(new ToStringComparator());
+  long nonce = new Random().nextLong();
+  File tmpDir = PosixFileInputStream.createTemporaryDirectory(
+    String.format("multidex__%s",Long.toString(nonce, 32))
+  );
+  System.err.println(tmpDir);
+  
+  ZipInputStream zis = new ZipInputStream(zipFileInputStream);
+  List<ZipEntry> dexEntries = new ArrayList<ZipEntry>();
+  ZipEntry ze;
+  List<String> classNames = new ArrayList<String>();
+  while ((ze = zis.getNextEntry()) != null) {
+    if (StringUtils.endsWith(ze.getName(), ".dex")) {
+      dexEntries.add(ze);
+      File dexf = new File(tmpDir, ze.getName());
+      files.add(dexf);
+      byte[] dexBytes = IOUtils.toByteArray(zis);
+      System.err.printf("%s  size: %d bytes\n", ze.getName(), dexBytes.length);
+      FileUtils.writeByteArrayToFile(dexf, dexBytes);
+      dexFiles.add(dexf);
+      dexByteMap.put(dexf, dexBytes);
+      
+      try {
+        String[] dexClassNames = new DexUtil(dexf).getClassNames();
+        System.err.printf("  %d classes\n", dexClassNames.length);
+        Collections.addAll(classNames, dexClassNames);
+        dexClassNames = null;
+      } catch (Throwable e) {
+        System.err.println(Reflector.getRootCause(e));
+      }
+    }
+  }
+  IOUtils.closeQuietly(zis);
+  if (! dexFiles.isEmpty()) {
+    addClassPath(dexFiles);
+    Triple ret = Triple.of(
+      Pair.of(tmpDir, classNames.toArray(new String[0])),
+      Triple.of(dexEntries, files, dexFiles),
+      dexByteMap
+    );
+    classNames = null;
+    return ret;
+  }
+  classNames = null;
+  return null;
+}
+

@@ -1,0 +1,37 @@
+
+public static String llsz(String path) {
+  
+  String strll = captureEval(
+    "ll(\"" + path + "\");", false
+  ).getLeft(); 
+  String[] ss; 
+  Arrays.sort(
+    ss = StringUtils.split(strll, "\n"), 
+    new Comparator() { 
+      // @Override
+      public int compare(Object o1, Object o2) {
+        String s1 = (String) o1;
+        String s2 = (String) o2;
+        if (s1.trim().charAt(0) == '-' 
+        ||  s2.trim().charAt(0) == '-') {
+          return 0; 
+        }
+        return Integer.valueOf(
+                 s1.substring(0, 9).trim()
+               ).compareTo(
+                 Integer.valueOf(
+                   s2.substring(0, 9).trim()
+                 )
+               );       
+      }
+      // @Override
+      public boolean equals(Object other) {
+        return this == other;
+      }
+    }
+  );
+  return StringUtils.join(ss, "\n");
+}
+
+
+

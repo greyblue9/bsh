@@ -1,0 +1,12 @@
+
+
+public static String makeGetters(String fields, String annStr) { String str = StringUtils.join(fields.matchAll(" ([^\t\n\r ]+) ([a-zA-Z_$])([a-zA-Z0-9_$]*)[\t\n\r ]*;", String.format("  %spublic $1 get__$2__$3() {\n    return this.$2$3;\n  }\n", annStr.trim().replaceAll("[\t\r\n ]*\n[\t\r\n ]*","\n  ").replaceAll("^(.+)$", "$1\n  "))), "\n"); for(Matcher mchr = Pattern.compile("__(.)__").matcher(str); mchr.find(); mchr.reset(str)) { str = mchr.replaceFirst(mchr.group(1).toUpperCase()); }; return new StringBuilder(str).insert(0, '\n').toString(); };
+
+// public static String makeGetters(String fields) { String str = StringUtils.join(fields.matchAll(" ([^\t\n\r ]+) ([a-zA-Z_$])([a-zA-Z0-9_$]*)[\t\n\r ]*;", "  public $1 get__$2__$3() {\n    return this.$2$3;\n  }\n"),"\n"); for(Matcher mchr = Pattern.compile("__(.)__").matcher(str); mchr.find(); mchr.reset(str)) { str = mchr.replaceFirst(mchr.group(1).toUpperCase()); }; return str; };
+
+public static String makeGetters(String fields) { return makeGetters(fields, ""); }
+
+
+
+public static String makeGetters(String fields) { String str = StringUtils.join(fields.matchAll(Pattern.compile(pat=" ([A-Z]+[a-zA-Z0-9_$]*|[A-Z+][A-Za-z0-9_$,]+(?: *<[^;{}()\\[\\]<?]*>|[a-zA-Z0-9_$,]+<[^;{}()\\[\\]<]*>|[A-Z]+[a-zA-Z_0-9$, ]* *<(?:[^;{}()\\[\\]<>?]*|<(?:[^;{}()\\[\\]<>?](?:[\r\n\t ]s*,[\r\n\t ]*)?)*>)*>)?)[\r\n\t ]+([a-zA-Z_$0-9])([a-zA-Z0-9_$]*)[\t\n\r ]*;"), "  public $1 get__$2__$3() {\n    return this.$2$3;\n  }\n"),"\n"); for(Matcher mchr = Pattern.compile("__(.)__").matcher(str); mchr.find(); mchr.reset(str)) { str = mchr.replaceFirst(mchr.group(1).toUpperCase()); }; return str; };
+

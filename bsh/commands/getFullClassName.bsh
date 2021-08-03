@@ -1,0 +1,44 @@
+
+STR_VOID = Void.TYPE.getName();
+
+
+public static String getFullClassName(String binaryName) {
+  
+  if (binaryName == null) return STR_VOID;
+  if ("V".equals(binaryName)) return STR_VOID;
+  
+  String fullName = null;
+  
+  StringBuilder tsb = new StringBuilder(32); 
+  int pos = -1; 
+  while (binaryName.charAt(++pos) == '[') {
+    tsb.append("[]"); 
+  } 
+  if (binaryName.charAt(pos) == 'L' 
+   && binaryName.charAt(binaryName.length() - 1) == ';')
+  {
+    tsb.insert(
+    0, 
+    binaryName.substring(pos + 1, binaryName.length() - 1).replace('/', '.')
+    );
+  } else {
+    try {
+    tsb.insert(
+      0, 
+      Class.forName(
+      "[".concat( String.valueOf(binaryName.charAt(pos)) )
+      ).getComponentType().getName()
+    );
+    } catch (ClassNotFoundException e) {
+    e.printStackTrace();
+    tsb.insert(
+      0, 
+      "?{"+( binaryName==null? "null": binaryName) +"}?"
+    );
+    }
+  }  
+  fullName = tsb.toString();
+  //cache.put(binaryName, fullName);
+  return fullName;
+}
+  

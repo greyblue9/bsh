@@ -1,0 +1,13 @@
+public static java.lang.Object source2(java.lang.String filepath) {
+  java.lang.String code = new java.lang.String(readbytes(filepath), "utf-8");
+  java.lang.String newCode = code
+    .replaceAll(java.lang.String.format("@[A-Za-z_][A-Za-z0-9.{}()%c]*", 0x22), "").replaceAll(java.lang.String.format("<[A-Za-z0-9_, %c]*>", 0x3f), "").replaceAll("import static[^;]*;", "");
+  print(newCode);
+  try {
+    result = eval(newCode);
+  } catch (EvalError e) { 
+    return null; 
+  }
+  // return eval(newCode);
+}
+

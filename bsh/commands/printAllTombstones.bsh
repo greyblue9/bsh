@@ -1,0 +1,80 @@
+import java.util.Map.Entry;
+import java.nio.charset.StandardCharsets;
+
+{
+  public static boolean DEBUG = false;
+  public static String TAG = "combineZips";
+  
+  
+
+
+  // insert supporting/standalone functions here
+  // define a static function "script_main()" as entry point
+  
+
+
+  public static void printAllTombstones() {
+    String cmdString = System.getProperty("tombstones", "");
+    String[] cmdStrings = ArrayUtils.addAll(
+      new String[]{ "top_tombstones" }, cmdString.split("\\s+")
+    );
+
+    SortedMap tm = new TreeMap();
+    tm.putAll(RealArrayMap.toMap(
+      PosixFileInputStream.pexecSync(cmdStrings).split("\n").indexed()
+    ));
+    
+    List<File> files = Arrays.asList(RealArrayMap.toMap(
+      tm.entrySet().select(FunctionUtil.bind(
+        "return m -> { Pair.of(m.getKey(), new(File, m.getValue())); }"
+      ))
+    ).values().toArray());
+    
+    for (File file: files) {
+      System.out.printf("\n\n==> %s <==\n\n", file.getPath());
+      Map m = parseTombstone(file.getPath());
+      for (Entry e : m.entrySet()) {
+        bsh.NameSpace ns = this.namespace;
+        System.out.println(e.getKey());
+        if (System.getProperty("hexdump") != null) {
+          this.interpreter.eval(
+            new StringReader(
+              String.format(
+                "System.out.println(HexDump.dump(e.getValue(), %s));",
+                System.getProperty("hexdump")
+              )
+            ),
+            this.callstack.top(),
+            "<anonymous eval>",
+            new bsh.CallStack() //this.callstack
+          );
+        } else {
+          System.out.println(HexDump.dump(e.getValue()));
+        }
+      }
+    }
+  }
+  
+ 
+ 
+ 
+   
+  public static void script_main() {
+
+      printAllTombstones();
+      
+  };
+   
+  
+  
+  Object invtype = getBshInvocationTypeId();
+  if (DEBUG) Log.d(TAG, "invtype_id = [%s]\n", invtype.getValue());
+  if (invtype == INVTYPE_SCRIPT) {
+    script_main(); // if inside "main" script, like ` if __NAME__ == "main": ` in python
+  }
+  
+  void;
+}
+
+
+ 

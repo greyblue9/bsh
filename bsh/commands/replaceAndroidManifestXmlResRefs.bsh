@@ -1,0 +1,21 @@
+
+
+public static String replaceAndroidManifestXmlResRefs(String xmlstr, Map refMap) {
+  Matcher mchr = Pattern.compile("=\"@([0-9A-F]+)\"").matcher("");
+  StringBuilder sb = new StringBuilder(xmlstr.length() * 2);
+  mchr.reset(xmlstr);
+  while (mchr.find()) {
+    int rawId = Integer.parseInt(mchr.group(1), 16);
+    int pkg = ((rawId >> 24) & 0xFF), type = ((rawId >> 16) & 0xFF), entry = (rawId & 0xFF);
+    int id = ((pkg << 24) | (type << 16) | entry);
+    int idPlus = ((pkg << 24) | ((type + 1) << 16) | entry);
+    String ref = refMap.get(String.format("@%X", rawId));
+    if (ref == null)
+      continue;
+    String newxml = sb.delete(0, sb.length()).append(xmlstr.subSequence(0, mchr.start())).append(xmlstr.subSequence(mchr.start(0), mchr.start(1) - 1)).append(ref).append(xmlstr.subSequence(mchr.end(1), mchr.end(0))).append(xmlstr.subSequence(mchr.end(), xmlstr.length())).toString();
+    xmlstr = newxml;
+    mchr.reset(xmlstr);
+  }
+  return xmlstr;
+}
+

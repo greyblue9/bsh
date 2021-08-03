@@ -1,0 +1,13 @@
+public static List getCfMethods(String zipPath, String clsName) {
+  String clsName = clsName.replace('.', '/') + ".class";
+  ZipFile zf = new ZipFile(new File(zipPath));
+  ZipEntry ze = zf.getEntry(clsName);
+  InputStream is = zf.getInputStream(ze);
+  byte[] clsBytes = IOUtils.toByteArray(is);
+  OffsetBackedByteData bd = new OffsetBackedByteData(clsBytes, 0);
+  DCCommonState cs = new DCCommonState(null, null);
+  String pathName = zipPath;
+  ClassFile cf = new ClassFile(bd, pathName, cs);
+  return cf.getMethods();
+}
+

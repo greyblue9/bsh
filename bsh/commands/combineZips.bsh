@@ -1,0 +1,132 @@
+import java.nio.charset.StandardCharsets;
+
+{
+  public static boolean DEBUG = false;
+  public static java.lang.String TAG = "combineZips";
+  
+  
+
+
+  // insert supporting/standalone functions here
+  // define a static function "script_main()" as entry point
+  
+
+
+  public static java.io.File combineZips() {
+    if (java.lang.System.getProperty("input.paths", java.lang.System.getProperty("input.files")) == null || java.lang.System.getProperty("output.path", java.lang.System.getProperty("output.file")) == null) {
+      java.lang.Error error = new java.lang.Error(
+        java.lang.String.format(
+          "Usage error: java.lang.System properties \"input.paths\" " +
+          "(with path separator \"%s\") and \"output.path\" " +
+          "MUST both be defined.",
+          org.apache.commons.lang3.StringEscapeUtils.escapeJava(
+            java.io.File.pathSeparator
+          )
+        )
+      );
+      error.printStackTrace();
+      java.lang.System.err.printf("\n\n%s\n\n", error);
+      java.lang.System.exit(10);
+    }
+    
+    java.util.Map zm = new java.util.TreeMap();
+    java.io.File outputFile = new java.io.File(java.lang.System.getProperty("output.path", java.lang.System.getProperty("output.file")));
+    java.lang.String[] inpaths = org.apache.commons.lang3.StringUtils.split(
+      java.lang.System.getProperty("input.paths", java.lang.System.getProperty("input.files")),
+      java.io.File.pathSeparator
+    );
+    
+    for (java.lang.String inpath : inpaths) {
+      java.io.File inputFile = new java.io.File(inpath);
+      
+      if (!inputFile.exists() || !inputFile.isFile()) {
+        java.lang.Error error = new java.lang.Error(java.lang.String.format(
+          "%s: \"%s\"",
+          (inputFile.exists())
+            ? "java.io.File is not a regular file"
+            : "java.io.File does not exist",
+          org.apache.commons.lang3.StringEscapeUtils.escapeJava(
+            inputFile.getPath()
+          )
+        ));
+        error.printStackTrace();
+        throw error;
+      }
+      java.util.zip.ZipFile inputZip = new java.util.zip.ZipFile(inputFile);
+      java.lang.System.err.printf("mapBytes: %s\n", inputZip.getName());
+      zm.putAll(org.d6r.ZipUtil.mapBytes(inputZip));
+      inputZip.close();
+    }
+    for (java.lang.String entryName : java.util.Arrays.asList("META-INF/CERT.RSA", "META-INF/CERT.SF", "META-INF/MANIFEST.MF")) {
+      zm.remove(entryName);
+    }
+    byte[] zipBytes = org.d6r.ZipUtil.writeZip(zm);
+    java.lang.System.err.printf(
+      "zipBytes: length = %d\n", zipBytes.length
+    );
+    org.apache.commons.io.FileUtils.writeByteArrayToFile(
+      outputFile, zipBytes
+    );
+    System.err.printf(
+      "Wrote output file \"%s\" (%d bytes)",
+      outputFile.getCanonicalFile().getAbsoluteFile().getPath(),
+      outputFile.length()
+    );
+    return outputFile;
+  }
+  
+  public static java.io.File combineZips(java.io.File[] inputFiles, java.io.File outputFile) {
+    java.util.Map zm = new java.util.TreeMap();
+    for (java.io.File inputFile : inputFiles) {
+      if (!inputFile.exists() || !inputFile.isFile())
+        throw new Error(java.lang.String.format("%s: \"%s\"", (inputFile.exists()) ? "java.io.File is not a regular file" : "java.io.File does not exist", org.apache.commons.lang3.StringEscapeUtils.escapeJava(inputFile.getPath())));
+      java.util.zip.ZipFile  inputZip = new java.util.zip.ZipFile (inputFile);
+      zm.putAll(org.d6r.ZipUtil.mapBytes(inputZip));
+      inputZip.close();
+    }
+    for (java.lang.String entryName : java.util.Arrays.asList("META-INF/CERT.RSA", "META-INF/CERT.SF", "META-INF/MANIFEST.MF")) {
+      zm.remove(entryName);
+    }
+    byte[] zipBytes = org.d6r.ZipUtil.writeZip(zm);
+    // writeFile(outputFile, zipBytes);
+    
+    org.apache.commons.io.FileUtils.writeByteArrayToFile(
+      outputFile, zipBytes
+    );
+    org.d6r.Log.d(
+      "combineZips",
+      "Wrote output file \"%s\" (%d bytes)",
+      outputFile.getCanonicalFile().getAbsoluteFile().getPath(),
+      outputFile.length()
+    );
+    return outputFile;
+  }
+   
+  public static void script_main() {
+    java.lang.System.out.println(combineZips());
+  };
+   
+  
+  
+  java.lang.Object invtype = null;
+  try {
+    invtype = getBshInvocationTypeId();
+  } catch (Throwable e) {
+    // if inside "main" script, like ` if __NAME__ == "main": ` in python
+  }
+  if (invtype != null) {
+    if (DEBUG) org.d6r.Log.d(TAG, "invtype_id = [%s]\n", invtype.getValue());
+    if (invtype == INVTYPE_SCRIPT) {
+      combineZips();
+    }
+  } else {
+    script_main();
+    System.exit(0);
+  }
+  void;
+}
+
+
+
+
+

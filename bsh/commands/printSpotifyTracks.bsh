@@ -1,0 +1,17 @@
+import java.util.Map.Entry;
+
+public static void printSpotifyTracks(Map tkmap) { 
+
+  StringBuilder sb = new StringBuilder(76 * 10); 
+  for (Entry ent: tkmap.entrySet()) { 
+    sb.append(String.format(
+      "%s\t%s\n", 
+      ent.getKey().replace(" - ", "\t"), 
+      ent.getValue().get("uri"))
+    );
+  }
+
+  System.out.println(sb.insert(0, "\n").append("\n").toString());
+
+}
+

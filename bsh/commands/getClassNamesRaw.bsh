@@ -1,0 +1,32 @@
+public static java.lang.String[] getClassNamesRaw(java.lang.String filePath) {
+
+  java.lang.Object[] _classNames = null;
+  java.lang.String[] classNames = null;
+  java.lang.Object cookie = null;
+  dalvik.system.DexFile df = null;
+  try {
+    
+    df = new dalvik.system.DexFile(filePath);
+    cookie = getfldval(df, "mCookie");
+    classNames = m.invoke(null, new java.lang.Object[]{ cookie });
+
+  } catch (java.lang.Exception e) {
+
+    com.android.dx.io.DexIndexPrinter dip
+      = new com.android.dx.io.DexIndexPrinter(
+          new java.io.File(filePath)
+    );
+    com.android.dx.io.DexBuffer db
+      = getfldval(dip, "dexBuffer");
+    _classNames = getfldval(db, "typeNames").toArray();
+    // "Lcom/example/type$Name;"
+    classNames = new java.lang.String[_classNames.length];
+
+    for (int i=0; i<_classNames.length; i++) {
+      classNames[i] = _classNames[i].toString();
+    }
+    
+  }
+
+  return classNames;
+}

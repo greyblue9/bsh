@@ -1,0 +1,16 @@
+import org.netbeans.modules.classfile.ClassFile;
+import org.netbeans.modules.classfile.Parameter;
+import com.android.dex.Dex;
+import javassist.bytecode.SignatureAttribute;
+
+
+public static String cacheDexDump(String clsName, 
+String dumpOfCls) {
+  if (clsName == null || dumpOfCls == null) return;
+  Interpreter interp = org.d6r.CollectionUtil.getInterpreter();
+  Map cachedDexes = interp.getu("cachedDexes");
+  if (cachedDexes == null) {
+    interp.setu("cachedDexes", (cachedDexes = new HashMap()));
+  }
+  cachedDexes.put(clsName, dumpOfCls); 
+}

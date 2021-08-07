@@ -1,0 +1,12 @@
+*.14*.bak
+*.15*.bak
+*.16*.bak
+*.14*.mod
+*.15*.mod
+*.16*.mod
+META-INF/
+*.ctags
+*.bak
+*.rej
+*.orig
+*.mod

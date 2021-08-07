@@ -1,0 +1,4 @@
+<?xml version="1.0" encoding="utf-8"?>
+<PreferenceScreen>
+    <CheckBoxPreference android:title="Help Animation" android:key="showAnimationNextTime" android:summary="Show help animation next time" android:defaultValue="false" />
+</PreferenceScreen>

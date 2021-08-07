@@ -1,0 +1,15 @@
+Manifest-Version: 1.0
+
+Archiver-Version: Info-ZIP
+Build-Jdk: 1.8.0_40
+Bundle-ManifestVersion: 2
+Created-By: 1.6.0_45 (Sun Microsystems Inc.)
+Created-By: Impromptu Manifest Creator
+Implementation-Vendor-Id: org.d6r
+Implementation-Vendor: Generic
+Manifest-Version: 1.0
+Sealed: false
+Specification-Title: Java Platform API Specification
+Specification-Vendor: Oracle Corporation
+Specification-Version: 1.8
+

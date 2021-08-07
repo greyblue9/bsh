@@ -1,0 +1,14 @@
+org.cojen.classfile.ConstantPool
+com.android.dex.Dex
+
+constantPool
+sun.tools.javap.ClassData
+com.android.dex.Dex$StringTable
+importedPackages
+javassist.ClassPool
+cp
+_types
+com.strobel.assembler.metadata.MetadataSystem
+com.strobel.decompiler.languages.java.JavaFormattingOptions
+net.bytebuddy.pool.TypePool$Default$LazyTypeDescription$GenericTypeToken$Resolution$Raw$RawAnnotatedType
+typeDescription
